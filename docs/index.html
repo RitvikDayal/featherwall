@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FeatherWall — live wallpapers for Windows</title>
+<meta name="description" content="An open-source live wallpaper engine for Windows 10 and 11. Video and image wallpapers with a clock widget, in a single process. MIT licensed.">
+<meta property="og:title" content="FeatherWall">
+<meta property="og:description" content="Live wallpapers for Windows that don't eat your laptop.">
+<meta property="og:image" content="https://raw.githubusercontent.com/RitvikDayal/featherwall/main/docs/social-preview.jpg">
+<meta property="og:url" content="https://ritvikdayal.github.io/featherwall/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🪶</text></svg>">
+<style>
+  :root{
+    /* Cool, deep ground sampled from the wallpapers the app ships with. */
+    --ink:#0A0C10;
+    --panel:rgba(18,21,27,.72);
+    --panel-solid:#12151B;
+    --line:rgba(255,255,255,.10);
+    --text:#EDF0F4;
+    --muted:#98A1AE;
+    --accent:#5EA0FF;
+
+    /* The app draws its clock in Segoe UI Light. On the OS this targets, so does the page. */
+    --display:"Segoe UI Light","Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
+    --body:"Segoe UI Variable Text","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Arial,sans-serif;
+    --mono:"Cascadia Mono",Consolas,"SF Mono",Menlo,monospace;
+
+    --measure:min(1080px,92vw);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{
+    margin:0;background:var(--ink);color:var(--text);
+    font-family:var(--body);font-size:16px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
+  img{max-width:100%;display:block}
+
+  /* ---------- hero: the page is a desktop ---------- */
+  .desktop{
+    position:relative;min-height:100svh;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;padding:6vh 4vw 8vh;text-align:center;
+    background:#0A0C10 url("media/hero.jpg") center/cover no-repeat;
+  }
+  .desktop::after{
+    content:"";position:absolute;inset:0;
+    background:linear-gradient(180deg,rgba(8,10,14,.34) 0%,rgba(8,10,14,.52) 55%,rgba(10,12,16,.95) 100%);
+  }
+  .desktop > *{position:relative;z-index:1}
+
+  /* The clock widget, as the app renders it. */
+  .widget{margin-bottom:clamp(2.5rem,7vh,5rem);animation:rise .9s cubic-bezier(.2,.7,.2,1) both}
+  .widget time{
+    display:block;font-family:var(--display);font-weight:200;
+    font-size:clamp(3.6rem,11vw,8.2rem);line-height:1;letter-spacing:.02em;
+    text-shadow:0 2px 14px rgba(0,0,0,.45);font-variant-numeric:tabular-nums;
+  }
+  .widget hr{
+    border:0;height:1px;background:rgba(255,255,255,.5);
+    width:clamp(120px,18vw,230px);margin:clamp(.7rem,1.6vh,1.1rem) auto;
+  }
+  .widget .date{
+    font-size:clamp(.82rem,1.5vw,1rem);color:rgba(255,255,255,.82);letter-spacing:.04em;
+    text-shadow:0 1px 8px rgba(0,0,0,.5);
+  }
+  @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){.widget{animation:none}}
+
+  .wordmark{
+    font-family:var(--display);font-weight:200;letter-spacing:.01em;
+    font-size:clamp(2.1rem,5.4vw,3.4rem);margin:0 0 .5rem;
+  }
+  .tagline{
+    font-size:clamp(1rem,2.2vw,1.32rem);color:var(--text);opacity:.92;
+    margin:0 auto 2.2rem;max-width:36ch;
+  }
+
+  .cta{display:flex;flex-wrap:wrap;gap:.9rem;justify-content:center;align-items:center}
+  .btn{
+    display:inline-flex;align-items:center;gap:.6rem;
+    padding:.85rem 1.6rem;border-radius:6px;font-size:1.02rem;font-weight:600;
+    border:1px solid transparent;transition:transform .15s ease,background .15s ease;
+  }
+  .btn:hover{text-decoration:none;transform:translateY(-1px)}
+  .btn-primary{background:var(--accent);color:#08101F}
+  .btn-primary:hover{background:#79B2FF}
+  .btn-ghost{border-color:rgba(255,255,255,.28);color:var(--text);background:rgba(255,255,255,.05)}
+  .btn-ghost:hover{background:rgba(255,255,255,.11)}
+  .req{margin:1.1rem 0 0;font-size:.85rem;color:var(--muted)}
+  .req code{font-family:var(--mono);font-size:.82rem}
+
+  /* ---------- acrylic panels over the wallpaper ---------- */
+  main{max-width:var(--measure);margin:0 auto;padding:0 0 6rem}
+  .panel{
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:clamp(1.5rem,3.5vw,2.6rem);margin:0 0 1.4rem;
+    backdrop-filter:blur(22px) saturate(140%);
+    -webkit-backdrop-filter:blur(22px) saturate(140%);
+  }
+  @supports not (backdrop-filter:blur(2px)){.panel{background:var(--panel-solid)}}
+
+  h2{
+    font-family:var(--display);font-weight:250;letter-spacing:.01em;
+    font-size:clamp(1.5rem,3.2vw,2.1rem);margin:0 0 1.2rem;
+  }
+  h3{font-size:1rem;font-weight:600;margin:1.8rem 0 .5rem;color:var(--text)}
+  p{margin:0 0 1rem;color:#D3D9E2}
+  .lede{font-size:1.05rem}
+  .muted{color:var(--muted)}
+  .small{font-size:.86rem}
+
+  table{width:100%;border-collapse:collapse;margin:.4rem 0 1rem;font-size:.93rem}
+  caption{text-align:left;color:var(--muted);font-size:.84rem;padding-bottom:.7rem}
+  th,td{text-align:left;padding:.6rem .7rem;border-bottom:1px solid var(--line)}
+  th{font-weight:600;color:var(--muted);font-size:.8rem;letter-spacing:.06em;text-transform:uppercase}
+  td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+  td strong{color:#fff}
+  .scroll-x{overflow-x:auto}
+
+  figure{margin:0 0 1.2rem}
+  figure img{border-radius:8px;border:1px solid var(--line)}
+  figcaption{font-size:.8rem;color:var(--muted);padding-top:.6rem}
+
+  .shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem}
+  .shots img{border-radius:8px;border:1px solid var(--line)}
+
+  .checksum{
+    font-family:var(--mono);font-size:.76rem;color:var(--muted);
+    background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:6px;
+    padding:.7rem .85rem;overflow-x:auto;white-space:nowrap;
+  }
+
+  footer{
+    max-width:var(--measure);margin:0 auto;padding:2.5rem 0 4rem;
+    border-top:1px solid var(--line);color:var(--muted);font-size:.87rem;
+  }
+  footer a{color:var(--muted);text-decoration:underline}
+  footer a:hover{color:var(--text)}
+
+  @media (max-width:640px){
+    main{padding-left:4vw;padding-right:4vw}
+    .btn{width:100%;justify-content:center}
+  }
+</style>
+</head>
+<body>
+
+<header class="desktop">
+  <div class="widget" aria-hidden="true">
+    <time id="clock">--:--</time>
+    <hr>
+    <div class="date" id="today">&nbsp;</div>
+  </div>
+
+  <h1 class="wordmark">FeatherWall</h1>
+  <p class="tagline">Live wallpapers for Windows that don't eat your laptop.</p>
+
+  <div class="cta">
+    <a class="btn btn-primary" href="https://github.com/RitvikDayal/featherwall/releases/latest/download/featherwall-v0.1.0-win-x64.zip">
+      Download for Windows
+    </a>
+    <a class="btn btn-ghost" href="https://github.com/RitvikDayal/featherwall">View the source</a>
+  </div>
+  <p class="req">
+    7 MB &middot; Windows 10 1809 or newer &middot; needs the
+    <a href="https://dotnet.microsoft.com/download/dotnet/10.0">.NET 10 desktop runtime</a>
+  </p>
+</header>
+
+<main>
+
+  <section class="panel">
+    <h2>It's one process</h2>
+    <p class="lede">
+      Most wallpaper engines want several processes, a launcher, an account, and an embedded
+      browser to loop an MP4. FeatherWall is <code>featherwall.exe</code> and nothing else, built on
+      Win32, Direct3D&nbsp;11 and DirectComposition.
+    </p>
+    <p>
+      It also renders on the Windows&nbsp;11 24H2 desktop, which changed how the shell composes
+      wallpapers and left a lot of older tools drawing a black rectangle. FeatherWall detects both
+      the classic and the newer layout at startup.
+    </p>
+    <figure>
+      <img src="media/demo.gif" alt="A 4K animated wallpaper playing on the desktop with the clock widget above it" loading="lazy" width="760">
+      <figcaption>A real screen recording: a 4000&times;2250 clip decoding on the desktop, clock ticking over it, desktop still usable underneath.</figcaption>
+    </figure>
+  </section>
+
+  <section class="panel">
+    <h2>What it costs you</h2>
+    <p class="muted small">
+      Measured over sampled 30 to 40 second windows on a running instance, not estimated.
+      Windows 11 Pro 26200, 24 logical cores, 2560&times;1600 at 150% scaling.
+    </p>
+    <div class="scroll-x">
+      <table>
+        <caption>The bold column is the number Task Manager shows you.</caption>
+        <thead>
+          <tr><th>State</th><th>CPU, whole machine</th><th>CPU, one core</th><th>Memory</th><th>GPU</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Still image</td><td class="num"><strong>0.03&nbsp;%</strong></td><td class="num">0.8&nbsp;%</td><td class="num">151&nbsp;MB</td><td class="num">0&nbsp;%</td></tr>
+          <tr><td>Video, auto-paused</td><td class="num"><strong>0.01&nbsp;%</strong></td><td class="num">0.2&nbsp;%</td><td class="num">246&nbsp;MB</td><td class="num">0&nbsp;%</td></tr>
+          <tr><td>1080p video playing</td><td class="num"><strong>1.0&nbsp;%</strong></td><td class="num">24&nbsp;%</td><td class="num">199&nbsp;MB</td><td class="num">50&nbsp;%</td></tr>
+          <tr><td>4K video playing</td><td class="num"><strong>0.9&nbsp;%</strong></td><td class="num">22&nbsp;%</td><td class="num">270&nbsp;MB</td><td class="num">73&nbsp;%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      A still wallpaper is drawn once and then costs nothing: no timers, no frames, no GPU work.
+      Video stops rather than throttles when a fullscreen app is in front, the session locks, you
+      connect over remote desktop, or battery saver switches on.
+    </p>
+  </section>
+
+  <section class="panel">
+    <h2>The clock takes any font you own</h2>
+    <p>
+      Nine positions, any installed typeface, any size and colour, optional seconds and date. The
+      settings panel previews it with the same renderer that paints your desktop, so what you see
+      while choosing is what you get.
+    </p>
+    <div class="shots">
+      <img src="media/clock-bahnschrift.jpg" alt="Clock in Bahnschrift Light over the Hubble Ultra Deep Field" loading="lazy">
+      <img src="media/clock-cascadia.jpg" alt="Clock in Cascadia Mono over the Blue Marble photograph" loading="lazy">
+      <img src="media/settings-clock.png" alt="The FeatherWall settings panel showing clock options and a live preview" loading="lazy">
+    </div>
+    <p class="small muted" style="margin-top:1rem">
+      Wallpapers shown come from the built-in gallery: public domain and CC0 media from NASA and
+      Wikimedia Commons, downloaded from the source with no API key and no tracking.
+    </p>
+  </section>
+
+  <section class="panel">
+    <h2>Before you download</h2>
+    <p>
+      Releases are unsigned, so SmartScreen will warn you. That is worth taking seriously rather
+      than clicking through on trust: verify the archive, or build it yourself from source.
+    </p>
+    <p class="checksum">Get-FileHash .\featherwall-v0.1.0-win-x64.zip -Algorithm SHA256<br>300f59a28269fc2fc034ad86ee64d6fd320cd17f8c2e7a31c789bcc28844dfd7</p>
+    <h3>Things that have not been tested</h3>
+    <p>
+      Multi-monitor layouts, the pre-24H2 desktop layout, and recovery after Explorer restarts are
+      written and unit-tested, but have never run on hardware. There is one developer and one
+      display. If you have a second monitor, saying what happens is the most useful thing you could
+      do for this project.
+    </p>
+    <p class="small">
+      <a href="https://github.com/RitvikDayal/featherwall/issues/3">Multi-monitor issue</a> &middot;
+      <a href="https://github.com/RitvikDayal/featherwall/issues">All open issues</a>
+    </p>
+  </section>
+
+</main>
+
+<footer>
+  <p>
+    MIT licensed. Built by <a href="https://github.com/RitvikDayal">Ritvik Dayal</a>.
+    <a href="https://github.com/RitvikDayal/featherwall">Source</a> &middot;
+    <a href="https://github.com/RitvikDayal/featherwall/releases">Releases</a> &middot;
+    <a href="https://github.com/RitvikDayal/featherwall/blob/main/docs/architecture.md">Architecture</a> &middot;
+    <a href="https://github.com/RitvikDayal/featherwall/blob/main/THIRD-PARTY-NOTICES.md">Credits</a>
+  </p>
+  <p class="small">
+    Hero photograph: Marmolada, Italy by Marco Bonomo (CC0). Demo footage: <em>Big Buck Bunny</em>,
+    &copy;&nbsp;2008 Blender Foundation, <a href="https://peach.blender.org">peach.blender.org</a>,
+    <a href="https://creativecommons.org/licenses/by/3.0/">CC&nbsp;BY&nbsp;3.0</a>.
+  </p>
+</footer>
+
+<script>
+  // The hero widget shows the visitor's own clock, in the format their system uses.
+  (function () {
+    var t = document.getElementById('clock'), d = document.getElementById('today');
+    function tick() {
+      var now = new Date();
+      t.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      d.textContent = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+      t.setAttribute('datetime', now.toISOString());
+    }
+    tick();
+    setInterval(tick, 1000);
+  })();
+</script>
+</body>
+</html>
