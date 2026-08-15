@@ -52,7 +52,7 @@ p{margin:0 0 1rem}
 /* ============ HERO: the desktop composition stack, exploded ============ */
 .hero{
   position:relative;min-height:100svh;display:grid;place-items:center;
-  padding:5rem 4vw 4rem;overflow:hidden;
+  padding:3rem 4vw 3rem;overflow:hidden;
   background:radial-gradient(120% 80% at 50% 0%,#141A24 0%,var(--ink) 62%);
 }
 .glow{
@@ -61,39 +61,43 @@ p{margin:0 0 1rem}
   background:radial-gradient(circle,rgba(94,160,255,.18) 0%,transparent 62%);
   filter:blur(28px);
 }
-.hero-inner{position:relative;z-index:2;display:grid;gap:3.2rem;justify-items:center;text-align:center}
+.hero-inner{position:relative;z-index:2;display:grid;gap:clamp(1.8rem,4vh,2.8rem);justify-items:center;text-align:center}
 
 /* the stack */
-.scene{perspective:1400px;perspective-origin:50% 42%;width:min(660px,88vw);aspect-ratio:16/10}
+.scene{perspective:1250px;perspective-origin:50% 45%;width:min(430px,74vw);aspect-ratio:16/10}
 .stack{
   position:relative;width:100%;height:100%;transform-style:preserve-3d;
-  transform:rotateX(var(--rx,17deg)) rotateZ(var(--rz,-20deg)) rotateY(var(--ry,0deg));
-  animation:drift 14s ease-in-out infinite;
+  transform:rotateX(14deg) rotateZ(-11deg) rotateY(0deg);
+  animation:drift 16s ease-in-out infinite;
   transition:transform .5s cubic-bezier(.2,.7,.2,1);
 }
 .plane{
-  position:absolute;inset:0;border-radius:10px;overflow:hidden;
+  position:absolute;inset:0;border-radius:9px;overflow:hidden;
   border:1px solid var(--line-bright);
-  box-shadow:0 30px 70px rgba(0,0,0,.55);
+  box-shadow:0 22px 48px rgba(0,0,0,.5);
   backface-visibility:hidden;
 }
+/* captions sit outside each plane's face and step down the stack, so they never collide */
 .plane figcaption{
-  position:absolute;left:12px;bottom:10px;margin:0;
-  font-family:var(--mono);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;
-  color:rgba(255,255,255,.82);text-shadow:0 1px 6px rgba(0,0,0,.8);
+  position:absolute;right:10px;margin:0;
+  font-family:var(--mono);font-size:.58rem;letter-spacing:.16em;text-transform:uppercase;
+  color:rgba(255,255,255,.9);text-shadow:0 1px 7px rgba(0,0,0,.9);
 }
 .p-wall{transform:translateZ(0px)}
 .p-wall img{width:100%;height:100%;object-fit:cover}
+.p-wall figcaption{bottom:8px}
 .p-clock{
-  transform:translateZ(58px);display:grid;place-items:center;
-  background:linear-gradient(180deg,rgba(10,14,20,.12),rgba(10,14,20,.35));
-  border-color:rgba(94,160,255,.32);
+  transform:translateZ(78px);display:grid;place-items:center;
+  background:linear-gradient(180deg,rgba(8,12,18,.10),rgba(8,12,18,.28));
+  border-color:rgba(94,160,255,.4);
 }
+.p-clock figcaption{bottom:8px;color:rgba(150,195,255,.95)}
 .p-glass{
-  transform:translateZ(116px);
-  background:linear-gradient(145deg,rgba(150,180,225,.16),rgba(120,150,200,.05));
-  border-color:rgba(255,255,255,.24);
+  transform:translateZ(156px);
+  background:linear-gradient(145deg,rgba(150,180,225,.14),rgba(120,150,200,.04));
+  border-color:rgba(255,255,255,.26);
 }
+.p-glass figcaption{top:34px}
 .p-glass .bar{
   position:absolute;inset:0 0 auto 0;height:26px;display:flex;align-items:center;gap:6px;
   padding:0 10px;background:rgba(18,22,30,.55);border-bottom:1px solid rgba(255,255,255,.12);
@@ -105,8 +109,8 @@ p{margin:0 0 1rem}
 .mini-clock small{font-size:.68rem;color:rgba(255,255,255,.84);letter-spacing:.05em}
 
 @keyframes drift{
-  0%,100%{transform:rotateX(17deg) rotateZ(-20deg) rotateY(0deg)}
-  50%    {transform:rotateX(13deg) rotateZ(-16deg) rotateY(7deg)}
+  0%,100%{transform:rotateX(14deg) rotateZ(-11deg) rotateY(-5deg)}
+  50%    {transform:rotateX(11deg) rotateZ(-9deg)  rotateY(6deg)}
 }
 
 .wordmark{font-size:clamp(2.6rem,7vw,4.6rem);line-height:1.02;margin-bottom:.6rem}
@@ -221,7 +225,7 @@ footer p{margin:0 0 .6rem}
     <div class="scene" aria-hidden="true">
       <div class="stack" id="stack">
         <figure class="plane p-wall">
-          <img src="media/hero.jpg" alt="">
+          <img src="media/stack-wall.jpg" alt="">
           <figcaption>wallpaper</figcaption>
         </figure>
         <figure class="plane p-clock">
