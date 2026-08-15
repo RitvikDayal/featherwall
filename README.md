@@ -26,9 +26,14 @@ can reproduce any of them in about four clicks.
 
 ### Video, playing live on the desktop
 
-![Aurora time-lapse playing as a live wallpaper](docs/media/live-video.jpg)
+![FeatherWall playing a 4K animated wallpaper with the clock widget](docs/media/demo.gif)
 
-<sub><i>Time-lapse of Aurora Borealis in Norway</i>, Christer Olsen, CC0, via the built-in gallery.</sub>
+That is a real screen recording, not a mockup: a 4000x2250 clip decoding on the desktop with the
+clock ticking over it, while the desktop stays fully usable underneath.
+
+![A 4K animated film playing as a live wallpaper](docs/media/live-video.jpg)
+
+<sub><i>Big Buck Bunny</i>, (c) copyright 2008 Blender Foundation, <a href="https://peach.blender.org">peach.blender.org</a>, <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>.</sub>
 
 ### The clock takes any font you own
 
@@ -44,7 +49,7 @@ scrolling it.
 |---|
 | ![Clock in Georgia, centred](docs/media/clock-georgia.jpg) |
 
-<sub>Hubble Ultra Deep Field (NASA/ESA, public domain). <i>The Earth seen from Apollo 17</i> (NASA, public domain). <i>Alone in the unspoilt wilderness</i>, David Marcu, CC0.</sub>
+<sub>Hubble Ultra Deep Field (NASA and the European Space Agency, public domain). <i>The Earth seen from Apollo 17</i> (NASA, public domain). <i>Alone in the unspoilt wilderness</i>, David Marcu, CC0. Full credits in <a href="THIRD-PARTY-NOTICES.md">THIRD-PARTY-NOTICES.md</a>.</sub>
 
 ### Settings that apply while you watch
 
