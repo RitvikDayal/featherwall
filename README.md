@@ -132,7 +132,29 @@ FeatherWall reaches the internet is when you click a gallery item to download it
 
 ## Install
 
-You need the [.NET 10 SDK](https://dotnet.microsoft.com/download) on Windows 10 1809 or newer.
+Windows 10 1809 or newer. Grab the release, or build it yourself.
+
+### Download
+
+Take `featherwall-v0.1.0-win-x64.zip` from the
+[latest release](https://github.com/RitvikDayal/featherwall/releases/latest). It unzips to a
+single `featherwall.exe`, so there is no installer and nothing to uninstall. Run it and you are
+done.
+
+You need the [.NET 10 desktop runtime](https://dotnet.microsoft.com/download/dotnet/10.0), which
+is a much smaller download than the SDK. Keeping the build framework-dependent is what holds the
+release to 7 MB instead of shipping a copy of .NET with it.
+
+Verify the download if you like:
+
+```powershell
+Get-FileHash .\featherwall-v0.1.0-win-x64.zip -Algorithm SHA256
+# 300f59a28269fc2fc034ad86ee64d6fd320cd17f8c2e7a31c789bcc28844dfd7
+```
+
+### Or build from source
+
+This needs the [.NET 10 SDK](https://dotnet.microsoft.com/download) rather than just the runtime.
 
 ```powershell
 git clone https://github.com/RitvikDayal/featherwall
@@ -140,6 +162,8 @@ cd featherwall
 dotnet build -c Release
 .\src\FeatherWall\bin\Release\net10.0-windows10.0.19041.0\featherwall.exe
 ```
+
+### Then
 
 A feather appears in your tray. Right-click it and pick **Set wallpaper** for your own file, or
 **Gallery** to pull something public domain. Double-click the tray icon for the settings panel.
