@@ -4,404 +4,773 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FeatherWall — live wallpapers for Windows</title>
-<meta name="description" content="An open-source live wallpaper engine for Windows 10 and 11. Video and image wallpapers with a clock widget, in a single process. 151 MB, MIT licensed.">
+<meta name="description" content="An open-source live wallpaper engine for Windows 10 and 11. Video and image wallpapers with a clock widget, in a single process. 7.5 MB, MIT licensed, no account and no telemetry.">
 <meta property="og:title" content="FeatherWall">
-<meta property="og:description" content="Live wallpapers for Windows that don't eat your laptop.">
+<meta property="og:description" content="Live wallpapers for Windows that don't eat your laptop. One process, 7.5 MB, MIT.">
 <meta property="og:image" content="https://raw.githubusercontent.com/RitvikDayal/featherwall/main/docs/social-preview.jpg">
 <meta property="og:url" content="https://ritvikdayal.github.io/featherwall/">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🪶</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23121110'/><rect x='6' y='6' width='20' height='6' fill='%23B22F0F'/><rect x='6' y='15' width='20' height='2' fill='%23EDE9E1'/><rect x='6' y='20' width='13' height='2' fill='%23EDE9E1'/></svg>">
+<link rel="preload" as="image" href="media/wall-marmolada.jpg" fetchpriority="high">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
-  --ink:#080A0E;
-  --deep:#0C0F15;
-  --panel:rgba(20,24,31,.66);
-  --panel-solid:#14181F;
-  --line:rgba(255,255,255,.09);
-  --line-bright:rgba(255,255,255,.16);
-  --text:#EEF1F5;
-  --muted:#949DAA;
-  --accent:#5EA0FF;
-  --accent-dim:rgba(94,160,255,.14);
+  color-scheme:light;
 
-  --display:"Segoe UI Light","Segoe UI Variable Display","Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
-  --body:"Segoe UI Variable Text","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Arial,sans-serif;
-  --mono:"Cascadia Mono",Consolas,"SF Mono",Menlo,monospace;
+  --paper:#EDE9E1;
+  --paper-2:#E4DFD5;
+  --ink:#121110;
+  --slate:#6B655C;
+  --signal:#B22F0F;
+  --rule:#121110;
+  --rule-soft:#C6C0B4;
 
-  --wide:min(1120px,92vw);
-  --r:12px;
+  --sans:"Archivo",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  --mono:"JetBrains Mono","Cascadia Mono",Consolas,ui-monospace,monospace;
+
+  --gut:clamp(18px,3.4vw,44px);
+  --max:1460px;
+
+  --p:0;       /* hero collapse: 0 exploded, 1 flat desktop */
+  --sway:0;    /* cursor parallax, -1 to 1 */
+  --zsep:1;    /* how far the layers travel apart; compacted on small screens */
 }
+
 *{box-sizing:border-box}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
 body{
-  margin:0;background:var(--ink);color:var(--text);
-  font:16px/1.6 var(--body);-webkit-font-smoothing:antialiased;overflow-x:hidden;
+  margin:0;background:var(--paper);color:var(--ink);
+  font:400 16px/1.55 var(--sans);
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  overflow-x:hidden;
 }
-a{color:var(--accent);text-decoration:none}
-a:hover{text-decoration:underline}
-:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:3px}
 img{max-width:100%;display:block}
-h1,h2,h3{font-family:var(--display);font-weight:250;letter-spacing:.005em;margin:0}
-p{margin:0 0 1rem}
-.wrap{width:var(--wide);margin:0 auto}
-.eyebrow{
-  font-family:var(--mono);font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;
-  color:var(--accent);margin:0 0 1rem;
+h1,h2,h3{margin:0;font-weight:800;letter-spacing:-.03em;line-height:.92}
+p{margin:0 0 1em}
+a{color:inherit;text-underline-offset:3px;text-decoration-thickness:1px}
+main a:hover,footer a:hover{color:var(--signal)}
+:focus-visible{outline:2px solid var(--signal);outline-offset:3px}
+/* the signal red has nothing to contrast against on the dark surfaces */
+.stage :focus-visible,.finale :focus-visible,footer :focus-visible,
+.masthead:not(.landed) :focus-visible,.route.pick :focus-visible,.code :focus-visible{
+  outline-color:#F2EEE6;
+}
+::selection{background:var(--signal);color:var(--paper)}
+
+.shell{max-width:var(--max);margin:0 auto;padding-left:var(--gut);padding-right:var(--gut)}
+.meta{
+  font:500 .68rem/1.4 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--slate);
+}
+.meta b{font-weight:500;color:var(--ink)}
+
+/* ============================================================
+   MASTHEAD — inverts while the dark hero is on screen
+   ============================================================ */
+.masthead{
+  position:fixed;top:0;left:0;right:0;z-index:80;
+  border-bottom:1px solid transparent;color:#EDE9E1;
+  transition:background .25s linear,color .25s linear,border-color .25s linear;
+}
+/* over the hero the bar floats on photography, so it carries its own scrim */
+.masthead::before{
+  content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:linear-gradient(180deg,rgba(9,8,8,.72),rgba(9,8,8,0));
+  height:190%;transition:opacity .25s linear;
+}
+.masthead.landed::before{opacity:0}
+.masthead.landed{background:var(--paper);color:var(--ink);border-bottom-color:var(--rule)}
+.masthead .shell{display:flex;align-items:center;height:46px;justify-content:space-between;gap:1rem}
+.mh-left{display:flex;align-items:center;gap:1.1rem;min-width:0}
+.mark{font:800 .92rem/1 var(--sans);letter-spacing:-.02em;text-transform:uppercase;text-decoration:none;white-space:nowrap}
+.mh-spec{display:none;font:500 .68rem/1.4 var(--mono);letter-spacing:.18em;text-transform:uppercase;opacity:.62}
+@media(min-width:760px){.mh-spec{display:block}}
+.mh-right{display:flex;align-items:center;gap:1.4rem;flex:0 0 auto}
+/* standalone controls need a 24px pointer target; the type alone is ~10px tall */
+.mh-right a,.mark{display:inline-flex;align-items:center;min-height:34px}
+.mh-right a{font:500 .68rem/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;text-decoration:none;white-space:nowrap}
+.masthead.landed .mh-right .dl{color:var(--signal)}
+@media(max-width:560px){
+  .mh-right a:not(.dl){display:none}   /* the bar keeps the one action that matters */
+  .mh-right a{font-size:.62rem;letter-spacing:.12em}
+  .mark{font-size:.84rem}
 }
 
-/* ============ HERO: the desktop composition stack, exploded ============ */
-.hero{
-  position:relative;min-height:100svh;display:grid;place-items:center;
-  padding:3rem 4vw 3rem;overflow:hidden;
-  background:radial-gradient(120% 80% at 50% 0%,#141A24 0%,var(--ink) 62%);
+/* ============================================================
+   ACT 1 — the full-viewport composition stage
+   ============================================================ */
+.stage{position:relative;height:240vh;background:var(--ink)}
+.pin{
+  position:sticky;top:0;height:100svh;overflow:hidden;isolation:isolate;
+  background:radial-gradient(120% 90% at 50% 42%,#1D1B18 0%,#0B0A09 72%);
 }
-.glow{
-  position:absolute;inset:auto 50% auto 50%;translate:-50% 0;top:-18vh;
-  width:min(900px,120vw);aspect-ratio:1;border-radius:50%;pointer-events:none;
-  background:radial-gradient(circle,rgba(94,160,255,.18) 0%,transparent 62%);
-  filter:blur(28px);
+/* light thrown by the wallpaper plane onto the ground */
+.pin::after{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:1;
+  background:radial-gradient(58% 42% at 50% 52%,rgba(120,150,190,calc(.20 - var(--p) * .20)) 0%,transparent 70%);
 }
-.hero-inner{position:relative;z-index:2;display:grid;gap:clamp(1.8rem,4vh,2.8rem);justify-items:center;text-align:center}
 
-/* the stack */
-.scene{perspective:1250px;perspective-origin:50% 45%;width:min(430px,74vw);aspect-ratio:16/10}
-.stack{
-  position:relative;width:100%;height:100%;transform-style:preserve-3d;
-  transform:rotateX(14deg) rotateZ(-11deg) rotateY(0deg);
-  animation:drift 16s ease-in-out infinite;
+.scene{
+  position:absolute;inset:0;display:grid;place-items:center;
+  perspective:1600px;perspective-origin:50% 46%;z-index:2;
+  /* the stack sits high and right so the type owns the bottom-left corner */
+  padding:0 0 clamp(8vh,17vh,22vh) clamp(0px,9vw,150px);
+}
+.rig{
+  position:relative;
+  width:min(84vw,1280px);aspect-ratio:16/10;
+  transform-style:preserve-3d;
+  transform:
+    rotateX(calc((1 - var(--p)) * 46deg))
+    rotateZ(calc((1 - var(--p)) * -33deg))
+    scale(calc(.70 + var(--p) * .60));
+}
+.rig-idle{position:absolute;inset:0;transform-style:preserve-3d;animation:sway 19s ease-in-out infinite}
+@keyframes sway{
+  0%,100%{transform:rotateY(-4deg) translateZ(0)}
+  50%    {transform:rotateY(5deg)  translateZ(14px)}
+}
+.rig-cursor{
+  position:absolute;inset:0;transform-style:preserve-3d;
+  transform:rotateY(calc(var(--sway) * 7deg));
   transition:transform .5s cubic-bezier(.2,.7,.2,1);
 }
-.plane{
-  position:absolute;inset:0;border-radius:9px;overflow:hidden;
-  border:1px solid var(--line-bright);
-  box-shadow:0 22px 48px rgba(0,0,0,.5);
-  backface-visibility:hidden;
-}
-/* Each caption sits in a different corner. Perspective pulls the deeper planes toward the
-   centre, so same-corner labels on different layers land on top of each other. */
-.plane figcaption{
-  position:absolute;margin:0;
-  font-family:var(--mono);font-size:.58rem;letter-spacing:.16em;text-transform:uppercase;
-  color:rgba(255,255,255,.9);text-shadow:0 1px 7px rgba(0,0,0,.9);
-}
-.p-wall{transform:translateZ(0px)}
-.p-wall img{width:100%;height:100%;object-fit:cover}
-.p-wall figcaption{left:12px;bottom:8px}
-.p-clock{
-  transform:translateZ(78px);display:grid;place-items:center;
-  background:linear-gradient(180deg,rgba(8,12,18,.10),rgba(8,12,18,.28));
-  border-color:rgba(94,160,255,.4);
-}
-.p-clock figcaption{right:12px;bottom:8px;color:rgba(150,195,255,.95)}
-.p-glass{
-  transform:translateZ(156px);
-  background:linear-gradient(145deg,rgba(150,180,225,.14),rgba(120,150,200,.04));
-  border-color:rgba(255,255,255,.26);
-}
-.p-glass figcaption{top:36px;right:12px}
-.p-glass .bar{
-  position:absolute;inset:0 0 auto 0;height:26px;display:flex;align-items:center;gap:6px;
-  padding:0 10px;background:rgba(18,22,30,.55);border-bottom:1px solid rgba(255,255,255,.12);
-}
-.p-glass .dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3)}
-.mini-clock{text-align:center;filter:drop-shadow(0 2px 10px rgba(0,0,0,.6))}
-.mini-clock b{display:block;font-family:var(--display);font-weight:200;font-size:clamp(2rem,6vw,3.4rem);line-height:1;font-variant-numeric:tabular-nums}
-.mini-clock hr{border:0;height:1px;background:rgba(255,255,255,.55);width:96px;margin:.5rem auto}
-.mini-clock small{font-size:.68rem;color:rgba(255,255,255,.84);letter-spacing:.05em}
 
-@keyframes drift{
-  0%,100%{transform:rotateX(14deg) rotateZ(-11deg) rotateY(-5deg)}
-  50%    {transform:rotateX(11deg) rotateZ(-9deg)  rotateY(6deg)}
+.layer{
+  position:absolute;inset:0;transform-style:preserve-3d;
+  box-shadow:0 40px 80px rgba(0,0,0,calc(.55 - var(--p) * .35));
+}
+.l0{transform:translateZ(0)}
+.l0 img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 1.4s linear}
+.l0 img.on{opacity:1}
+.l1{
+  transform:translateZ(calc((1 - var(--p)) * 108px * var(--zsep)));
+  display:grid;place-items:center;
+  outline:1px solid rgba(178,47,15,calc(.85 - var(--p) * .85));
+  outline-offset:-1px;
+}
+.l2{
+  transform:translateZ(calc((1 - var(--p)) * 224px * var(--zsep)));
+  background:linear-gradient(150deg,rgba(240,238,232,.11),rgba(200,210,225,.03) 55%);
+  backdrop-filter:blur(5px) saturate(1.15);-webkit-backdrop-filter:blur(5px) saturate(1.15);
+  border:1px solid rgba(255,255,255,calc(.38 - var(--p) * .38));
+  /* gone before the stack lies flat, so it never veils the wallpaper */
+  opacity:calc(1 - var(--p) * 1.35);
 }
 
-.wordmark{font-size:clamp(2.6rem,7vw,4.6rem);line-height:1.02;margin-bottom:.6rem}
-.tagline{font-size:clamp(1.02rem,2.1vw,1.28rem);color:#CDD5DF;max-width:34ch;margin:0 auto 1.9rem}
-.cta{display:flex;flex-wrap:wrap;gap:.8rem;justify-content:center}
+/* The layers are keyed from screen space, not from inside the rig. Labels placed
+   within the 3D tree inherit the foreshortening and get occluded by the planes above
+   them; counter-rotating them cannot work either, because the idle sway contributes a
+   rotateY this rule has no access to. A key sitting outside the transform is honest
+   about being a key and stays legible at every point in the collapse. */
+.key{
+  position:absolute;left:var(--gut);top:82px;z-index:5;pointer-events:none;
+  display:grid;gap:.85rem;opacity:calc(1 - var(--p) * 2.2);
+}
+.key div{display:flex;align-items:center;gap:.7rem;color:#EDE9E1}
+.key b{font:500 .7rem/1 var(--mono);color:#E0703F;font-weight:500;letter-spacing:.1em}
+.key i{width:clamp(24px,4vw,54px);height:1px;background:rgba(237,233,225,.42);font-style:normal}
+.key span{font:500 .7rem/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;white-space:nowrap}
+@media(max-width:820px){.key{display:none}}
+.l2 .tb{
+  height:26px;background:rgba(20,19,18,.55);border-bottom:1px solid rgba(255,255,255,.16);
+  display:flex;align-items:center;gap:6px;padding:0 10px;
+}
+.l2 .tb i{width:8px;height:8px;background:rgba(255,255,255,.42);display:block}
+.l2 .bd{padding:16px 14px;display:grid;gap:9px}
+.l2 .bd span{display:block;height:6px;background:rgba(255,255,255,.24)}
+.l2 .bd span:nth-child(2){width:70%}
+.l2 .bd span:nth-child(3){width:52%}
+.l2 .bd span:nth-child(4){width:84%}
+
+/* the widget, drawn on its own layer exactly as the app draws it */
+.wclock{text-align:center;color:#fff;text-shadow:0 2px 22px rgba(0,0,0,.8)}
+.wclock b{
+  display:block;font-weight:400;font-size:clamp(2rem,5.6vw,4.6rem);line-height:1;
+  font-variant-numeric:tabular-nums;letter-spacing:-.015em;
+}
+.wclock hr{border:0;height:1px;background:rgba(255,255,255,.72);width:34%;margin:.6rem auto}
+.wclock small{font:500 .66rem/1 var(--mono);letter-spacing:.16em;text-transform:uppercase}
+
+/* hero copy over the scene */
+.hero-ui{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;justify-content:flex-end;pointer-events:none}
+.hero-ui::before{
+  content:"";position:absolute;inset:auto 0 0 0;height:58%;pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(9,8,8,.58) 44%,rgba(9,8,8,.88));
+}
+.hero-inner{position:relative;padding-bottom:clamp(1.6rem,4vh,2.8rem)}
+.wordmark{
+  color:#F2EEE6;font-size:clamp(2.4rem,6.6vw,6.2rem);letter-spacing:-.045em;line-height:.84;
+  transform:translateY(calc(var(--p) * -22px));opacity:calc(1 - var(--p) * 1.6);
+}
+.hero-row{
+  display:grid;gap:1.1rem clamp(1.4rem,4vw,3rem);align-items:end;grid-template-columns:1fr;
+  margin-top:clamp(1rem,2.4vh,1.6rem);
+}
+@media(min-width:900px){.hero-row{grid-template-columns:minmax(0,1fr) minmax(0,25rem)}}
+.hero-row h2{
+  color:#F2EEE6;font-weight:500;font-size:clamp(1.05rem,2.3vw,1.6rem);line-height:1.2;
+  letter-spacing:-.02em;max-width:24ch;
+}
+/* the copy block sits over photography, so it takes pointer events back and
+   carries its own contrast floor rather than trusting the gradient above it */
+.hero-row .aside{color:#CFC9BF;font-size:.88rem;line-height:1.5;max-width:44ch;margin:0;pointer-events:auto}
+.hero-row .aside a{color:#F2EEE6}
+.hero-row h2,.hero-row .aside{text-shadow:0 1px 12px rgba(9,8,8,.9)}
+.cta{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1.1rem;pointer-events:auto}
 .btn{
-  display:inline-flex;align-items:center;gap:.55rem;padding:.9rem 1.7rem;border-radius:8px;
-  font-size:1rem;font-weight:600;border:1px solid transparent;
-  transition:transform .16s ease,background .16s ease,box-shadow .16s ease;
+  display:inline-flex;align-items:center;justify-content:center;gap:.6rem;
+  min-height:48px;padding:0 1.5rem;border:1px solid var(--ink);
+  font:600 .82rem/1 var(--sans);letter-spacing:.02em;text-decoration:none;
+  background:transparent;color:var(--ink);cursor:pointer;
+  transition:background .14s linear,color .14s linear,border-color .14s linear;
 }
-.btn:hover{text-decoration:none;transform:translateY(-2px)}
-.btn-primary{background:var(--accent);color:#06101F;box-shadow:0 8px 26px rgba(94,160,255,.28)}
-.btn-primary:hover{background:#7CB3FF;box-shadow:0 12px 32px rgba(94,160,255,.38)}
-.btn-ghost{border-color:var(--line-bright);color:var(--text);background:rgba(255,255,255,.04)}
-.btn-ghost:hover{background:rgba(255,255,255,.1)}
-.req{margin:1rem 0 0;font-size:.84rem;color:var(--muted)}
+.btn:hover{background:var(--ink);color:var(--paper)}
+.btn-solid{background:var(--signal);border-color:var(--signal);color:#FBF7F1}
+.btn-solid:hover{background:#8E2409;border-color:#8E2409;color:#FBF7F1}
+.btn-light{border-color:rgba(242,238,230,.55);color:#F2EEE6}
+.btn-light:hover{background:#F2EEE6;color:var(--ink);border-color:#F2EEE6}
+.btn .sz{font:500 .68rem/1 var(--mono);opacity:.75}
 
-/* ============ STATS ============ */
-.stats{border-block:1px solid var(--line);background:var(--deep)}
-.stats .wrap{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
-  gap:1px;background:var(--line);
+.hero-foot{
+  display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;
+  margin-top:clamp(1.1rem,3vh,1.9rem);padding-top:.8rem;
+  border-top:1px solid rgba(237,233,225,.22);
+  font:500 .64rem/1.4 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:#A9A296;
 }
-.stat{background:var(--deep);padding:2.2rem 1.4rem;text-align:center}
-.stat b{
-  display:block;font-family:var(--display);font-weight:250;
-  font-size:clamp(2rem,4.6vw,3rem);line-height:1;font-variant-numeric:tabular-nums;
+.hero-foot b{color:#F2EEE6;font-weight:500}
+.hero-foot .hint{opacity:calc(1 - var(--p) * 3)}
+
+/* on a phone the stack and the copy each get their own half instead of fighting */
+@media(max-width:820px){
+  :root{--zsep:.58}
+  .scene{align-items:start;padding-top:13svh}
+  .rig{width:min(86vw,460px)}
+  .hero-ui::before{height:66%;background:linear-gradient(180deg,transparent,rgba(9,8,8,.72) 38%,rgba(9,8,8,.94))}
+  .hero-row h2{font-size:1.12rem;max-width:20ch}
+  .hero-row .aside{font-size:.82rem}
+  .cta{width:100%}
+  .cta .btn{width:100%}
+  .hero-foot{flex-direction:column;align-items:flex-start;gap:.5rem;font-size:.58rem;letter-spacing:.12em}
 }
-.stat span{display:block;margin-top:.55rem;font-size:.78rem;color:var(--muted);letter-spacing:.06em}
-.stat em{font-style:normal;font-size:.5em;color:var(--muted);margin-left:.12em}
-
-/* ============ SECTIONS ============ */
-section{padding:5.5rem 0}
-.section-head{max-width:60ch;margin-bottom:2.4rem}
-.section-head h2{font-size:clamp(1.7rem,3.6vw,2.5rem);margin-bottom:.7rem}
-.section-head p{color:#C4CCD8;margin:0}
-
-/* memory infographic */
-.bars{display:grid;gap:1rem;margin:0 0 1.6rem}
-.bar-row{display:grid;grid-template-columns:minmax(120px,1fr) 3fr auto;gap:1rem;align-items:center}
-.bar-row .label{font-size:.92rem;color:#C4CCD8}
-.bar-track{height:30px;background:rgba(255,255,255,.05);border-radius:5px;overflow:hidden;border:1px solid var(--line)}
-.bar-fill{
-  height:100%;width:0;border-radius:4px;
-  background:linear-gradient(90deg,rgba(94,160,255,.75),rgba(94,160,255,.35));
-  transition:width 1.1s cubic-bezier(.2,.75,.2,1);
-}
-.bar-row .val{font-family:var(--mono);font-size:.88rem;color:var(--text);white-space:nowrap}
-.note{font-size:.83rem;color:var(--muted);margin:0}
-
-/* gallery */
-.shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem}
-.shots img{border-radius:10px;border:1px solid var(--line)}
-figure{margin:0}
-figcaption{font-size:.78rem;color:var(--muted);padding-top:.55rem}
-
-/* about */
-.about{display:grid;grid-template-columns:1fr;gap:1.6rem;align-items:start}
-@media(min-width:820px){.about{grid-template-columns:1.15fr .85fr;gap:3rem}}
-.card{
-  background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:1.7rem;
-  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
-}
-@supports not (backdrop-filter:blur(2px)){.card{background:var(--panel-solid)}}
-.card h3{font-size:1.15rem;margin-bottom:.7rem}
-.card p{color:#C4CCD8;font-size:.95rem}
-.card p:last-child{margin-bottom:0}
-.tags{display:flex;flex-wrap:wrap;gap:.45rem;margin-top:1rem}
-.tag{
-  font-family:var(--mono);font-size:.7rem;letter-spacing:.06em;padding:.32rem .6rem;
-  border:1px solid var(--line-bright);border-radius:99px;color:var(--muted);
+@media(max-width:820px) and (max-height:730px){
+  .hero-row .aside{display:none}
+  .wordmark{font-size:2.3rem}
 }
 
-/* honest box */
-.honest{border-left:2px solid var(--accent);padding-left:1.3rem}
-.honest h3{font-size:1.05rem;margin-bottom:.6rem}
-.honest p{color:#C4CCD8;font-size:.94rem}
-.checksum{
-  font-family:var(--mono);font-size:.73rem;color:var(--muted);background:rgba(0,0,0,.4);
-  border:1px solid var(--line);border-radius:7px;padding:.7rem .8rem;overflow-x:auto;white-space:nowrap;
+/* ============================================================
+   ACT 2 — the paper document
+   ============================================================ */
+.doc{position:relative;z-index:10;background:var(--paper)}
+/* the visible column grid, the Swiss scaffold the page is set on */
+.doc::before{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+  max-width:var(--max);margin:0 auto;left:0;right:0;
+  padding:0 var(--gut);
+  background:
+    repeating-linear-gradient(90deg,
+      transparent 0, transparent calc(16.6666% - 1px),
+      var(--rule-soft) calc(16.6666% - 1px), var(--rule-soft) 16.6666%);
+  background-clip:content-box;
+  opacity:.5;
 }
+@media(max-width:760px){.doc::before{display:none}}
+.doc > *{position:relative;z-index:1}
 
-/* final CTA */
-.finale{text-align:center;padding:6rem 0 5rem;background:radial-gradient(90% 130% at 50% 100%,#161C27 0%,var(--ink) 68%);border-top:1px solid var(--line)}
-.finale h2{font-size:clamp(1.9rem,4.4vw,3rem);margin-bottom:.8rem}
-.finale p{color:#C4CCD8;max-width:44ch;margin:0 auto 2rem}
+/* figures — one inverted band, the strongest block on the page */
+.figures{background:var(--ink);color:var(--paper)}
+.figures .shell{display:grid;grid-template-columns:repeat(2,1fr);gap:0}
+@media(min-width:820px){.figures .shell{grid-template-columns:repeat(4,1fr)}}
+.fig{padding:1.7rem 0;border-left:1px solid rgba(237,233,225,.2);padding-left:1.2rem}
+.fig:first-child{border-left:0;padding-left:0}
+@media(max-width:819px){
+  .fig:nth-child(3),.fig:nth-child(4){border-top:1px solid rgba(237,233,225,.2)}
+  .fig:nth-child(odd){border-left:0;padding-left:0}
+}
+.fig.hot b{color:#E0703F}
+.fig b{
+  display:block;font-weight:800;font-size:clamp(2.1rem,5.2vw,3.5rem);line-height:.92;
+  letter-spacing:-.04em;font-variant-numeric:tabular-nums;
+}
+.fig span{display:block;margin-top:.6rem;max-width:16ch;color:#A9A296;
+  font:500 .66rem/1.45 var(--mono);letter-spacing:.16em;text-transform:uppercase}
 
-footer{border-top:1px solid var(--line);padding:2.4rem 0 3.4rem;color:var(--muted);font-size:.85rem}
-footer a{color:var(--muted);text-decoration:underline}
-footer a:hover{color:var(--text)}
-footer p{margin:0 0 .6rem}
+section{padding:clamp(3.4rem,8vw,6.4rem) 0;scroll-margin-top:56px}
+.rule-head{
+  display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap;
+  padding-bottom:.7rem;border-bottom:1px solid var(--rule);margin-bottom:clamp(1.8rem,4vw,3rem);
+}
+.rule-head .idx{color:var(--signal)}
+.rule-head h2{
+  font-size:clamp(1.5rem,3.4vw,2.3rem);letter-spacing:-.03em;margin-left:auto;
+  text-align:right;max-width:15ch;text-wrap:balance;
+}
+.intro{max-width:56ch;color:var(--slate);font-size:1rem;margin-bottom:clamp(1.8rem,4vw,2.6rem)}
+.intro strong{color:var(--ink);font-weight:500}
 
-.reveal{opacity:0;transform:translateY(18px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1)}
-.reveal.in{opacity:1;transform:none}
+/* 01 topology */
+.split{display:grid;gap:clamp(1.6rem,4vw,3rem);grid-template-columns:1fr}
+@media(min-width:900px){.split{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)}}
+.slab{border:1px solid var(--rule);background:var(--ink);position:relative;margin:0}
+.slab img{width:100%}
+.slab figcaption{
+  position:absolute;left:0;bottom:0;padding:.45rem .7rem;background:var(--ink);
+  font:500 .62rem/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:#B8B2A6;
+}
+.notes{border-top:1px solid var(--rule)}
+.note{padding:1.1rem 0;border-bottom:1px solid var(--rule-soft)}
+.note h3{font:500 .72rem/1.4 var(--mono);letter-spacing:.16em;text-transform:uppercase;margin-bottom:.4rem}
+.note p{margin:0;color:var(--slate);font-size:.9rem}
+
+/* 02 measured */
+.table{border-top:1px solid var(--rule)}
+.row{display:grid;grid-template-columns:1fr;gap:.35rem;padding:1.1rem 0;border-bottom:1px solid var(--rule-soft)}
+@media(min-width:760px){.row{grid-template-columns:14rem 1fr 7.5rem 6.5rem;align-items:center;gap:1.2rem}}
+.row .state{font-weight:500;font-size:1rem}
+.row .num{font:500 .92rem/1 var(--mono);font-variant-numeric:tabular-nums}
+@media(min-width:760px){.row .num{text-align:right}}
+.track{height:9px;background:rgba(18,17,16,.09);position:relative;overflow:hidden}
+.track i{position:absolute;inset:0 auto 0 0;width:0;background:var(--signal);transition:width 1s cubic-bezier(.2,.75,.2,1)}
+.foot-note{margin:1.4rem 0 0;color:var(--slate);font-size:.86rem;max-width:70ch}
+
+/* 03 gallery */
+.gallery{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);grid-template-columns:1fr}
+@media(min-width:700px){.gallery{grid-template-columns:repeat(3,1fr)}}
+.gallery figure{margin:0;background:var(--paper);display:flex;flex-direction:column}
+.gallery img{width:100%;aspect-ratio:16/10;object-fit:cover}
+.gallery figcaption{padding:.7rem .85rem;font:500 .64rem/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--slate)}
+
+/* 04 install */
+.routes{display:grid;gap:0;border-top:1px solid var(--rule)}
+@media(min-width:900px){.routes{grid-template-columns:repeat(3,1fr)}}
+.route{padding:1.6rem 0;border-bottom:1px solid var(--rule-soft)}
+@media(min-width:900px){
+  .route{padding:1.7rem 1.6rem;border-left:1px solid var(--rule-soft);border-bottom:0}
+  .route:first-child{border-left:0}
+}
+.route.pick{background:var(--ink);color:var(--paper);border-left-color:var(--ink)}
+.route.pick p{color:#A9A296}
+.route.pick .hash{color:#8F887C}
+.route h3{font-size:1.05rem;letter-spacing:-.015em;margin-bottom:.5rem;display:flex;align-items:baseline;gap:.6rem}
+.route h3 em{font:500 .6rem/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;font-style:normal;color:var(--signal)}
+.route.pick h3 em{color:#E0703F}
+.route p{color:var(--slate);font-size:.88rem;margin-bottom:.9rem}
+.mono-inline{font-family:var(--mono);font-size:.86em}
+.code{
+  position:relative;border:1px solid var(--rule);background:var(--ink);color:#E8E3DA;
+  font:400 .74rem/1.7 var(--mono);padding:.8rem 3.2rem .8rem .85rem;overflow-x:auto;white-space:pre;
+}
+.route.pick .code{border-color:rgba(237,233,225,.3)}
+.code .tok{color:#E5A66B}
+.copy{
+  position:absolute;top:0;right:0;width:2.8rem;height:100%;min-height:44px;
+  border:0;border-left:1px solid rgba(237,233,225,.24);background:transparent;
+  color:#E8E3DA;cursor:pointer;font:500 .56rem/1 var(--mono);letter-spacing:.08em;
+}
+.copy:hover,.copy[data-done="1"]{background:var(--signal);color:#FBF7F1}
+.hash{margin:.75rem 0 0;font:400 .66rem/1.6 var(--mono);color:var(--slate);overflow-wrap:anywhere}
+.pending{margin-top:1.6rem;padding:.9rem 1.1rem;border:1px solid var(--rule-soft);color:var(--slate);font-size:.86rem}
+
+/* 05 contribute */
+.contrib{display:grid;gap:clamp(2rem,5vw,3.4rem);grid-template-columns:1fr}
+@media(min-width:900px){.contrib{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}}
+.issues{list-style:none;margin:0;padding:0;border-top:1px solid var(--rule)}
+.issues li{border-bottom:1px solid var(--rule-soft)}
+.issues a{display:grid;grid-template-columns:auto 1fr;gap:.4rem 1rem;align-items:baseline;padding:1rem 0;text-decoration:none;min-height:48px}
+.issues a:hover .ti{color:var(--signal)}
+.issues .id{font:500 .74rem/1.5 var(--mono);color:var(--signal)}
+.issues .ti{font-weight:500;font-size:.98rem;line-height:1.35}
+.issues .lb{grid-column:2;display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.15rem}
+.issues .lb span{font:500 .58rem/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--rule-soft);padding:.3rem .45rem;color:var(--slate)}
+.panel{border:1px solid var(--rule);padding:1.5rem;background:var(--paper)}
+.panel h3{font-size:1.05rem;margin-bottom:.7rem}
+.panel p{font-size:.9rem;color:var(--slate)}
+.panel p:last-of-type{margin-bottom:0}
+.langbar{display:flex;height:6px;margin:1.2rem 0 .6rem}
+.langbar i{display:block;height:100%;background:var(--signal)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:.4rem 1rem;margin:1.1rem 0 0;font:500 .7rem/1.5 var(--mono)}
+.kv dt{color:var(--slate);letter-spacing:.12em;text-transform:uppercase}
+.kv dd{margin:0;text-align:right}
+
+/* finale + footer */
+.finale{background:var(--ink);color:var(--paper);padding:clamp(3.4rem,8vw,6rem) 0}
+.finale .meta{color:#E0703F}
+.finale h2{font-size:clamp(2rem,7.4vw,5rem);letter-spacing:-.04em;max-width:14ch;margin-top:.8rem}
+.finale .cta{margin-top:2rem}
+footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225,.2);padding:2rem 0 3.2rem}
+.foot{display:grid;gap:1.2rem;grid-template-columns:1fr}
+@media(min-width:820px){.foot{grid-template-columns:1fr 1fr;align-items:start}}
+.foot nav{display:flex;flex-wrap:wrap;gap:.4rem 1.4rem}
+.foot nav a{display:inline-flex;align-items:center;min-height:30px;font:500 .68rem/1.6 var(--mono);letter-spacing:.14em;text-transform:uppercase;text-decoration:none;color:#EDE9E1}
+.foot nav a:hover{color:#E0703F}
+.credits{font-size:.78rem;line-height:1.6;max-width:62ch}
+@media(min-width:820px){.credits{text-align:right;justify-self:end}}
+.credits a{color:#C3BCB1}
+
+.rev{opacity:0;transform:translateY(14px);transition:opacity .55s ease,transform .55s cubic-bezier(.2,.7,.2,1)}
+.rev.in{opacity:1;transform:none}
 
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
-  .stack{animation:none}
-  .reveal{opacity:1;transform:none;transition:none}
-  .bar-fill{transition:none}
-  .btn:hover{transform:none}
+  .stage{height:100svh}
+  .rig-idle{animation:none}
+  .rig-cursor{transition:none}
+  .rev{opacity:1;transform:none;transition:none}
+  .track i,.btn,.l0 img{transition:none}
 }
-@media (max-width:560px){.btn{width:100%;justify-content:center}.bar-row{grid-template-columns:1fr;gap:.4rem}}
 </style>
 </head>
 <body>
 
-<header class="hero">
-  <div class="glow" aria-hidden="true"></div>
-  <div class="hero-inner">
-
-    <div class="scene" aria-hidden="true">
-      <div class="stack" id="stack">
-        <figure class="plane p-wall">
-          <img src="media/stack-wall.jpg" alt="">
-          <figcaption>wallpaper</figcaption>
-        </figure>
-        <figure class="plane p-clock">
-          <div class="mini-clock">
-            <b id="c-time">--:--</b>
-            <hr>
-            <small id="c-date">&nbsp;</small>
-          </div>
-          <figcaption>clock overlay</figcaption>
-        </figure>
-        <figure class="plane p-glass">
-          <div class="bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div>
-          <figcaption>your windows</figcaption>
-        </figure>
-      </div>
+<header class="masthead" id="masthead">
+  <div class="shell">
+    <div class="mh-left">
+      <a class="mark" href="#top">FeatherWall</a>
+      <span class="mh-spec">v0.1.0 &nbsp;/&nbsp; MIT &nbsp;/&nbsp; Windows 10 &amp; 11</span>
     </div>
-
-    <div>
-      <h1 class="wordmark">FeatherWall</h1>
-      <p class="tagline">Live wallpapers for Windows that don't eat your laptop.</p>
-      <div class="cta">
-        <a class="btn btn-primary" href="https://github.com/RitvikDayal/featherwall/releases/latest/download/featherwall-v0.1.0-win-x64.zip">Download for Windows</a>
-        <a class="btn btn-ghost" href="https://github.com/RitvikDayal/featherwall">Read the source</a>
-      </div>
-      <p class="req">7 MB &middot; Windows 10 1809+ &middot; needs the <a href="https://dotnet.microsoft.com/download/dotnet/10.0">.NET 10 desktop runtime</a></p>
+    <div class="mh-right">
+      <a href="https://github.com/RitvikDayal/featherwall">Source</a>
+      <a class="dl" href="#install">Download</a>
     </div>
-
   </div>
 </header>
 
-<div class="stats">
-  <div class="wrap">
-    <div class="stat"><b data-to="1">0</b><span>process, not five</span></div>
-    <div class="stat"><b data-to="151">0</b><span>MB for a still wallpaper</span></div>
-    <div class="stat"><b data-to="0.03" data-dec="2">0</b><span>% CPU at rest</span></div>
-    <div class="stat"><b data-to="0">0</b><span>accounts or trackers</span></div>
+<!-- ACT 1 ==================================================== -->
+<div class="stage" id="stage">
+  <div class="pin" id="top">
+
+    <div class="scene" aria-hidden="true">
+      <div class="rig" id="rig">
+        <div class="rig-idle"><div class="rig-cursor">
+
+          <div class="layer l0">
+            <!-- the cycle reaches slide 2 at five seconds, so lazy-loading it would
+                 cross-fade to an empty plane -->
+            <img src="media/wall-marmolada.jpg" alt="" class="on" width="2400" height="1500" fetchpriority="high">
+            <img src="media/wall-hubble.jpg" alt="" width="2400" height="1500">
+            <img src="media/wall-wilderness.jpg" alt="" width="2400" height="1500">
+          </div>
+
+          <div class="layer l1">
+            <div class="wclock">
+              <b id="c-time">--:--</b>
+              <hr>
+              <small id="c-date">&nbsp;</small>
+            </div>
+          </div>
+
+          <div class="layer l2">
+            <div class="tb"><i></i><i></i><i></i></div>
+            <div class="bd"><span></span><span></span><span></span><span></span></div>
+          </div>
+
+        </div></div>
+      </div>
+    </div>
+
+    <div class="key" aria-hidden="true">
+      <div><b>02</b><i></i><span>Your windows</span></div>
+      <div><b>01</b><i></i><span>Clock overlay</span></div>
+      <div><b>00</b><i></i><span>Wallpaper</span></div>
+    </div>
+
+    <div class="hero-ui">
+      <div class="hero-inner shell">
+        <h1 class="wordmark">FEATHER<br>WALL</h1>
+
+        <div class="hero-row">
+          <div>
+            <h2>Live wallpapers for Windows that don't eat your laptop.</h2>
+            <div class="cta">
+              <a class="btn btn-solid" href="https://github.com/RitvikDayal/featherwall/releases/latest/download/featherwall-v0.1.0-win-x64.zip">
+                Download for Windows <span class="sz">ZIP 7.5 MB</span>
+              </a>
+              <a class="btn btn-light" href="https://github.com/RitvikDayal/featherwall">Read the source</a>
+            </div>
+          </div>
+          <p class="aside">Video or image wallpapers with an optional clock widget, composed by one process through DirectComposition. No browser engine, no launcher, no account, no telemetry. Needs the <a href="https://dotnet.microsoft.com/download/dotnet/10.0">.NET 10 desktop runtime</a>.</p>
+        </div>
+
+        <div class="hero-foot">
+          <span>Open source <b>live wallpaper engine</b> &nbsp;/&nbsp; <b>v0.1.0</b> &nbsp;/&nbsp; <b>7.5 MB</b> &nbsp;/&nbsp; <b>MIT</b> &nbsp;/&nbsp; <b>100% C#</b></span>
+          <span class="hint">Scroll to lay it flat &darr;</span>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
-<main>
+<!-- ACT 2 ==================================================== -->
+<div class="doc">
 
-  <section class="wrap reveal">
-    <div class="section-head">
-      <p class="eyebrow">How it works</p>
-      <h2>Three layers, one process</h2>
-      <p>Your wallpaper, an optional clock drawn above it, and your windows on top. FeatherWall composes that stack through DirectComposition, the same path the Windows shell uses, from a single executable with no browser engine and no launcher.</p>
+  <div class="figures">
+    <div class="shell">
+      <div class="fig"><b data-to="1">0</b><span>Process, not five</span></div>
+      <div class="fig hot"><b data-to="151">0</b><span>MB for a still wallpaper</span></div>
+      <div class="fig"><b data-to="0.03" data-dec="2">0</b><span>Percent CPU at rest</span></div>
+      <div class="fig"><b data-to="0">0</b><span>Accounts or trackers</span></div>
     </div>
-    <figure>
-      <img src="media/demo.gif" alt="A 4K animated wallpaper playing on the desktop while the clock ticks above it" loading="lazy" width="1120">
-      <figcaption>Real screen capture. A 4000&times;2250 clip decoding live, desktop fully usable underneath.</figcaption>
-    </figure>
-  </section>
+  </div>
 
-  <section class="wrap reveal">
-    <div class="section-head">
-      <p class="eyebrow">Measured, not estimated</p>
-      <h2>What it costs you</h2>
-      <p>Sampled over 30 to 40 second windows on a running instance. Windows 11 Pro 26200, 24 logical cores, 2560&times;1600 at 150% scaling.</p>
-    </div>
-    <div class="bars" id="bars">
-      <div class="bar-row"><span class="label">Still image</span><span class="bar-track"><span class="bar-fill" data-pct="56"></span></span><span class="val">151 MB &middot; 0.03% CPU</span></div>
-      <div class="bar-row"><span class="label">Video, paused</span><span class="bar-track"><span class="bar-fill" data-pct="91"></span></span><span class="val">246 MB &middot; 0.01% CPU</span></div>
-      <div class="bar-row"><span class="label">1080p playing</span><span class="bar-track"><span class="bar-fill" data-pct="74"></span></span><span class="val">199 MB &middot; 1.0% CPU</span></div>
-      <div class="bar-row"><span class="label">4K playing</span><span class="bar-track"><span class="bar-fill" data-pct="100"></span></span><span class="val">270 MB &middot; 0.9% CPU</span></div>
-    </div>
-    <p class="note">Bars show memory. Playback stops rather than throttles for fullscreen apps, the lock screen, remote sessions and battery saver, which is why a paused video costs less CPU than a still image redrawing its clock.</p>
-  </section>
+  <main>
 
-  <section class="wrap reveal">
-    <div class="section-head">
-      <p class="eyebrow">The widget</p>
-      <h2>Any font you own, anywhere on screen</h2>
-      <p>Nine positions, any installed typeface, adjustable size, colour and opacity. The settings panel previews it with the same renderer that paints your desktop.</p>
+  <!-- 01 -->
+  <section class="shell rev" id="composition">
+    <div class="rule-head">
+      <span class="meta idx">01</span><span class="meta">Composition</span>
+      <h2>Inside the stack, not on top of it</h2>
     </div>
-    <div class="shots">
-      <img src="media/clock-bahnschrift.jpg" alt="Clock in Bahnschrift Light over the Hubble Ultra Deep Field" loading="lazy">
-      <img src="media/clock-cascadia.jpg" alt="Clock in Cascadia Mono over the Blue Marble photograph" loading="lazy">
-      <img src="media/settings-clock.png" alt="FeatherWall settings panel with a live clock preview" loading="lazy">
-    </div>
-  </section>
+    <p class="intro">Most wallpaper tools park a borderless window behind your icons and hope nothing notices. FeatherWall inserts a real visual into the desktop's own composition tree, which is why your icons, your right-click menu and your window ordering all keep behaving normally.</p>
 
-  <section class="wrap reveal">
-    <div class="about">
-      <div class="card">
-        <h3>Who made this</h3>
-        <p>I'm Ritvik Dayal, a software engineer. I build tools from scratch to understand how things actually work, which is how this started: I wanted a live wallpaper and did not want a launcher, an account, or a browser engine running behind my desktop.</p>
-        <p>FeatherWall is a personal open-source project, MIT licensed, with no paid tier and nothing to upsell.</p>
-        <div class="tags">
-          <span class="tag">C# / .NET 10</span><span class="tag">Win32</span>
-          <span class="tag">Direct3D 11</span><span class="tag">DirectComposition</span>
+    <div class="split">
+      <figure class="slab">
+        <img src="media/demo.gif" alt="A 4K animated wallpaper playing on the desktop while the clock ticks above it" loading="lazy" width="1120">
+        <figcaption>Screen capture / 4000&times;2250 clip decoding live</figcaption>
+      </figure>
+      <div class="notes">
+        <div class="note">
+          <h3>24H2 changed the rules</h3>
+          <p>Windows 11 24H2 raised the desktop out of reach of the old <span class="mono-inline">WorkerW</span> child-window trick, which is why a lot of wallpaper tools started rendering a black screen. FeatherWall detects the topology at runtime and handles both layouts.</p>
         </div>
-        <p style="margin-top:1.1rem"><a href="https://github.com/RitvikDayal">github.com/RitvikDayal</a></p>
-      </div>
-      <div class="honest">
-        <h3>What isn't done</h3>
-        <p>Multi-monitor layouts, the pre-24H2 desktop layout, and recovery after Explorer restarts are written and unit-tested, but have never run on real hardware. One developer, one display.</p>
-        <p>Releases are unsigned, so SmartScreen will warn you. Verify the archive or build from source.</p>
-        <p class="checksum">300f59a28269fc2fc034ad86ee64d6fd320cd17f8c2e7a31c789bcc28844dfd7</p>
-        <p style="margin-top:1rem"><a href="https://github.com/RitvikDayal/featherwall/issues/3">Help test multi-monitor &rarr;</a></p>
+        <div class="note">
+          <h3>One process, no shell</h3>
+          <p>Direct3D 11 and DirectComposition, called from C# through Vortice. There is no Chromium, no Electron and no separate launcher sitting in the background.</p>
+        </div>
+        <div class="note">
+          <h3>It gets out of the way</h3>
+          <p>Playback stops rather than throttles for fullscreen apps, the lock screen, remote sessions and battery saver. A game never competes with your wallpaper for the GPU.</p>
+        </div>
       </div>
     </div>
   </section>
 
-</main>
-
-<section class="finale">
-  <div class="wrap">
-    <h2>Put something alive behind your work</h2>
-    <p>Free, open source, and about the size of a photograph.</p>
-    <div class="cta">
-      <a class="btn btn-primary" href="https://github.com/RitvikDayal/featherwall/releases/latest/download/featherwall-v0.1.0-win-x64.zip">Download for Windows</a>
-      <a class="btn btn-ghost" href="https://github.com/RitvikDayal/featherwall">Star it on GitHub</a>
+  <!-- 02 -->
+  <section class="shell rev" id="measured">
+    <div class="rule-head">
+      <span class="meta idx">02</span><span class="meta">Measured</span>
+      <h2>What it actually costs</h2>
     </div>
-  </div>
-</section>
+    <p class="intro">Sampled over 30 to 40 second windows on a running instance. Windows 11 Pro build 26200, 24 logical cores, 2560&times;1600 at 150% scaling. Bars show working set.</p>
 
-<footer>
-  <div class="wrap">
-    <p>
-      MIT licensed &middot;
-      <a href="https://github.com/RitvikDayal/featherwall">Source</a> &middot;
-      <a href="https://github.com/RitvikDayal/featherwall/releases">Releases</a> &middot;
-      <a href="https://github.com/RitvikDayal/featherwall/blob/main/docs/architecture.md">Architecture</a> &middot;
-      <a href="https://github.com/RitvikDayal/featherwall/blob/main/THIRD-PARTY-NOTICES.md">Credits</a>
-    </p>
-    <p>Hero photograph: Marmolada, Italy by Marco Bonomo (CC0). Demo footage: <em>Big Buck Bunny</em>, &copy; 2008 Blender Foundation, <a href="https://peach.blender.org">peach.blender.org</a>, <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>.</p>
-  </div>
-</footer>
+    <div class="table" id="table">
+      <div class="row"><span class="state">Still image</span><span class="track"><i data-pct="56"></i></span><span class="num">151 MB</span><span class="num">0.03% CPU</span></div>
+      <div class="row"><span class="state">Video, paused</span><span class="track"><i data-pct="91"></i></span><span class="num">246 MB</span><span class="num">0.01% CPU</span></div>
+      <div class="row"><span class="state">1080p playing</span><span class="track"><i data-pct="74"></i></span><span class="num">199 MB</span><span class="num">1.0% CPU</span></div>
+      <div class="row"><span class="state">4K playing</span><span class="track"><i data-pct="100"></i></span><span class="num">270 MB</span><span class="num">0.9% CPU</span></div>
+    </div>
+    <p class="foot-note">A paused video costs less CPU than a still image because the still one is still redrawing its clock every second. Nothing here is a projection: these are numbers off a running process, and the method is in the repository if you want to disagree with it.</p>
+  </section>
+
+  <!-- 03 -->
+  <section class="shell rev" id="widget">
+    <div class="rule-head">
+      <span class="meta idx">03</span><span class="meta">The widget</span>
+      <h2>Any font you own</h2>
+    </div>
+    <p class="intro">Nine positions, any installed typeface, adjustable size, colour and opacity. The settings panel previews it with the same renderer that paints your desktop, so what you pick is what lands.</p>
+    <div class="gallery">
+      <figure>
+        <img src="media/clock-bahnschrift.jpg" alt="Clock set in Bahnschrift Light over the Hubble Ultra Deep Field" loading="lazy">
+        <figcaption>Bahnschrift Light / centre</figcaption>
+      </figure>
+      <figure>
+        <img src="media/clock-cascadia.jpg" alt="Clock set in Cascadia Mono over the Blue Marble photograph" loading="lazy">
+        <figcaption>Cascadia Mono / top left</figcaption>
+      </figure>
+      <figure>
+        <img src="media/settings-clock.png" alt="The FeatherWall settings panel showing a live clock preview" loading="lazy">
+        <figcaption>Settings / live preview</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 04 -->
+  <section class="shell rev" id="install">
+    <div class="rule-head">
+      <span class="meta idx">04</span><span class="meta">Install</span>
+      <h2>Get it, check it, or build it</h2>
+    </div>
+    <p class="intro">Releases are unsigned, so SmartScreen will warn you the first time. Verify the archive against the published hash, or skip the binary entirely and build it yourself.</p>
+
+    <div class="routes">
+      <div class="route pick">
+        <h3>Download <em>Fastest</em></h3>
+        <p>Unzip anywhere and run <span class="mono-inline">FeatherWall.exe</span>. It lives in the tray.</p>
+        <a class="btn btn-solid" href="https://github.com/RitvikDayal/featherwall/releases/latest/download/featherwall-v0.1.0-win-x64.zip" style="width:100%">Get the ZIP <span class="sz">7.5 MB</span></a>
+        <p class="hash">SHA-256<br>300f59a28269fc2fc034ad86ee64d6fd320cd17f8c2e7a31c789bcc28844dfd7</p>
+      </div>
+
+      <div class="route">
+        <h3>Verify <em>Then</em></h3>
+        <p>Check what you downloaded before you run it. PowerShell, no extra tools.</p>
+        <div class="code" tabindex="0" role="group" aria-label="PowerShell command to check the archive hash"><button class="copy" data-copy="Get-FileHash .\featherwall-v0.1.0-win-x64.zip -Algorithm SHA256" aria-label="Copy the hash-check command">Copy</button><span class="tok">Get-FileHash</span> .\featherwall-v0.1.0-win-x64.zip `
+  <span class="tok">-Algorithm</span> SHA256</div>
+        <p class="hash">Should match the hash on the left, character for character.</p>
+      </div>
+
+      <div class="route">
+        <h3>Build it <em>Or, instead</em></h3>
+        <p>Needs the .NET 10 SDK. About a minute on a cold clone.</p>
+        <div class="code" tabindex="0" role="group" aria-label="Commands to clone and build from source"><button class="copy" data-copy="git clone https://github.com/RitvikDayal/featherwall &amp;&amp; cd featherwall &amp;&amp; dotnet publish src/FeatherWall -c Release" aria-label="Copy the clone and build commands">Copy</button>git clone https://github.com/RitvikDayal/featherwall
+<span class="tok">cd</span> featherwall
+<span class="tok">dotnet publish</span> src/FeatherWall -c Release</div>
+        <p class="hash">Run <span class="mono-inline">dotnet test</span> first if you want to check the suite yourself.</p>
+      </div>
+    </div>
+
+    <p class="pending">A winget package is submitted and waiting on review at <a href="https://github.com/microsoft/winget-pkgs/pull/417753">microsoft/winget-pkgs#417753</a>. Until a maintainer merges it, <span class="mono-inline">winget install FeatherWall</span> will not find anything, so it is not listed above.</p>
+  </section>
+
+  <!-- 05 -->
+  <section class="shell rev" id="contribute">
+    <div class="rule-head">
+      <span class="meta idx">05</span><span class="meta">Contribute</span>
+      <h2>Five things need doing</h2>
+    </div>
+    <p class="intro">This was built by one person on one monitor. Several code paths are written and unit-tested but have never run on real hardware, and no amount of testing on my machine will change that. Every issue below is open and labelled.</p>
+
+    <div class="contrib">
+      <ul class="issues">
+        <li><a href="https://github.com/RitvikDayal/featherwall/issues/3"><span class="id">#3</span><span class="ti">Verify multi-monitor behaviour on real hardware</span><span class="lb"><span>help wanted</span><span>hardware needed</span></span></a></li>
+        <li><a href="https://github.com/RitvikDayal/featherwall/issues/4"><span class="id">#4</span><span class="ti">Verify the classic WorkerW desktop topology on Windows 10</span><span class="lb"><span>help wanted</span><span>hardware needed</span></span></a></li>
+        <li><a href="https://github.com/RitvikDayal/featherwall/issues/5"><span class="id">#5</span><span class="ti">Verify recovery after an explorer.exe restart</span><span class="lb"><span>good first issue</span></span></a></li>
+        <li><a href="https://github.com/RitvikDayal/featherwall/issues/6"><span class="id">#6</span><span class="ti">Gallery: several entries are below the resolution of the displays they target</span><span class="lb"><span>help wanted</span><span>good first issue</span></span></a></li>
+        <li><a href="https://github.com/RitvikDayal/featherwall/issues/1"><span class="id">#1</span><span class="ti">Pin SHA-1 checksums for the three unpinned NASA gallery videos</span><span class="lb"><span>good first issue</span></span></a></li>
+      </ul>
+
+      <div class="panel">
+        <h3>Who made this</h3>
+        <p>I'm Ritvik Dayal, a software engineer. I build things from scratch to understand how they work, which is how this started: I wanted a live wallpaper and did not want a launcher, an account, or a browser engine running behind my desktop.</p>
+        <p>MIT licensed, no paid tier, nothing to upsell.</p>
+        <div class="langbar" aria-hidden="true"><i style="width:100%"></i></div>
+        <p class="meta" style="margin:0">C# 100%</p>
+        <dl class="kv">
+          <dt>Runtime</dt><dd>.NET 10</dd>
+          <dt>Graphics</dt><dd>D3D11 / DComp</dd>
+          <dt>Released</dt><dd>15 Aug 2026</dd>
+          <dt>Author</dt><dd><a href="https://github.com/RitvikDayal">@RitvikDayal</a></dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  </main>
+
+  <section class="finale">
+    <div class="shell">
+      <span class="meta">06 / Get it</span>
+      <h2>Put something alive behind your work.</h2>
+      <div class="cta">
+        <a class="btn btn-solid" href="https://github.com/RitvikDayal/featherwall/releases/latest/download/featherwall-v0.1.0-win-x64.zip">Download for Windows <span class="sz">ZIP 7.5 MB</span></a>
+        <a class="btn btn-light" href="https://github.com/RitvikDayal/featherwall">Star it on GitHub</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="shell foot">
+      <nav>
+        <a href="https://github.com/RitvikDayal/featherwall">Source</a>
+        <a href="https://github.com/RitvikDayal/featherwall/releases">Releases</a>
+        <a href="https://github.com/RitvikDayal/featherwall/blob/main/docs/architecture.md">Architecture</a>
+        <a href="https://github.com/RitvikDayal/featherwall/blob/main/CONTRIBUTING.md">Contributing</a>
+        <a href="https://github.com/RitvikDayal/featherwall/blob/main/THIRD-PARTY-NOTICES.md">Credits</a>
+      </nav>
+      <p class="credits">
+        Wallpapers: Marmolada, Dolomites by Marco Bonomo (CC0); Alone in the Unspoilt Wilderness by David Marcu (CC0); Hubble Ultra Deep Field, NASA and the European Space Agency (public domain). Demo footage: <em>Big Buck Bunny</em>, &copy; 2008 Blender Foundation, <a href="https://peach.blender.org">peach.blender.org</a>, <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>. Set in Archivo and JetBrains Mono.
+      </p>
+    </div>
+  </footer>
+
+</div>
 
 <script>
 (function(){
-  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var root = document.documentElement;
 
-  /* the stack's clock shows the visitor's own time, in their own format */
-  var t=document.getElementById('c-time'), d=document.getElementById('c-date');
-  function tick(){
-    var n=new Date();
-    t.textContent=n.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-    d.textContent=n.toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'});
+  /* the widget on layer 01 shows the visitor's own time, in their own format */
+  var t = document.getElementById('c-time'), d = document.getElementById('c-date');
+  (function tick(){
+    var n = new Date();
+    t.textContent = n.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    d.textContent = n.toLocaleDateString([], {weekday:'long', month:'long', day:'numeric'});
+    setTimeout(tick, 1000);
+  })();
+
+  /* scroll lays the exploded stack flat: --p runs 0 to 1 across the stage runway */
+  var stage = document.getElementById('stage');
+  var masthead = document.getElementById('masthead');
+  var queued = false;
+
+  function frame(){
+    queued = false;
+    var runway = stage.offsetHeight - innerHeight;
+    var p = runway > 0 ? -stage.getBoundingClientRect().top / runway : 1;
+    p = Math.max(0, Math.min(1, p));
+    root.style.setProperty('--p', reduce ? 1 : p.toFixed(4));
+    /* the bar inverts once the paper page has taken the top of the screen */
+    masthead.classList.toggle('landed', stage.getBoundingClientRect().bottom <= 60);
   }
-  tick(); setInterval(tick,1000);
+  function onScroll(){ if(!queued){ queued = true; requestAnimationFrame(frame); } }
+  addEventListener('scroll', onScroll, {passive:true});
+  addEventListener('resize', onScroll, {passive:true});
+  frame();
 
-  /* cursor parallax on the stack */
-  var stack=document.getElementById('stack');
-  if(stack && !reduce && window.matchMedia('(pointer:fine)').matches){
-    window.addEventListener('mousemove',function(e){
-      var x=(e.clientX/window.innerWidth-.5), y=(e.clientY/window.innerHeight-.5);
-      stack.style.animation='none';
-      stack.style.transform='rotateX('+(17-y*12)+'deg) rotateZ(-20deg) rotateY('+(x*16)+'deg)';
-    },{passive:true});
+  /* the stack leans toward the cursor while it is still standing up */
+  if (!reduce && matchMedia('(pointer:fine)').matches){
+    addEventListener('mousemove', function(e){
+      root.style.setProperty('--sway', (e.clientX / innerWidth - .5).toFixed(3));
+    }, {passive:true});
   }
 
-  /* reveal on scroll, count up the stats, fill the bars */
+  /* layer 00 cycles through real wallpapers so the scene is visibly alive */
+  var slides = document.querySelectorAll('.l0 img');
+  if (slides.length > 1 && !reduce){
+    var at = 0;
+    setInterval(function(){
+      slides[at].classList.remove('on');
+      at = (at + 1) % slides.length;
+      slides[at].classList.add('on');
+    }, 5200);
+  }
+
+  /* count the figures up, fill the bars, reveal sections */
   function countUp(el){
-    var to=parseFloat(el.dataset.to), dec=parseInt(el.dataset.dec||'0',10), start=null;
-    if(reduce||to===0){el.textContent=to.toFixed(dec);return;}
-    function step(ts){
-      if(!start)start=ts;
-      var p=Math.min((ts-start)/900,1), eased=1-Math.pow(1-p,3);
-      el.textContent=(to*eased).toFixed(dec);
-      if(p<1)requestAnimationFrame(step);
-    }
-    requestAnimationFrame(step);
+    var to = parseFloat(el.dataset.to), dec = parseInt(el.dataset.dec || '0', 10), start = null;
+    if (reduce || to === 0){ el.textContent = to.toFixed(dec); return; }
+    requestAnimationFrame(function step(ts){
+      if (!start) start = ts;
+      var q = Math.min((ts - start) / 850, 1);
+      el.textContent = (to * (1 - Math.pow(1 - q, 3))).toFixed(dec);
+      if (q < 1) requestAnimationFrame(step);
+    });
   }
-  var io=new IntersectionObserver(function(entries){
+  /* threshold 0 with a bottom margin: fires on first contact, so a section taller
+     than the viewport can never sit permanently hidden */
+  var io = new IntersectionObserver(function(entries){
     entries.forEach(function(en){
-      if(!en.isIntersecting) return;
-      var el=en.target;
+      if (!en.isIntersecting) return;
+      var el = en.target;
       el.classList.add('in');
-      if(el.matches('.stats')) el.querySelectorAll('[data-to]').forEach(countUp);
-      if(el.matches('#bars')) el.querySelectorAll('.bar-fill').forEach(function(b){b.style.width=b.dataset.pct+'%';});
+      if (el.matches('.figures')) el.querySelectorAll('[data-to]').forEach(countUp);
+      if (el.matches('#table')) el.querySelectorAll('[data-pct]').forEach(function(b){ b.style.width = b.dataset.pct + '%'; });
       io.unobserve(el);
     });
-  },{threshold:.25});
-  document.querySelectorAll('.reveal, .stats, #bars').forEach(function(n){io.observe(n);});
+  }, {threshold:0, rootMargin:'0px 0px -12% 0px'});
+  document.querySelectorAll('.rev, .figures, #table').forEach(function(n){ io.observe(n); });
+
+  /* copy buttons on the install commands */
+  document.querySelectorAll('.copy').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      navigator.clipboard.writeText(btn.dataset.copy).then(function(){
+        btn.textContent = 'Done'; btn.dataset.done = '1';
+        setTimeout(function(){ btn.textContent = 'Copy'; btn.dataset.done = ''; }, 1600);
+      });
+    });
+  });
 })();
 </script>
 </body>
