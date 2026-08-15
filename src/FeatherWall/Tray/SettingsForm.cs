@@ -214,7 +214,61 @@ public sealed class SettingsForm : Form
             _engine.ApplyAudioSettings();
         }, "%"));
 
+        if (_engine.CurrentWallpaperCredit is { } credit)
+            rows.AddRow("Credit", BuildCredit(credit));
+
         return card;
+    }
+
+    /// <summary>Shows who made the current gallery wallpaper, with a link to the source page.
+    /// Only appears for gallery media; the user's own files have nothing to credit.</summary>
+    private Control BuildCredit(Gallery.GalleryEntry entry)
+    {
+        var stack = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Theme.Colors.Card,
+            Margin = new Padding(0, 2, 0, 2),
+        };
+
+        stack.Controls.Add(new Label
+        {
+            Text = entry.CreditLine,
+            // AutoSize with a width cap so a long credit wraps and the row grows to fit it.
+            // A fixed height silently clipped the licence off the second line.
+            AutoSize = true,
+            MaximumSize = new Size(ContentWidth - LabelColumnWidth - 16, 0),
+            ForeColor = Theme.Colors.Text,
+            Margin = new Padding(0, 2, 0, 2),
+        });
+
+        var source = new LinkLabel
+        {
+            Text = "View source",
+            AutoSize = true,
+            LinkColor = Theme.Colors.Accent,
+            ActiveLinkColor = Theme.Colors.Accent,
+            BackColor = Theme.Colors.Card,
+            Margin = new Padding(0, 0, 0, 2),
+        };
+        source.LinkClicked += (_, _) =>
+        {
+            if (string.IsNullOrWhiteSpace(entry.SourcePage)) return;
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(entry.SourcePage)
+                {
+                    UseShellExecute = true,
+                });
+            }
+            catch (Exception ex) { Common.Log.Warn($"Could not open source page: {ex.Message}"); }
+        };
+        stack.Controls.Add(source);
+
+        return stack;
     }
 
     private Control BuildBehaviorSection()

@@ -492,6 +492,12 @@ public sealed class Engine : IDisposable
 
     public AppConfig Config => _config;
 
+    /// <summary>Credit for the wallpaper currently in use, or null when it is the user's own file.
+    /// Surfaced in the settings panel so gallery media is actually attributed on screen.</summary>
+    public GalleryEntry? CurrentWallpaperCredit =>
+        _gallery.EntryForPath(_config.WallpaperFor(
+            MonitorTracker.Enumerate().FirstOrDefault(m => m.Primary)?.Device ?? "*"));
+
     public void SaveConfig() => ConfigStore.Save(_config);
 
     /// <summary>Clock appearance changed: persist and rebuild the overlay (cheap).</summary>

@@ -29,6 +29,27 @@ public sealed class GalleryEntry
         >= 1_000_000 => $"{Bytes / 1_000_000.0:0} MB",
         _ => $"{Bytes / 1_000.0:0} KB",
     };
+
+    /// <summary>One-line credit for display in the UI.
+    ///
+    /// Storing who made a wallpaper and never showing it is not attribution. NASA's media
+    /// guidelines ask for a courtesy line, and any future CC BY entry would make crediting a
+    /// licence condition rather than a courtesy, so the credit has to reach the screen.
+    /// <see cref="Attribution"/> wins when the source specifies its own wording.</summary>
+    public string CreditLine
+    {
+        get
+        {
+            var who = !string.IsNullOrWhiteSpace(Attribution) ? Attribution.Trim()
+                    : !string.IsNullOrWhiteSpace(Author) ? Author.Trim()
+                    : null;
+            var parts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(Title)) parts.Add(Title.Trim());
+            if (who is not null) parts.Add(who);
+            var text = string.Join(" — ", parts);
+            return string.IsNullOrWhiteSpace(License) ? text : $"{text} ({License.Trim()})";
+        }
+    }
 }
 
 public sealed class GalleryManifest
@@ -70,6 +91,26 @@ public sealed class GalleryService
 
     private string LocalPath(GalleryEntry entry) =>
         Path.Combine(GalleryDirectory, entry.Id + Path.GetExtension(new Uri(entry.Url).AbsolutePath));
+
+    /// <summary>The gallery entry a wallpaper path came from, or null for the user's own files.
+    /// Downloads land at a deterministic path (gallery directory, entry id, source extension), so
+    /// provenance is recoverable from the path alone and the config needs no extra field.</summary>
+    public GalleryEntry? EntryForPath(string? wallpaperPath)
+    {
+        if (string.IsNullOrWhiteSpace(wallpaperPath)) return null;
+        try
+        {
+            var full = Path.GetFullPath(wallpaperPath);
+            if (!full.StartsWith(Path.GetFullPath(GalleryDirectory), StringComparison.OrdinalIgnoreCase))
+                return null;
+            var id = Path.GetFileNameWithoutExtension(full);
+            return Manifest.Entries.FirstOrDefault(e => e.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
+        }
+        catch
+        {
+            return null; // malformed path is simply "not from the gallery"
+        }
+    }
 
     private static readonly HashSet<string> InFlight = [];
 
