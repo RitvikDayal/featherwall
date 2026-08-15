@@ -77,27 +77,28 @@ p{margin:0 0 1rem}
   box-shadow:0 22px 48px rgba(0,0,0,.5);
   backface-visibility:hidden;
 }
-/* captions sit outside each plane's face and step down the stack, so they never collide */
+/* Each caption sits in a different corner. Perspective pulls the deeper planes toward the
+   centre, so same-corner labels on different layers land on top of each other. */
 .plane figcaption{
-  position:absolute;right:10px;margin:0;
+  position:absolute;margin:0;
   font-family:var(--mono);font-size:.58rem;letter-spacing:.16em;text-transform:uppercase;
   color:rgba(255,255,255,.9);text-shadow:0 1px 7px rgba(0,0,0,.9);
 }
 .p-wall{transform:translateZ(0px)}
 .p-wall img{width:100%;height:100%;object-fit:cover}
-.p-wall figcaption{bottom:8px}
+.p-wall figcaption{left:12px;bottom:8px}
 .p-clock{
   transform:translateZ(78px);display:grid;place-items:center;
   background:linear-gradient(180deg,rgba(8,12,18,.10),rgba(8,12,18,.28));
   border-color:rgba(94,160,255,.4);
 }
-.p-clock figcaption{bottom:8px;color:rgba(150,195,255,.95)}
+.p-clock figcaption{right:12px;bottom:8px;color:rgba(150,195,255,.95)}
 .p-glass{
   transform:translateZ(156px);
   background:linear-gradient(145deg,rgba(150,180,225,.14),rgba(120,150,200,.04));
   border-color:rgba(255,255,255,.26);
 }
-.p-glass figcaption{top:34px}
+.p-glass figcaption{top:36px;right:12px}
 .p-glass .bar{
   position:absolute;inset:0 0 auto 0;height:26px;display:flex;align-items:center;gap:6px;
   padding:0 10px;background:rgba(18,22,30,.55);border-bottom:1px solid rgba(255,255,255,.12);
