@@ -4,290 +4,400 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FeatherWall — live wallpapers for Windows</title>
-<meta name="description" content="An open-source live wallpaper engine for Windows 10 and 11. Video and image wallpapers with a clock widget, in a single process. MIT licensed.">
+<meta name="description" content="An open-source live wallpaper engine for Windows 10 and 11. Video and image wallpapers with a clock widget, in a single process. 151 MB, MIT licensed.">
 <meta property="og:title" content="FeatherWall">
 <meta property="og:description" content="Live wallpapers for Windows that don't eat your laptop.">
 <meta property="og:image" content="https://raw.githubusercontent.com/RitvikDayal/featherwall/main/docs/social-preview.jpg">
-<meta property="og:url" content="https://ritvikdayal.me/featherwall/">
+<meta property="og:url" content="https://ritvikdayal.github.io/featherwall/">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🪶</text></svg>">
 <style>
-  :root{
-    /* Cool, deep ground sampled from the wallpapers the app ships with. */
-    --ink:#0A0C10;
-    --panel:rgba(18,21,27,.72);
-    --panel-solid:#12151B;
-    --line:rgba(255,255,255,.10);
-    --text:#EDF0F4;
-    --muted:#98A1AE;
-    --accent:#5EA0FF;
+:root{
+  --ink:#080A0E;
+  --deep:#0C0F15;
+  --panel:rgba(20,24,31,.66);
+  --panel-solid:#14181F;
+  --line:rgba(255,255,255,.09);
+  --line-bright:rgba(255,255,255,.16);
+  --text:#EEF1F5;
+  --muted:#949DAA;
+  --accent:#5EA0FF;
+  --accent-dim:rgba(94,160,255,.14);
 
-    /* The app draws its clock in Segoe UI Light. On the OS this targets, so does the page. */
-    --display:"Segoe UI Light","Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
-    --body:"Segoe UI Variable Text","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Arial,sans-serif;
-    --mono:"Cascadia Mono",Consolas,"SF Mono",Menlo,monospace;
+  --display:"Segoe UI Light","Segoe UI Variable Display","Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
+  --body:"Segoe UI Variable Text","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Arial,sans-serif;
+  --mono:"Cascadia Mono",Consolas,"SF Mono",Menlo,monospace;
 
-    --measure:min(1080px,92vw);
-  }
-  *{box-sizing:border-box}
-  html{scroll-behavior:smooth}
-  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
-  body{
-    margin:0;background:var(--ink);color:var(--text);
-    font-family:var(--body);font-size:16px;line-height:1.6;
-    -webkit-font-smoothing:antialiased;
-  }
-  a{color:var(--accent);text-decoration:none}
-  a:hover{text-decoration:underline}
-  :focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
-  img{max-width:100%;display:block}
+  --wide:min(1120px,92vw);
+  --r:12px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--ink);color:var(--text);
+  font:16px/1.6 var(--body);-webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:3px}
+img{max-width:100%;display:block}
+h1,h2,h3{font-family:var(--display);font-weight:250;letter-spacing:.005em;margin:0}
+p{margin:0 0 1rem}
+.wrap{width:var(--wide);margin:0 auto}
+.eyebrow{
+  font-family:var(--mono);font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--accent);margin:0 0 1rem;
+}
 
-  /* ---------- hero: the page is a desktop ---------- */
-  .desktop{
-    position:relative;min-height:100svh;display:flex;flex-direction:column;
-    align-items:center;justify-content:center;padding:6vh 4vw 8vh;text-align:center;
-    background:#0A0C10 url("media/hero.jpg") center/cover no-repeat;
-  }
-  .desktop::after{
-    content:"";position:absolute;inset:0;
-    background:linear-gradient(180deg,rgba(8,10,14,.34) 0%,rgba(8,10,14,.52) 55%,rgba(10,12,16,.95) 100%);
-  }
-  .desktop > *{position:relative;z-index:1}
+/* ============ HERO: the desktop composition stack, exploded ============ */
+.hero{
+  position:relative;min-height:100svh;display:grid;place-items:center;
+  padding:5rem 4vw 4rem;overflow:hidden;
+  background:radial-gradient(120% 80% at 50% 0%,#141A24 0%,var(--ink) 62%);
+}
+.glow{
+  position:absolute;inset:auto 50% auto 50%;translate:-50% 0;top:-18vh;
+  width:min(900px,120vw);aspect-ratio:1;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,rgba(94,160,255,.18) 0%,transparent 62%);
+  filter:blur(28px);
+}
+.hero-inner{position:relative;z-index:2;display:grid;gap:3.2rem;justify-items:center;text-align:center}
 
-  /* The clock widget, as the app renders it. */
-  .widget{margin-bottom:clamp(2.5rem,7vh,5rem);animation:rise .9s cubic-bezier(.2,.7,.2,1) both}
-  .widget time{
-    display:block;font-family:var(--display);font-weight:200;
-    font-size:clamp(3.6rem,11vw,8.2rem);line-height:1;letter-spacing:.02em;
-    text-shadow:0 2px 14px rgba(0,0,0,.45);font-variant-numeric:tabular-nums;
-  }
-  .widget hr{
-    border:0;height:1px;background:rgba(255,255,255,.5);
-    width:clamp(120px,18vw,230px);margin:clamp(.7rem,1.6vh,1.1rem) auto;
-  }
-  .widget .date{
-    font-size:clamp(.82rem,1.5vw,1rem);color:rgba(255,255,255,.82);letter-spacing:.04em;
-    text-shadow:0 1px 8px rgba(0,0,0,.5);
-  }
-  @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
-  @media (prefers-reduced-motion:reduce){.widget{animation:none}}
+/* the stack */
+.scene{perspective:1400px;perspective-origin:50% 42%;width:min(660px,88vw);aspect-ratio:16/10}
+.stack{
+  position:relative;width:100%;height:100%;transform-style:preserve-3d;
+  transform:rotateX(var(--rx,17deg)) rotateZ(var(--rz,-20deg)) rotateY(var(--ry,0deg));
+  animation:drift 14s ease-in-out infinite;
+  transition:transform .5s cubic-bezier(.2,.7,.2,1);
+}
+.plane{
+  position:absolute;inset:0;border-radius:10px;overflow:hidden;
+  border:1px solid var(--line-bright);
+  box-shadow:0 30px 70px rgba(0,0,0,.55);
+  backface-visibility:hidden;
+}
+.plane figcaption{
+  position:absolute;left:12px;bottom:10px;margin:0;
+  font-family:var(--mono);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;
+  color:rgba(255,255,255,.82);text-shadow:0 1px 6px rgba(0,0,0,.8);
+}
+.p-wall{transform:translateZ(0px)}
+.p-wall img{width:100%;height:100%;object-fit:cover}
+.p-clock{
+  transform:translateZ(58px);display:grid;place-items:center;
+  background:linear-gradient(180deg,rgba(10,14,20,.12),rgba(10,14,20,.35));
+  border-color:rgba(94,160,255,.32);
+}
+.p-glass{
+  transform:translateZ(116px);
+  background:linear-gradient(145deg,rgba(150,180,225,.16),rgba(120,150,200,.05));
+  border-color:rgba(255,255,255,.24);
+}
+.p-glass .bar{
+  position:absolute;inset:0 0 auto 0;height:26px;display:flex;align-items:center;gap:6px;
+  padding:0 10px;background:rgba(18,22,30,.55);border-bottom:1px solid rgba(255,255,255,.12);
+}
+.p-glass .dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3)}
+.mini-clock{text-align:center;filter:drop-shadow(0 2px 10px rgba(0,0,0,.6))}
+.mini-clock b{display:block;font-family:var(--display);font-weight:200;font-size:clamp(2rem,6vw,3.4rem);line-height:1;font-variant-numeric:tabular-nums}
+.mini-clock hr{border:0;height:1px;background:rgba(255,255,255,.55);width:96px;margin:.5rem auto}
+.mini-clock small{font-size:.68rem;color:rgba(255,255,255,.84);letter-spacing:.05em}
 
-  .wordmark{
-    font-family:var(--display);font-weight:200;letter-spacing:.01em;
-    font-size:clamp(2.1rem,5.4vw,3.4rem);margin:0 0 .5rem;
-  }
-  .tagline{
-    font-size:clamp(1rem,2.2vw,1.32rem);color:var(--text);opacity:.92;
-    margin:0 auto 2.2rem;max-width:36ch;
-  }
+@keyframes drift{
+  0%,100%{transform:rotateX(17deg) rotateZ(-20deg) rotateY(0deg)}
+  50%    {transform:rotateX(13deg) rotateZ(-16deg) rotateY(7deg)}
+}
 
-  .cta{display:flex;flex-wrap:wrap;gap:.9rem;justify-content:center;align-items:center}
-  .btn{
-    display:inline-flex;align-items:center;gap:.6rem;
-    padding:.85rem 1.6rem;border-radius:6px;font-size:1.02rem;font-weight:600;
-    border:1px solid transparent;transition:transform .15s ease,background .15s ease;
-  }
-  .btn:hover{text-decoration:none;transform:translateY(-1px)}
-  .btn-primary{background:var(--accent);color:#08101F}
-  .btn-primary:hover{background:#79B2FF}
-  .btn-ghost{border-color:rgba(255,255,255,.28);color:var(--text);background:rgba(255,255,255,.05)}
-  .btn-ghost:hover{background:rgba(255,255,255,.11)}
-  .req{margin:1.1rem 0 0;font-size:.85rem;color:var(--muted)}
-  .req code{font-family:var(--mono);font-size:.82rem}
+.wordmark{font-size:clamp(2.6rem,7vw,4.6rem);line-height:1.02;margin-bottom:.6rem}
+.tagline{font-size:clamp(1.02rem,2.1vw,1.28rem);color:#CDD5DF;max-width:34ch;margin:0 auto 1.9rem}
+.cta{display:flex;flex-wrap:wrap;gap:.8rem;justify-content:center}
+.btn{
+  display:inline-flex;align-items:center;gap:.55rem;padding:.9rem 1.7rem;border-radius:8px;
+  font-size:1rem;font-weight:600;border:1px solid transparent;
+  transition:transform .16s ease,background .16s ease,box-shadow .16s ease;
+}
+.btn:hover{text-decoration:none;transform:translateY(-2px)}
+.btn-primary{background:var(--accent);color:#06101F;box-shadow:0 8px 26px rgba(94,160,255,.28)}
+.btn-primary:hover{background:#7CB3FF;box-shadow:0 12px 32px rgba(94,160,255,.38)}
+.btn-ghost{border-color:var(--line-bright);color:var(--text);background:rgba(255,255,255,.04)}
+.btn-ghost:hover{background:rgba(255,255,255,.1)}
+.req{margin:1rem 0 0;font-size:.84rem;color:var(--muted)}
 
-  /* ---------- acrylic panels over the wallpaper ---------- */
-  main{max-width:var(--measure);margin:0 auto;padding:0 0 6rem}
-  .panel{
-    background:var(--panel);border:1px solid var(--line);border-radius:10px;
-    padding:clamp(1.5rem,3.5vw,2.6rem);margin:0 0 1.4rem;
-    backdrop-filter:blur(22px) saturate(140%);
-    -webkit-backdrop-filter:blur(22px) saturate(140%);
-  }
-  @supports not (backdrop-filter:blur(2px)){.panel{background:var(--panel-solid)}}
+/* ============ STATS ============ */
+.stats{border-block:1px solid var(--line);background:var(--deep)}
+.stats .wrap{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:1px;background:var(--line);
+}
+.stat{background:var(--deep);padding:2.2rem 1.4rem;text-align:center}
+.stat b{
+  display:block;font-family:var(--display);font-weight:250;
+  font-size:clamp(2rem,4.6vw,3rem);line-height:1;font-variant-numeric:tabular-nums;
+}
+.stat span{display:block;margin-top:.55rem;font-size:.78rem;color:var(--muted);letter-spacing:.06em}
+.stat em{font-style:normal;font-size:.5em;color:var(--muted);margin-left:.12em}
 
-  h2{
-    font-family:var(--display);font-weight:250;letter-spacing:.01em;
-    font-size:clamp(1.5rem,3.2vw,2.1rem);margin:0 0 1.2rem;
-  }
-  h3{font-size:1rem;font-weight:600;margin:1.8rem 0 .5rem;color:var(--text)}
-  p{margin:0 0 1rem;color:#D3D9E2}
-  .lede{font-size:1.05rem}
-  .muted{color:var(--muted)}
-  .small{font-size:.86rem}
+/* ============ SECTIONS ============ */
+section{padding:5.5rem 0}
+.section-head{max-width:60ch;margin-bottom:2.4rem}
+.section-head h2{font-size:clamp(1.7rem,3.6vw,2.5rem);margin-bottom:.7rem}
+.section-head p{color:#C4CCD8;margin:0}
 
-  table{width:100%;border-collapse:collapse;margin:.4rem 0 1rem;font-size:.93rem}
-  caption{text-align:left;color:var(--muted);font-size:.84rem;padding-bottom:.7rem}
-  th,td{text-align:left;padding:.6rem .7rem;border-bottom:1px solid var(--line)}
-  th{font-weight:600;color:var(--muted);font-size:.8rem;letter-spacing:.06em;text-transform:uppercase}
-  td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
-  td strong{color:#fff}
-  .scroll-x{overflow-x:auto}
+/* memory infographic */
+.bars{display:grid;gap:1rem;margin:0 0 1.6rem}
+.bar-row{display:grid;grid-template-columns:minmax(120px,1fr) 3fr auto;gap:1rem;align-items:center}
+.bar-row .label{font-size:.92rem;color:#C4CCD8}
+.bar-track{height:30px;background:rgba(255,255,255,.05);border-radius:5px;overflow:hidden;border:1px solid var(--line)}
+.bar-fill{
+  height:100%;width:0;border-radius:4px;
+  background:linear-gradient(90deg,rgba(94,160,255,.75),rgba(94,160,255,.35));
+  transition:width 1.1s cubic-bezier(.2,.75,.2,1);
+}
+.bar-row .val{font-family:var(--mono);font-size:.88rem;color:var(--text);white-space:nowrap}
+.note{font-size:.83rem;color:var(--muted);margin:0}
 
-  figure{margin:0 0 1.2rem}
-  figure img{border-radius:8px;border:1px solid var(--line)}
-  figcaption{font-size:.8rem;color:var(--muted);padding-top:.6rem}
+/* gallery */
+.shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem}
+.shots img{border-radius:10px;border:1px solid var(--line)}
+figure{margin:0}
+figcaption{font-size:.78rem;color:var(--muted);padding-top:.55rem}
 
-  .shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem}
-  .shots img{border-radius:8px;border:1px solid var(--line)}
+/* about */
+.about{display:grid;grid-template-columns:1fr;gap:1.6rem;align-items:start}
+@media(min-width:820px){.about{grid-template-columns:1.15fr .85fr;gap:3rem}}
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:1.7rem;
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+}
+@supports not (backdrop-filter:blur(2px)){.card{background:var(--panel-solid)}}
+.card h3{font-size:1.15rem;margin-bottom:.7rem}
+.card p{color:#C4CCD8;font-size:.95rem}
+.card p:last-child{margin-bottom:0}
+.tags{display:flex;flex-wrap:wrap;gap:.45rem;margin-top:1rem}
+.tag{
+  font-family:var(--mono);font-size:.7rem;letter-spacing:.06em;padding:.32rem .6rem;
+  border:1px solid var(--line-bright);border-radius:99px;color:var(--muted);
+}
 
-  .checksum{
-    font-family:var(--mono);font-size:.76rem;color:var(--muted);
-    background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:6px;
-    padding:.7rem .85rem;overflow-x:auto;white-space:nowrap;
-  }
+/* honest box */
+.honest{border-left:2px solid var(--accent);padding-left:1.3rem}
+.honest h3{font-size:1.05rem;margin-bottom:.6rem}
+.honest p{color:#C4CCD8;font-size:.94rem}
+.checksum{
+  font-family:var(--mono);font-size:.73rem;color:var(--muted);background:rgba(0,0,0,.4);
+  border:1px solid var(--line);border-radius:7px;padding:.7rem .8rem;overflow-x:auto;white-space:nowrap;
+}
 
-  footer{
-    max-width:var(--measure);margin:0 auto;padding:2.5rem 0 4rem;
-    border-top:1px solid var(--line);color:var(--muted);font-size:.87rem;
-  }
-  footer a{color:var(--muted);text-decoration:underline}
-  footer a:hover{color:var(--text)}
+/* final CTA */
+.finale{text-align:center;padding:6rem 0 5rem;background:radial-gradient(90% 130% at 50% 100%,#161C27 0%,var(--ink) 68%);border-top:1px solid var(--line)}
+.finale h2{font-size:clamp(1.9rem,4.4vw,3rem);margin-bottom:.8rem}
+.finale p{color:#C4CCD8;max-width:44ch;margin:0 auto 2rem}
 
-  @media (max-width:640px){
-    main{padding-left:4vw;padding-right:4vw}
-    .btn{width:100%;justify-content:center}
-  }
+footer{border-top:1px solid var(--line);padding:2.4rem 0 3.4rem;color:var(--muted);font-size:.85rem}
+footer a{color:var(--muted);text-decoration:underline}
+footer a:hover{color:var(--text)}
+footer p{margin:0 0 .6rem}
+
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1)}
+.reveal.in{opacity:1;transform:none}
+
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .stack{animation:none}
+  .reveal{opacity:1;transform:none;transition:none}
+  .bar-fill{transition:none}
+  .btn:hover{transform:none}
+}
+@media (max-width:560px){.btn{width:100%;justify-content:center}.bar-row{grid-template-columns:1fr;gap:.4rem}}
 </style>
 </head>
 <body>
 
-<header class="desktop">
-  <div class="widget" aria-hidden="true">
-    <time id="clock">--:--</time>
-    <hr>
-    <div class="date" id="today">&nbsp;</div>
-  </div>
+<header class="hero">
+  <div class="glow" aria-hidden="true"></div>
+  <div class="hero-inner">
 
-  <h1 class="wordmark">FeatherWall</h1>
-  <p class="tagline">Live wallpapers for Windows that don't eat your laptop.</p>
+    <div class="scene" aria-hidden="true">
+      <div class="stack" id="stack">
+        <figure class="plane p-wall">
+          <img src="media/hero.jpg" alt="">
+          <figcaption>wallpaper</figcaption>
+        </figure>
+        <figure class="plane p-clock">
+          <div class="mini-clock">
+            <b id="c-time">--:--</b>
+            <hr>
+            <small id="c-date">&nbsp;</small>
+          </div>
+          <figcaption>clock overlay</figcaption>
+        </figure>
+        <figure class="plane p-glass">
+          <div class="bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div>
+          <figcaption>your windows</figcaption>
+        </figure>
+      </div>
+    </div>
 
-  <div class="cta">
-    <a class="btn btn-primary" href="https://github.com/RitvikDayal/featherwall/releases/latest/download/featherwall-v0.1.0-win-x64.zip">
-      Download for Windows
-    </a>
-    <a class="btn btn-ghost" href="https://github.com/RitvikDayal/featherwall">View the source</a>
+    <div>
+      <h1 class="wordmark">FeatherWall</h1>
+      <p class="tagline">Live wallpapers for Windows that don't eat your laptop.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="https://github.com/RitvikDayal/featherwall/releases/latest/download/featherwall-v0.1.0-win-x64.zip">Download for Windows</a>
+        <a class="btn btn-ghost" href="https://github.com/RitvikDayal/featherwall">Read the source</a>
+      </div>
+      <p class="req">7 MB &middot; Windows 10 1809+ &middot; needs the <a href="https://dotnet.microsoft.com/download/dotnet/10.0">.NET 10 desktop runtime</a></p>
+    </div>
+
   </div>
-  <p class="req">
-    7 MB &middot; Windows 10 1809 or newer &middot; needs the
-    <a href="https://dotnet.microsoft.com/download/dotnet/10.0">.NET 10 desktop runtime</a>
-  </p>
 </header>
+
+<div class="stats">
+  <div class="wrap">
+    <div class="stat"><b data-to="1">0</b><span>process, not five</span></div>
+    <div class="stat"><b data-to="151">0</b><span>MB for a still wallpaper</span></div>
+    <div class="stat"><b data-to="0.03" data-dec="2">0</b><span>% CPU at rest</span></div>
+    <div class="stat"><b data-to="0">0</b><span>accounts or trackers</span></div>
+  </div>
+</div>
 
 <main>
 
-  <section class="panel">
-    <h2>It's one process</h2>
-    <p class="lede">
-      Most wallpaper engines want several processes, a launcher, an account, and an embedded
-      browser to loop an MP4. FeatherWall is <code>featherwall.exe</code> and nothing else, built on
-      Win32, Direct3D&nbsp;11 and DirectComposition.
-    </p>
-    <p>
-      It also renders on the Windows&nbsp;11 24H2 desktop, which changed how the shell composes
-      wallpapers and left a lot of older tools drawing a black rectangle. FeatherWall detects both
-      the classic and the newer layout at startup.
-    </p>
+  <section class="wrap reveal">
+    <div class="section-head">
+      <p class="eyebrow">How it works</p>
+      <h2>Three layers, one process</h2>
+      <p>Your wallpaper, an optional clock drawn above it, and your windows on top. FeatherWall composes that stack through DirectComposition, the same path the Windows shell uses, from a single executable with no browser engine and no launcher.</p>
+    </div>
     <figure>
-      <img src="media/demo.gif" alt="A 4K animated wallpaper playing on the desktop with the clock widget above it" loading="lazy" width="760">
-      <figcaption>A real screen recording: a 4000&times;2250 clip decoding on the desktop, clock ticking over it, desktop still usable underneath.</figcaption>
+      <img src="media/demo.gif" alt="A 4K animated wallpaper playing on the desktop while the clock ticks above it" loading="lazy" width="1120">
+      <figcaption>Real screen capture. A 4000&times;2250 clip decoding live, desktop fully usable underneath.</figcaption>
     </figure>
   </section>
 
-  <section class="panel">
-    <h2>What it costs you</h2>
-    <p class="muted small">
-      Measured over sampled 30 to 40 second windows on a running instance, not estimated.
-      Windows 11 Pro 26200, 24 logical cores, 2560&times;1600 at 150% scaling.
-    </p>
-    <div class="scroll-x">
-      <table>
-        <caption>The bold column is the number Task Manager shows you.</caption>
-        <thead>
-          <tr><th>State</th><th>CPU, whole machine</th><th>CPU, one core</th><th>Memory</th><th>GPU</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>Still image</td><td class="num"><strong>0.03&nbsp;%</strong></td><td class="num">0.8&nbsp;%</td><td class="num">151&nbsp;MB</td><td class="num">0&nbsp;%</td></tr>
-          <tr><td>Video, auto-paused</td><td class="num"><strong>0.01&nbsp;%</strong></td><td class="num">0.2&nbsp;%</td><td class="num">246&nbsp;MB</td><td class="num">0&nbsp;%</td></tr>
-          <tr><td>1080p video playing</td><td class="num"><strong>1.0&nbsp;%</strong></td><td class="num">24&nbsp;%</td><td class="num">199&nbsp;MB</td><td class="num">50&nbsp;%</td></tr>
-          <tr><td>4K video playing</td><td class="num"><strong>0.9&nbsp;%</strong></td><td class="num">22&nbsp;%</td><td class="num">270&nbsp;MB</td><td class="num">73&nbsp;%</td></tr>
-        </tbody>
-      </table>
+  <section class="wrap reveal">
+    <div class="section-head">
+      <p class="eyebrow">Measured, not estimated</p>
+      <h2>What it costs you</h2>
+      <p>Sampled over 30 to 40 second windows on a running instance. Windows 11 Pro 26200, 24 logical cores, 2560&times;1600 at 150% scaling.</p>
     </div>
-    <p>
-      A still wallpaper is drawn once and then costs nothing: no timers, no frames, no GPU work.
-      Video stops rather than throttles when a fullscreen app is in front, the session locks, you
-      connect over remote desktop, or battery saver switches on.
-    </p>
+    <div class="bars" id="bars">
+      <div class="bar-row"><span class="label">Still image</span><span class="bar-track"><span class="bar-fill" data-pct="56"></span></span><span class="val">151 MB &middot; 0.03% CPU</span></div>
+      <div class="bar-row"><span class="label">Video, paused</span><span class="bar-track"><span class="bar-fill" data-pct="91"></span></span><span class="val">246 MB &middot; 0.01% CPU</span></div>
+      <div class="bar-row"><span class="label">1080p playing</span><span class="bar-track"><span class="bar-fill" data-pct="74"></span></span><span class="val">199 MB &middot; 1.0% CPU</span></div>
+      <div class="bar-row"><span class="label">4K playing</span><span class="bar-track"><span class="bar-fill" data-pct="100"></span></span><span class="val">270 MB &middot; 0.9% CPU</span></div>
+    </div>
+    <p class="note">Bars show memory. Playback stops rather than throttles for fullscreen apps, the lock screen, remote sessions and battery saver, which is why a paused video costs less CPU than a still image redrawing its clock.</p>
   </section>
 
-  <section class="panel">
-    <h2>The clock takes any font you own</h2>
-    <p>
-      Nine positions, any installed typeface, any size and colour, optional seconds and date. The
-      settings panel previews it with the same renderer that paints your desktop, so what you see
-      while choosing is what you get.
-    </p>
+  <section class="wrap reveal">
+    <div class="section-head">
+      <p class="eyebrow">The widget</p>
+      <h2>Any font you own, anywhere on screen</h2>
+      <p>Nine positions, any installed typeface, adjustable size, colour and opacity. The settings panel previews it with the same renderer that paints your desktop.</p>
+    </div>
     <div class="shots">
       <img src="media/clock-bahnschrift.jpg" alt="Clock in Bahnschrift Light over the Hubble Ultra Deep Field" loading="lazy">
       <img src="media/clock-cascadia.jpg" alt="Clock in Cascadia Mono over the Blue Marble photograph" loading="lazy">
-      <img src="media/settings-clock.png" alt="The FeatherWall settings panel showing clock options and a live preview" loading="lazy">
+      <img src="media/settings-clock.png" alt="FeatherWall settings panel with a live clock preview" loading="lazy">
     </div>
-    <p class="small muted" style="margin-top:1rem">
-      Wallpapers shown come from the built-in gallery: public domain and CC0 media from NASA and
-      Wikimedia Commons, downloaded from the source with no API key and no tracking.
-    </p>
   </section>
 
-  <section class="panel">
-    <h2>Before you download</h2>
-    <p>
-      Releases are unsigned, so SmartScreen will warn you. That is worth taking seriously rather
-      than clicking through on trust: verify the archive, or build it yourself from source.
-    </p>
-    <p class="checksum">Get-FileHash .\featherwall-v0.1.0-win-x64.zip -Algorithm SHA256<br>300f59a28269fc2fc034ad86ee64d6fd320cd17f8c2e7a31c789bcc28844dfd7</p>
-    <h3>Things that have not been tested</h3>
-    <p>
-      Multi-monitor layouts, the pre-24H2 desktop layout, and recovery after Explorer restarts are
-      written and unit-tested, but have never run on hardware. There is one developer and one
-      display. If you have a second monitor, saying what happens is the most useful thing you could
-      do for this project.
-    </p>
-    <p class="small">
-      <a href="https://github.com/RitvikDayal/featherwall/issues/3">Multi-monitor issue</a> &middot;
-      <a href="https://github.com/RitvikDayal/featherwall/issues">All open issues</a>
-    </p>
+  <section class="wrap reveal">
+    <div class="about">
+      <div class="card">
+        <h3>Who made this</h3>
+        <p>I'm Ritvik Dayal, a software engineer. I build tools from scratch to understand how things actually work, which is how this started: I wanted a live wallpaper and did not want a launcher, an account, or a browser engine running behind my desktop.</p>
+        <p>FeatherWall is a personal open-source project, MIT licensed, with no paid tier and nothing to upsell.</p>
+        <div class="tags">
+          <span class="tag">C# / .NET 10</span><span class="tag">Win32</span>
+          <span class="tag">Direct3D 11</span><span class="tag">DirectComposition</span>
+        </div>
+        <p style="margin-top:1.1rem"><a href="https://github.com/RitvikDayal">github.com/RitvikDayal</a></p>
+      </div>
+      <div class="honest">
+        <h3>What isn't done</h3>
+        <p>Multi-monitor layouts, the pre-24H2 desktop layout, and recovery after Explorer restarts are written and unit-tested, but have never run on real hardware. One developer, one display.</p>
+        <p>Releases are unsigned, so SmartScreen will warn you. Verify the archive or build from source.</p>
+        <p class="checksum">300f59a28269fc2fc034ad86ee64d6fd320cd17f8c2e7a31c789bcc28844dfd7</p>
+        <p style="margin-top:1rem"><a href="https://github.com/RitvikDayal/featherwall/issues/3">Help test multi-monitor &rarr;</a></p>
+      </div>
+    </div>
   </section>
 
 </main>
 
+<section class="finale">
+  <div class="wrap">
+    <h2>Put something alive behind your work</h2>
+    <p>Free, open source, and about the size of a photograph.</p>
+    <div class="cta">
+      <a class="btn btn-primary" href="https://github.com/RitvikDayal/featherwall/releases/latest/download/featherwall-v0.1.0-win-x64.zip">Download for Windows</a>
+      <a class="btn btn-ghost" href="https://github.com/RitvikDayal/featherwall">Star it on GitHub</a>
+    </div>
+  </div>
+</section>
+
 <footer>
-  <p>
-    MIT licensed. Built by <a href="https://github.com/RitvikDayal">Ritvik Dayal</a>.
-    <a href="https://github.com/RitvikDayal/featherwall">Source</a> &middot;
-    <a href="https://github.com/RitvikDayal/featherwall/releases">Releases</a> &middot;
-    <a href="https://github.com/RitvikDayal/featherwall/blob/main/docs/architecture.md">Architecture</a> &middot;
-    <a href="https://github.com/RitvikDayal/featherwall/blob/main/THIRD-PARTY-NOTICES.md">Credits</a>
-  </p>
-  <p class="small">
-    Hero photograph: Marmolada, Italy by Marco Bonomo (CC0). Demo footage: <em>Big Buck Bunny</em>,
-    &copy;&nbsp;2008 Blender Foundation, <a href="https://peach.blender.org">peach.blender.org</a>,
-    <a href="https://creativecommons.org/licenses/by/3.0/">CC&nbsp;BY&nbsp;3.0</a>.
-  </p>
+  <div class="wrap">
+    <p>
+      MIT licensed &middot;
+      <a href="https://github.com/RitvikDayal/featherwall">Source</a> &middot;
+      <a href="https://github.com/RitvikDayal/featherwall/releases">Releases</a> &middot;
+      <a href="https://github.com/RitvikDayal/featherwall/blob/main/docs/architecture.md">Architecture</a> &middot;
+      <a href="https://github.com/RitvikDayal/featherwall/blob/main/THIRD-PARTY-NOTICES.md">Credits</a>
+    </p>
+    <p>Hero photograph: Marmolada, Italy by Marco Bonomo (CC0). Demo footage: <em>Big Buck Bunny</em>, &copy; 2008 Blender Foundation, <a href="https://peach.blender.org">peach.blender.org</a>, <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>.</p>
+  </div>
 </footer>
 
 <script>
-  // The hero widget shows the visitor's own clock, in the format their system uses.
-  (function () {
-    var t = document.getElementById('clock'), d = document.getElementById('today');
-    function tick() {
-      var now = new Date();
-      t.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      d.textContent = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
-      t.setAttribute('datetime', now.toISOString());
+(function(){
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* the stack's clock shows the visitor's own time, in their own format */
+  var t=document.getElementById('c-time'), d=document.getElementById('c-date');
+  function tick(){
+    var n=new Date();
+    t.textContent=n.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    d.textContent=n.toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'});
+  }
+  tick(); setInterval(tick,1000);
+
+  /* cursor parallax on the stack */
+  var stack=document.getElementById('stack');
+  if(stack && !reduce && window.matchMedia('(pointer:fine)').matches){
+    window.addEventListener('mousemove',function(e){
+      var x=(e.clientX/window.innerWidth-.5), y=(e.clientY/window.innerHeight-.5);
+      stack.style.animation='none';
+      stack.style.transform='rotateX('+(17-y*12)+'deg) rotateZ(-20deg) rotateY('+(x*16)+'deg)';
+    },{passive:true});
+  }
+
+  /* reveal on scroll, count up the stats, fill the bars */
+  function countUp(el){
+    var to=parseFloat(el.dataset.to), dec=parseInt(el.dataset.dec||'0',10), start=null;
+    if(reduce||to===0){el.textContent=to.toFixed(dec);return;}
+    function step(ts){
+      if(!start)start=ts;
+      var p=Math.min((ts-start)/900,1), eased=1-Math.pow(1-p,3);
+      el.textContent=(to*eased).toFixed(dec);
+      if(p<1)requestAnimationFrame(step);
     }
-    tick();
-    setInterval(tick, 1000);
-  })();
+    requestAnimationFrame(step);
+  }
+  var io=new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if(!en.isIntersecting) return;
+      var el=en.target;
+      el.classList.add('in');
+      if(el.matches('.stats')) el.querySelectorAll('[data-to]').forEach(countUp);
+      if(el.matches('#bars')) el.querySelectorAll('.bar-fill').forEach(function(b){b.style.width=b.dataset.pct+'%';});
+      io.unobserve(el);
+    });
+  },{threshold:.25});
+  document.querySelectorAll('.reveal, .stats, #bars').forEach(function(n){io.observe(n);});
+})();
 </script>
 </body>
 </html>
