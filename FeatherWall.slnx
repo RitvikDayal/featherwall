@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FeatherWall/FeatherWall.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FeatherWall.Tests/FeatherWall.Tests.csproj" />
+  </Folder>
+</Solution>

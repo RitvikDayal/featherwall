@@ -1,0 +1,75 @@
+name: Bug report
+description: Something renders wrong, crashes, or doesn't behave as documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Wallpaper bugs are almost always specific to a desktop topology, a DPI scale, or a
+        codec. The two fields below resolve most reports on their own — please don't skip them.
+
+  - type: textarea
+    id: diag
+    attributes:
+      label: Output of `featherwall --diag`
+      description: Run it from a terminal and paste the whole thing. It prints the desktop topology and monitor layout.
+      render: text
+      placeholder: |
+        FeatherWall --diag (Microsoft Windows NT 10.0.26200.0)
+        Topology : RaisedDesktop
+        Progman  : 0x10242
+        WorkerW  : 0x10294
+        DefView  : 0x30238
+        Monitor  : \\.\DISPLAY1 (0,0)-(2560,1600) 2560x1600 (primary)
+    validations:
+      required: true
+
+  - type: input
+    id: scaling
+    attributes:
+      label: Display scaling
+      description: Settings → System → Display → Scale. Include it for every monitor.
+      placeholder: "150% on a single 2560x1600"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you expected, what you got. A screenshot helps a lot for rendering bugs.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Set an MP4 as wallpaper
+        2. Undock the laptop
+        3. Clock is in the wrong place
+    validations:
+      required: true
+
+  - type: input
+    id: media
+    attributes:
+      label: Wallpaper file (if relevant)
+      description: Container, codec and resolution. `ffprobe` output is ideal.
+      placeholder: "MP4, H.264, 3840x2160"
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Relevant lines from the log
+      description: "`%LOCALAPPDATA%\\FeatherWall\\featherwall.log` — the last 30 lines are usually enough."
+      render: text
+
+  - type: input
+    id: version
+    attributes:
+      label: FeatherWall version or commit
+      placeholder: "0.1.0 / a1b2c3d"
+    validations:
+      required: true

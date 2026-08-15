@@ -1,0 +1,54 @@
+using System.Diagnostics;
+
+namespace FeatherWall.Common;
+
+/// <summary>Tiny append-only file logger — %LOCALAPPDATA%\FeatherWall\featherwall.log.</summary>
+public static class Log
+{
+    private static readonly object Sync = new();
+    private static string? _path;
+
+    public static string Directory { get; } =
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FeatherWall");
+
+    public static void Init()
+    {
+        System.IO.Directory.CreateDirectory(Directory);
+        _path = Path.Combine(Directory, "featherwall.log");
+        try
+        {
+            if (File.Exists(_path) && new FileInfo(_path).Length > 1_000_000)
+                File.Delete(_path);
+        }
+        catch { /* best effort */ }
+    }
+
+    public static void Info(string message) => Write("INF", message);
+    public static void Warn(string message) => Write("WRN", message);
+    public static void Error(string message, Exception? ex = null) =>
+        Write("ERR", ex is null ? message : $"{message}: {ex}");
+
+    private static int _writesSinceSizeCheck;
+
+    private static void Write(string level, string message)
+    {
+        var line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{level}] {message}";
+        Debug.WriteLine(line);
+        if (_path is null) return;
+        lock (Sync)
+        {
+            try
+            {
+                // Long-lived process: keep the log bounded even mid-session.
+                if (++_writesSinceSizeCheck >= 1000)
+                {
+                    _writesSinceSizeCheck = 0;
+                    if (File.Exists(_path) && new FileInfo(_path).Length > 5_000_000)
+                        File.Delete(_path);
+                }
+                File.AppendAllText(_path, line + Environment.NewLine);
+            }
+            catch { /* best effort */ }
+        }
+    }
+}

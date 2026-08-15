@@ -1,0 +1,59 @@
+name: Gallery wallpaper submission
+description: Propose a CC0 / public-domain wallpaper for the built-in gallery
+labels: [gallery]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The gallery only accepts CC0 and public-domain media, and only from hosts that allow
+        direct keyless download (Wikimedia Commons and NASA are the usual sources). Stock sites
+        like Pexels, Unsplash and Pixabay prohibit wallpaper apps in their terms — those cannot
+        be accepted regardless of how the individual image is licensed.
+
+  - type: input
+    id: source
+    attributes:
+      label: Source page
+      description: The page that states the licence.
+      placeholder: "https://commons.wikimedia.org/wiki/File:..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: license
+    attributes:
+      label: Licence
+      options:
+        - CC0
+        - Public domain (NASA)
+        - Public domain (other — explain below)
+    validations:
+      required: true
+
+  - type: input
+    id: url
+    attributes:
+      label: Direct download URL
+      description: Must be stable and require no API key.
+    validations:
+      required: true
+
+  - type: input
+    id: details
+    attributes:
+      label: Type, resolution and size
+      placeholder: "video, 1920x1080, 4.2 MB, VP9/WebM"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: Calm and loopable (it will sit behind someone's work all day)
+          required: true
+        - label: 720p or better, no logos or watermarks
+          required: true
+        - label: I can provide the SHA-1 (Commons exposes it via the API)
+          required: true
