@@ -73,18 +73,26 @@ dark setting too.
 
 ## What it costs you
 
-These are measurements, not estimates. Each row came from a sampled 30 to 40 second window on a
-running instance.
+The CPU and memory figures are measurements, not estimates. Each row came from a sampled 30 to 40
+second window on a running instance. **The GPU column is unverified and is currently being
+re-measured. See the note below the table.**
 
 > Test rig: Windows 11 Pro 26200, RTX 5090 laptop, 24 logical cores, 2560x1600 at 150% scaling,
 > .NET 10, Release build, single monitor.
 
-| State | CPU (whole machine) | CPU (one core) | Memory (working set) | GPU |
+| State | CPU (whole machine) | CPU (one core) | Memory (working set) | GPU (unverified) |
 |---|---|---|---|---|
 | Still image | 0.03 % | 0.8 % | 151 MB | 0 % |
 | Video, auto-paused | 0.01 % | 0.2 % | 246 MB | 0 % |
 | Video, 1080p H.264 playing | 1.0 % | 24 % | 199 MB | 50 % |
 | Video, 4K H.264 playing | 0.9 % | 22 % | 270 MB | 73 % |
+
+> **On the GPU column.** These figures are being re-measured and should be treated as unverified
+> until this note is removed. This machine has both an RTX 5090 and Intel integrated graphics, and
+> Windows may route H.264 hardware decode to the integrated GPU, in which case the percentage
+> reflects a single engine on one GPU rather than total GPU load. The whole table is being re-run
+> by hand and will be republished with a per-engine breakdown, VRAM and package power draw,
+> alongside the method used to collect them.
 
 The first CPU column is what Task Manager shows you. The second is the same measurement divided
 by one core instead of twenty-four, because a 1 % figure on a machine this wide deserves the
