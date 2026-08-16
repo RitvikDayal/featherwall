@@ -334,6 +334,58 @@ section{padding:clamp(3.4rem,8vw,6.4rem) 0;scroll-margin-top:56px}
 .track i{position:absolute;inset:0 auto 0 0;width:0;background:var(--signal);transition:width 1s cubic-bezier(.2,.75,.2,1)}
 .foot-note{margin:1.4rem 0 0;color:var(--slate);font-size:.86rem;max-width:70ch}
 
+/* 02 the Task Manager view. A real system surface pinned onto the paper page:
+   the numbers read as something you could check yourself, not as a chart I drew. */
+.tm-switch{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--rule);margin-bottom:1.4rem}
+.tm-tab{
+  flex:1 1 auto;min-height:48px;padding:.8rem 1rem;border:0;border-left:1px solid var(--rule-soft);
+  background:transparent;color:var(--slate);cursor:pointer;
+  font:500 .68rem/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;
+  transition:background .14s linear,color .14s linear;
+}
+.tm-tab:first-child{border-left:0}
+.tm-tab:hover{background:rgba(18,17,16,.06);color:var(--ink)}
+.tm-tab.is-on{background:var(--ink);color:var(--paper)}
+
+.tm{border:1px solid var(--rule);background:#1B1A18;color:#E8E4DC;overflow:hidden}
+.tm-chrome{
+  display:flex;align-items:center;gap:.6rem;padding:.65rem .9rem;background:#232120;
+  border-bottom:1px solid rgba(237,233,225,.13);
+  font:500 .68rem/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:#A9A296;
+}
+.tm-dot{width:9px;height:9px;background:var(--signal);display:block;flex:0 0 auto}
+.tm-nav{display:flex;gap:1.4rem;padding:.7rem .9rem;border-bottom:1px solid rgba(237,233,225,.13)}
+.tm-nav span{font:500 .66rem/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:#6F6A61}
+.tm-nav span.on{color:#E8E4DC;box-shadow:inset 0 -2px 0 var(--signal);padding-bottom:.35rem}
+
+.tm-grid{
+  display:grid;grid-template-columns:minmax(0,1.6fr) 5.5rem 6.5rem 5rem minmax(0,1.5fr);
+  align-items:center;
+}
+.tm-h{
+  padding:.7rem .9rem;font:500 .6rem/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;
+  color:#6F6A61;border-bottom:1px solid rgba(237,233,225,.13);
+}
+.tm-h.r,.tm-n.r{text-align:right}
+.tm-proc{display:flex;align-items:center;gap:.6rem;padding:1rem .9rem;font-size:.92rem}
+.tm-ico{width:13px;height:13px;background:var(--signal);display:block;flex:0 0 auto}
+.tm-n{padding:1rem .9rem;font:500 1rem/1 var(--mono);font-variant-numeric:tabular-nums;transition:color .2s linear}
+.tm-e{padding:1rem .9rem;font:400 .8rem/1.3 var(--mono);color:#A9A296}
+@media(max-width:760px){
+  .tm-grid{grid-template-columns:minmax(0,1fr) 4.4rem 5.4rem}
+  .tm-h:nth-child(4),.tm-h:nth-child(5),#tm-gpu,#tm-eng{display:none}
+}
+
+.tm-sub{border-top:1px solid rgba(237,233,225,.13);padding:1rem .9rem 1.1rem}
+.tm-sub-h{font:500 .6rem/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:#6F6A61;margin-bottom:.9rem}
+.tm-eng-row{display:grid;grid-template-columns:minmax(0,16rem) 1fr 4.5rem;gap:.9rem;align-items:center;padding:.32rem 0}
+.tm-eng-row span:first-child{font-size:.82rem;color:#C3BCB1}
+.tm-eng-row b{font:500 .82rem/1 var(--mono);text-align:right;font-variant-numeric:tabular-nums}
+.tm-bar{height:7px;background:rgba(237,233,225,.1);position:relative;overflow:hidden}
+.tm-bar i{position:absolute;inset:0 auto 0 0;width:0;background:var(--signal);transition:width .45s cubic-bezier(.2,.75,.2,1)}
+.tm-adapters .tm-bar i{background:#7FA7D8}
+@media(max-width:560px){.tm-eng-row{grid-template-columns:minmax(0,8rem) 1fr 3.6rem;gap:.6rem}}
+
 /* 03 gallery */
 .gallery{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);grid-template-columns:1fr}
 @media(min-width:700px){.gallery{grid-template-columns:repeat(3,1fr)}}
@@ -552,15 +604,45 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
       <span class="meta idx">02</span><span class="meta">Measured</span>
       <h2>What it actually costs</h2>
     </div>
-    <p class="intro">Sampled over 30 to 40 second windows on a running instance. Windows 11 Pro build 26200, 24 logical cores, 2560&times;1600 at 150% scaling. Bars show working set.</p>
+    <p class="intro">25 one-second samples on a running instance, with the pause state checked before and after each window so a silently paused wallpaper could never be recorded as a cheap one. <strong>Pick a state and watch what moves.</strong></p>
 
-    <div class="table" id="table">
-      <div class="row"><span class="state">Still image</span><span class="track"><i data-pct="56"></i></span><span class="num">151 MB</span><span class="num">0.03% CPU</span></div>
-      <div class="row"><span class="state">Video, paused</span><span class="track"><i data-pct="91"></i></span><span class="num">246 MB</span><span class="num">0.01% CPU</span></div>
-      <div class="row"><span class="state">1080p playing</span><span class="track"><i data-pct="74"></i></span><span class="num">199 MB</span><span class="num">1.0% CPU</span></div>
-      <div class="row"><span class="state">4K playing</span><span class="track"><i data-pct="100"></i></span><span class="num">270 MB</span><span class="num">0.9% CPU</span></div>
+    <div class="tm-switch" role="tablist" aria-label="Wallpaper state">
+      <button class="tm-tab" role="tab" data-state="still">Still image</button>
+      <button class="tm-tab is-on" role="tab" aria-selected="true" data-state="p1080">1080p60 video</button>
+      <button class="tm-tab" role="tab" data-state="p4k">4K60 video</button>
+      <button class="tm-tab" role="tab" data-state="paused">Auto-paused</button>
     </div>
-    <p class="foot-note">A paused video costs less CPU than a still image because the still one is still redrawing its clock every second. Nothing here is a projection: these are numbers off a running process, and the method is in the repository if you want to disagree with it.</p>
+
+    <div class="tm">
+      <div class="tm-chrome"><span class="tm-dot"></span>Task Manager</div>
+      <div class="tm-nav"><span class="on">Processes</span><span>Performance</span><span>Details</span></div>
+
+      <div class="tm-grid" role="table">
+        <div class="tm-h">Name</div><div class="tm-h r">CPU</div><div class="tm-h r">Memory</div><div class="tm-h r">GPU</div><div class="tm-h">GPU engine</div>
+        <div class="tm-proc"><i class="tm-ico" aria-hidden="true"></i>featherwall.exe</div>
+        <div class="tm-n r" id="tm-cpu">0.79%</div>
+        <div class="tm-n r" id="tm-mem">212 MB</div>
+        <div class="tm-n r" id="tm-gpu">29.4%</div>
+        <div class="tm-e" id="tm-eng">GPU 0 &ndash; Video Processing</div>
+      </div>
+
+      <div class="tm-sub">
+        <div class="tm-sub-h">GPU engines &middot; this process</div>
+        <div class="tm-eng-row"><span>Video processing</span><span class="tm-bar"><i id="b-proc"></i></span><b id="v-proc">29.4%</b></div>
+        <div class="tm-eng-row"><span>Video decode</span><span class="tm-bar"><i id="b-dec"></i></span><b id="v-dec">6.8%</b></div>
+        <div class="tm-eng-row"><span>3D</span><span class="tm-bar"><i id="b-3d"></i></span><b id="v-3d">7.5%</b></div>
+        <div class="tm-eng-row"><span>Graphics memory</span><span class="tm-bar"><i id="b-mem"></i></span><b id="v-gmem">122 MB</b></div>
+      </div>
+
+      <div class="tm-sub tm-adapters">
+        <div class="tm-sub-h">Adapters</div>
+        <div class="tm-eng-row"><span>GPU 0 &middot; Intel Arc, integrated</span><span class="tm-bar"><i id="b-igpu"></i></span><b id="v-igpu">29.4%</b></div>
+        <div class="tm-eng-row"><span>GPU 1 &middot; NVIDIA RTX 5090 Laptop</span><span class="tm-bar"><i style="width:0"></i></span><b>0%</b></div>
+      </div>
+    </div>
+
+    <p class="foot-note"><strong>All of this lands on the integrated GPU.</strong> <span class="mono-inline">nvidia-smi</span> lists no FeatherWall process on the RTX 5090, which stayed at 0% throughout. The compositor lives on whichever adapter drives your display, so the wallpaper never competes with a game on the discrete card.</p>
+    <p class="foot-note">Two things the numbers do not say on their own. GPU percentages are <em>per engine</em> and do not sum, which is why the table shows the busiest one, the same as Task Manager. And graphics memory is a separate allocation from the working set: dedicated VRAM reads 0 MB because integrated graphics borrow system RAM, so a 4K60 wallpaper really costs about 480 MB of system memory rather than 248 MB. Paused is the largest memory row because buffers are retained so resuming is instant, while CPU and both video engines drop to nothing.</p>
   </section>
 
   <!-- 03 -->
@@ -756,11 +838,46 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
       var el = en.target;
       el.classList.add('in');
       if (el.matches('.figures')) el.querySelectorAll('[data-to]').forEach(countUp);
-      if (el.matches('#table')) el.querySelectorAll('[data-pct]').forEach(function(b){ b.style.width = b.dataset.pct + '%'; });
       io.unobserve(el);
     });
   }, {threshold:0, rootMargin:'0px 0px -12% 0px'});
-  document.querySelectorAll('.rev, .figures, #table').forEach(function(n){ io.observe(n); });
+  document.querySelectorAll('.rev, .figures').forEach(function(n){ io.observe(n); });
+
+  /* the Task Manager view. Every figure here was measured, not modelled:
+     25 one-second samples per state with the pause state verified either side. */
+  var STATES = {
+    still:  {cpu:'0.06%',  mem:'156 MB', gpu:'0.1%',  eng:'GPU 0 – 3D',                proc:0,    dec:0,    d3:0.1,  gmem:44,  gmemLabel:'44 MB'},
+    p1080:  {cpu:'0.79%',  mem:'212 MB', gpu:'29.4%', eng:'GPU 0 – Video Processing', proc:29.4, dec:6.8,  d3:7.5,  gmem:122, gmemLabel:'122 MB'},
+    p4k:    {cpu:'0.84%',  mem:'248 MB', gpu:'41.8%', eng:'GPU 0 – Video Processing', proc:41.8, dec:17.9, d3:7.6,  gmem:234, gmemLabel:'234 MB'},
+    paused: {cpu:'0.004%', mem:'309 MB', gpu:'0.1%',  eng:'GPU 0 – 3D',                proc:0,    dec:0,    d3:0.1,  gmem:269, gmemLabel:'269 MB'}
+  };
+  var GMEM_MAX = 300;   /* bar scale, so graphics memory is comparable across states */
+
+  function showState(key){
+    var d = STATES[key]; if (!d) return;
+    document.getElementById('tm-cpu').textContent = d.cpu;
+    document.getElementById('tm-mem').textContent = d.mem;
+    document.getElementById('tm-gpu').textContent = d.gpu;
+    document.getElementById('tm-eng').innerHTML   = d.eng;
+    document.getElementById('v-proc').textContent = d.proc + '%';
+    document.getElementById('v-dec').textContent  = d.dec + '%';
+    document.getElementById('v-3d').textContent   = d.d3 + '%';
+    document.getElementById('v-gmem').textContent = d.gmemLabel;
+    document.getElementById('v-igpu').textContent = d.gpu;
+    document.getElementById('b-proc').style.width = d.proc + '%';
+    document.getElementById('b-dec').style.width  = d.dec + '%';
+    document.getElementById('b-3d').style.width   = d.d3 + '%';
+    document.getElementById('b-mem').style.width  = Math.min(100, d.gmem / GMEM_MAX * 100) + '%';
+    document.getElementById('b-igpu').style.width = parseFloat(d.gpu) + '%';
+  }
+  document.querySelectorAll('.tm-tab').forEach(function(tab){
+    tab.addEventListener('click', function(){
+      document.querySelectorAll('.tm-tab').forEach(function(t){ t.classList.remove('is-on'); t.removeAttribute('aria-selected'); });
+      tab.classList.add('is-on'); tab.setAttribute('aria-selected','true');
+      showState(tab.dataset.state);
+    });
+  });
+  showState('p1080');
 
   /* copy buttons on the install commands */
   document.querySelectorAll('.copy').forEach(function(btn){

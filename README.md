@@ -73,38 +73,58 @@ dark setting too.
 
 ## What it costs you
 
-The CPU and memory figures are measurements, not estimates. Each row came from a sampled 30 to 40
-second window on a running instance. **The GPU column is unverified and is currently being
-re-measured. See the note below the table.**
+These are measurements, not estimates. Each row is 25 one-second samples on a running instance,
+with the pause state checked before and after the window so a silently paused wallpaper could
+never be recorded as a cheap one. The GPU column that used to sit here carried no stated method
+and has been fully re-measured; what follows replaces it.
 
-> Test rig: Windows 11 Pro 26200, RTX 5090 laptop, 24 logical cores, 2560x1600 at 150% scaling,
-> .NET 10, Release build, single monitor.
+> **Test rig:** Windows 11 Pro 26200 · Intel Core Ultra 9 275HX, 24 logical cores · 63 GB RAM ·
+> Intel Arc integrated graphics driving the display, NVIDIA RTX 5090 Laptop idle · 2560x1600 at
+> 240 Hz, 150 % scaling · .NET 10 Release build, single monitor.
+>
+> **Test media:** Hubble Ultra Deep Field, 6200x6200 JPEG, public domain. For video, a
+> 3840x2160 H.264 clip at 60 fps and 12 Mbps, plus a 1920x1080 downscale of **the same clip**,
+> so the two video rows differ only in resolution.
 
-| State | CPU (whole machine) | CPU (one core) | Memory (working set) | GPU (unverified) |
-|---|---|---|---|---|
-| Still image | 0.03 % | 0.8 % | 151 MB | 0 % |
-| Video, auto-paused | 0.01 % | 0.2 % | 246 MB | 0 % |
-| Video, 1080p H.264 playing | 1.0 % | 24 % | 199 MB | 50 % |
-| Video, 4K H.264 playing | 0.9 % | 22 % | 270 MB | 73 % |
-
-> **On the GPU column.** These figures are being re-measured and should be treated as unverified
-> until this note is removed. This machine has both an RTX 5090 and Intel integrated graphics, and
-> Windows may route H.264 hardware decode to the integrated GPU, in which case the percentage
-> reflects a single engine on one GPU rather than total GPU load. The whole table is being re-run
-> by hand and will be republished with a per-engine breakdown, VRAM and package power draw,
-> alongside the method used to collect them.
+| State | CPU (whole machine) | CPU (one core) | Memory (working set) | Graphics memory | Busiest GPU engine |
+|---|---|---|---|---|---|
+| Still image | 0.06 % | 1.4 % | 156 MB | 44 MB | 0.1 % (3D) |
+| Video, auto-paused | 0.004 % | 0.1 % | 309 MB | 269 MB | 0 % (no video engine work) |
+| Video, 1080p60 playing | 0.79 % | 19 % | 212 MB | 122 MB | 29.4 % (video processing) |
+| Video, 4K60 playing | 0.84 % | 20 % | 248 MB | 234 MB | 41.8 % (video processing) |
 
 The first CPU column is what Task Manager shows you. The second is the same measurement divided
-by one core instead of twenty-four, because a 1 % figure on a machine this wide deserves the
+by one core instead of twenty-four, because a sub-1 % figure on a machine this wide deserves the
 honest denominator next to it.
 
-A still wallpaper is genuinely free. It gets drawn once and then nothing happens: no GPU work, no
-timers, 0.03 % CPU. If you only ever use images, FeatherWall costs you 151 MB of RAM and little
-else.
+**This runs on the integrated GPU, not the discrete one.** Every GPU number above belongs to the
+**Intel Arc integrated graphics**. `nvidia-smi` lists no FeatherWall process on the RTX 5090, which
+sat at 0 % utilisation and 287 MiB of its 24463 MiB throughout. That is not an accident: the
+compositor lives on whichever adapter drives the display, so the wallpaper stays there and never
+competes with a game on the discrete card. On a desktop whose only GPU is discrete, these numbers
+would land on that card instead.
 
-Pausing is the whole battery story. Put a fullscreen app in front, lock the session, connect over
-RDP or switch on battery saver, and playback stops rather than throttling. Rendering is entirely
-event driven, so a paused wallpaper schedules no timers, no frames and no wakeups.
+**Read the GPU column carefully.** Windows reports GPU work per engine, not as one number, and
+those percentages do not add up to a total. The table shows the busiest single engine, which is
+roughly what Task Manager displays. At 4K60 the video decode engine was also at 17.9 % and 3D at
+7.6 %; summing them to 67 % would be meaningless.
+
+**Graphics memory is not the working set, and it is not VRAM.** It is a separate allocation, and
+dedicated VRAM reads **0 MB** on every row because integrated graphics have no memory of their own
+and borrow system RAM instead. Add the two memory columns for the honest total: a 4K60 wallpaper
+costs roughly 480 MB of system memory, not 248 MB. The old version of this table listed only the
+working set, which undersold the real footprint by about half.
+
+**Frame rate costs as much as resolution.** Both video rows are 60 fps. Dropping the same clip from
+4K to 1080p saved 12 points on the video processing engine and 112 MB of graphics memory, but
+halving the frame rate is the other dial and it is just as effective. A 24 fps 4K clip measured
+22.5 % on that engine, roughly half the 60 fps figure.
+
+**Pausing costs nothing to run, but it does not give the memory back.** Put a fullscreen app in
+front, lock the session, connect over RDP or switch on battery saver, and playback stops rather
+than throttling: 0.004 % CPU and no video engine activity at all. The buffers stay allocated so
+resuming is instant, which makes paused the highest-memory row in the table. That is the honest
+shape of it, and it is the state the wallpaper is in whenever you are actually gaming.
 
 It also stays where it starts. Memory and threads were flat across 30 consecutive full re-applies,
 which is the path a laptop hits every time it docks or changes monitors: 250 MB to 278 MB, 56
