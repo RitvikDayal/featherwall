@@ -26,6 +26,14 @@ public sealed class ClockConfig
     public ClockAnchor Anchor { get; set; } = ClockAnchor.TopCenter;
     public int MarginX { get; set; } = 48;
     public int MarginY { get; set; } = 96;
+
+    /// <summary>Per-edge overrides. Null inherits MarginX (left/right) or MarginY (top/bottom),
+    /// so an untouched config behaves exactly as it did before these existed. Only the edges the
+    /// anchor actually touches are consulted.</summary>
+    public int? MarginLeft { get; set; }
+    public int? MarginRight { get; set; }
+    public int? MarginTop { get; set; }
+    public int? MarginBottom { get; set; }
     public bool TwentyFourHour { get; set; } = false;
     public bool ShowSeconds { get; set; } = false;
     public bool ShowDate { get; set; } = true;
@@ -37,6 +45,28 @@ public sealed class ClockConfig
     /// <summary>#RRGGBB or #AARRGGBB.</summary>
     public string Color { get; set; } = "#F0FFFFFF";
     public bool Shadow { get; set; } = true;
+
+    // ---- date styling ---------------------------------------------------------------------
+    // Requested on r/coolgithubprojects by a user two days into daily use: the date could not be
+    // styled at all, because CreateDateFont hardcoded "Segoe UI" at 16% of the time's size.
+    // Every default below reproduces that exact rendering, so upgrading changes nothing until
+    // someone actually sets one.
+
+    /// <summary>Face for the date line. Null or empty inherits the time's <see cref="FontFamily"/>.</summary>
+    public string? DateFontFamily { get; set; } = "Segoe UI";
+
+    /// <summary>Date size as a fraction of the time's font size.</summary>
+    public float DateFontScale { get; set; } = 0.16f;
+
+    /// <summary>Floor in pixels, so the date stays legible under a small clock.</summary>
+    public float DateMinFontSize { get; set; } = 11f;
+
+    /// <summary>#RRGGBB or #AARRGGBB for the date. Null inherits the time's colour, dimmed by
+    /// <see cref="DateOpacity"/>.</summary>
+    public string? DateColor { get; set; }
+
+    /// <summary>Applied to the inherited colour's alpha. Ignored when DateColor is set.</summary>
+    public float DateOpacity { get; set; } = 0.80f;
 }
 
 public sealed class PauseConfig

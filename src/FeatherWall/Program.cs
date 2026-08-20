@@ -98,8 +98,13 @@ internal static class Program
                 $"WorkerW  : 0x{layer.WorkerW:X}",
                 $"DefView  : 0x{layer.DefView:X}",
             };
-            lines.AddRange(MonitorTracker.Enumerate().Select(m =>
-                $"Monitor  : {m.Device} {m.Bounds}{(m.Primary ? " (primary)" : "")}"));
+            // DPI is printed per monitor because issues #3 and #4 are "verify on hardware this
+            // machine does not have" — a contributor with a second display can paste this.
+            var monitors = MonitorTracker.Enumerate();
+            lines.Add($"PrimaryDpi: {MonitorTracker.PrimaryDpi(monitors)}");
+            lines.AddRange(monitors.Select(m =>
+                $"Monitor  : {m.Device} {m.Bounds}{(m.Primary ? " (primary)" : "")} " +
+                $"dpi={m.Dpi} ({m.Dpi * 100 / Shcore.DefaultDpi}%) widgetScale={MonitorTracker.DpiScale(m, monitors):0.####}"));
             Console.WriteLine(string.Join(Environment.NewLine, lines));
             return 0;
         }
