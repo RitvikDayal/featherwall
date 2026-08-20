@@ -480,3 +480,7 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Benchmark runs are machine-specific; only curated results are committed by hand.
+scripts/bench/results/*.json
+!scripts/bench/results/featherwall-paused-verified.json
