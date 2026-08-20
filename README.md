@@ -219,6 +219,11 @@ date underneath. It takes any installed font at any size, sits at any of nine an
 24 hour with optional seconds, and has adjustable colour, opacity and shadow. It is click-through
 by construction, so it never gets in the way of your desktop icons.
 
+The date has its own settings page: its own font, its own size as a percentage of the time, its
+own colour and opacity, or it can inherit any of those from the time. On a multi-monitor setup
+with mixed scaling, the clock is sized per display, so it stays the same physical size on a 100%
+external as it is on a 150% laptop panel.
+
 Everything else: per-monitor wallpapers, Fill, Fit and Stretch modes, DPI-aware rendering, a full
 tray menu, JSON config for anything the UI does not expose, and auto-pause on fullscreen apps,
 session lock, remote desktop and battery saver. If explorer.exe restarts or the shell rebuilds the
@@ -264,7 +269,18 @@ The tray menu and settings panel cover the common cases. Everything lives in
     "fontSize": 150,
     "fontFamily": "Segoe UI Light",
     "color": "#F0FFFFFF",
-    "shadow": true
+    "shadow": true,
+
+    "dateFontFamily": "Segoe UI",
+    "dateFontScale": 0.16,
+    "dateMinFontSize": 11,
+    "dateColor": null,
+    "dateOpacity": 0.8,
+
+    "marginTop": null,
+    "marginRight": null,
+    "marginBottom": null,
+    "marginLeft": null
   },
   "pause": { "onFullscreen": true, "onBatterySaver": true, "onRemoteSession": true }
 }
@@ -272,6 +288,11 @@ The tray menu and settings panel cover the common cases. Everything lives in
 
 `monitor` takes a device name such as `\\.\DISPLAY1`, or `"*"` for all of them. Logs are written to
 `%LOCALAPPDATA%\FeatherWall\featherwall.log`.
+
+An empty `dateFontFamily` inherits the time's face; a null `dateColor` inherits the time's colour
+dimmed by `dateOpacity`. The four per-edge margins each fall back to `marginX` or `marginY` when
+null, and only the edges your chosen anchor actually touches are used. Every default above
+reproduces the v0.1.0 rendering exactly, so upgrading changes nothing until you set one.
 
 FeatherWall decodes through the OS media pipeline, so H.264 and MP4 work everywhere. HEVC needs
 the paid HEVC Video Extensions, and VP9 and AV1 need the free extensions from the Microsoft Store.
@@ -318,7 +339,7 @@ or the [help wanted](https://github.com/RitvikDayal/featherwall/labels/help%20wa
 have hardware this project does not.
 
 [CONTRIBUTING.md](CONTRIBUTING.md) has the ground rules. The short version: `dotnet test` should be
-green before you open a pull request, which takes under a second for the 105 tests currently in the
+green before you open a pull request, which takes under a second for the 126 tests currently in the
 suite, and anything touching interop or rendering needs to say which desktop topology you tested
 it on. Please also read the [Code of Conduct](CODE_OF_CONDUCT.md).
 
