@@ -22,6 +22,15 @@ internal static class Program
             return 0;
         }
 
+        // Before Log.Init, before the mutex, before anything touches WinForms: a stranger who
+        // arrived from a download link and lacks the desktop runtime should be told that, not
+        // shown a Windows error dialog or nothing at all.
+        if (RuntimePreflight.Check() is { } missing)
+        {
+            RuntimePreflight.Report(missing);
+            return 2;
+        }
+
         Log.Init();
         Log.Info($"FeatherWall starting (pid {Environment.ProcessId})");
 
@@ -93,6 +102,7 @@ internal static class Program
             {
                 "",
                 $"FeatherWall --diag ({Environment.OSVersion})",
+                $"Runtime  : .NET {Environment.Version} — desktop framework {(RuntimePreflight.Check() is null ? "present" : "MISSING")}",
                 $"Topology : {layer.Topology}",
                 $"Progman  : 0x{layer.Progman:X}",
                 $"WorkerW  : 0x{layer.WorkerW:X}",

@@ -126,10 +126,18 @@ public sealed class Engine : IDisposable
             }
         });
 
-        IWallpaperRenderer renderer = ImageExtensions.Contains(Path.GetExtension(path))
-            ? new ImageRenderer(host, monitor.Bounds.Width, monitor.Bounds.Height, _config.Fit, staticPath, onStatic)
-            : new VideoRenderer(host, monitor.Bounds.Width, monitor.Bounds.Height, _config.Fit,
+        IWallpaperRenderer renderer;
+        if (ImageExtensions.Contains(Path.GetExtension(path)))
+        {
+            renderer = new ImageRenderer(host, monitor.Bounds.Width, monitor.Bounds.Height, _config.Fit, staticPath, onStatic);
+        }
+        else
+        {
+            var video = new VideoRenderer(host, monitor.Bounds.Width, monitor.Bounds.Height, _config.Fit,
                 _config.MuteVideo, _config.Volume, staticPath, onStatic);
+            video.PlaybackFailed += OnPlaybackFailed;
+            renderer = video;
+        }
         window.SetRenderer(renderer);
         renderer.Load(path);
 
@@ -164,6 +172,25 @@ public sealed class Engine : IDisposable
     }
 
     /// <summary>Full rebuild: display change, explorer restart, or layer destruction.</summary>
+    /// <summary>Playback failed twice on a file. Before this, an undecodable codec produced a
+    /// log line and a black desktop with nothing shown to the user — one of the two worst first
+    /// impressions the product can make, and the one a stranger from a download link is most
+    /// likely to hit. A tray balloon rather than a dialog: the wallpaper is decoration, and a
+    /// modal box over someone's desktop is a worse bug than the one being reported.</summary>
+    private void OnPlaybackFailed(string path, string detail)
+    {
+        RunOnMainThread(() =>
+        {
+            string codec = detail == "unsupported or missing decoder" ? "unsupported" : detail;
+            string hint = CodecSupport.StoreExtensionFor(Path.GetExtension(path).TrimStart('.')) is { } store
+                ? $"Install \"{store}\" from the Microsoft Store."
+                : "HEVC, VP9 and AV1 need their free extension from the Microsoft Store; anything else needs re-encoding to H.264.";
+
+            Log.Warn($"Surfacing playback failure to the user: {Path.GetFileName(path)} ({codec})");
+            _tray?.ShowBalloon($"Cannot play {Path.GetFileName(path)}", $"{char.ToUpper(codec[0])}{codec[1..]} video. {hint}");
+        });
+    }
+
     /// <summary>A pushed power/display notification. Windows already knows the panel went dark
     /// or the laptop came off AC; this is the app being told instead of polling to find out.
     /// The pause poll still runs for the foreground-window cases it cannot be told about — this
