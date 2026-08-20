@@ -318,9 +318,14 @@ or the [help wanted](https://github.com/RitvikDayal/featherwall/labels/help%20wa
 have hardware this project does not.
 
 [CONTRIBUTING.md](CONTRIBUTING.md) has the ground rules. The short version: `dotnet test` should be
-green before you open a pull request, which takes under a second for the 54 tests currently in the
+green before you open a pull request, which takes under a second for the 105 tests currently in the
 suite, and anything touching interop or rendering needs to say which desktop topology you tested
 it on. Please also read the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+If you have hardware this project does not — a second monitor, a mixed-DPI setup, or a Windows 10
+machine — the most useful thing you can do is fill in a row of
+[`docs/recovery-matrix.md`](docs/recovery-matrix.md). `featherwall --diag` prints most of what a
+result needs.
 
 Security issues go through [SECURITY.md](SECURITY.md) rather than the public tracker.
 

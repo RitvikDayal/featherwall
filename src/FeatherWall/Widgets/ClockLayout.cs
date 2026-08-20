@@ -5,21 +5,32 @@ namespace FeatherWall.Widgets;
 
 public static class ClockLayout
 {
+    /// <summary>Scales an authored pixel margin by a monitor's DPI scale. Rounds rather than
+    /// truncates so a 48 px margin at 1.5 lands on 72, not 71, and never goes negative.</summary>
+    public static int ScaleMargin(int margin, double dpiScale) =>
+        Math.Max(0, (int)Math.Round(margin * (dpiScale > 0 ? dpiScale : 1.0), MidpointRounding.AwayFromZero));
+
     /// <summary>Top-left position (virtual-screen coords) for a widget of the given size
     /// anchored inside <paramref name="area"/> (a monitor's work area) with margins.</summary>
     public static POINT Position(in RECT area, int widgetW, int widgetH, ClockAnchor anchor, int marginX, int marginY)
+        => Position(area, widgetW, widgetH, anchor, marginX, marginY, marginX, marginY);
+
+    /// <summary>Per-edge overload. Only the edges the anchor touches are consulted, so a centred
+    /// anchor ignores all four.</summary>
+    public static POINT Position(in RECT area, int widgetW, int widgetH, ClockAnchor anchor,
+        int marginLeft, int marginTop, int marginRight, int marginBottom)
     {
         int x = anchor switch
         {
-            ClockAnchor.TopLeft or ClockAnchor.CenterLeft or ClockAnchor.BottomLeft => area.Left + marginX,
+            ClockAnchor.TopLeft or ClockAnchor.CenterLeft or ClockAnchor.BottomLeft => area.Left + marginLeft,
             ClockAnchor.TopCenter or ClockAnchor.Center or ClockAnchor.BottomCenter => area.Left + (area.Width - widgetW) / 2,
-            _ => area.Right - widgetW - marginX,
+            _ => area.Right - widgetW - marginRight,
         };
         int y = anchor switch
         {
-            ClockAnchor.TopLeft or ClockAnchor.TopCenter or ClockAnchor.TopRight => area.Top + marginY,
+            ClockAnchor.TopLeft or ClockAnchor.TopCenter or ClockAnchor.TopRight => area.Top + marginTop,
             ClockAnchor.CenterLeft or ClockAnchor.Center or ClockAnchor.CenterRight => area.Top + (area.Height - widgetH) / 2,
-            _ => area.Bottom - widgetH - marginY,
+            _ => area.Bottom - widgetH - marginBottom,
         };
         return new POINT { X = x, Y = y };
     }

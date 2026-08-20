@@ -18,6 +18,10 @@ public sealed class PlaybackMonitor : IDisposable
     /// <summary>Set from session-change notifications on the message window.</summary>
     public volatile bool SessionLocked;
 
+    /// <summary>Set from GUID_CONSOLE_DISPLAY_STATE, pushed to the message window. Nothing here
+    /// polls for it — the poll only reads the flag someone else was told about.</summary>
+    public volatile bool DisplayOff;
+
     private volatile bool _invalidated;
 
     /// <summary>Forget cached per-monitor state so the next poll re-fires transitions —
@@ -46,7 +50,8 @@ public sealed class PlaybackMonitor : IDisposable
                 SessionLocked,
                 User32.GetSystemMetrics(SM_REMOTESESSION) != 0,
                 IsBatterySaverOn(),
-                IsD3DFullscreen());
+                IsD3DFullscreen(),
+                DisplayOff);
 
             var foreground = CaptureForeground();
             var config = _config();
