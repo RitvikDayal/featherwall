@@ -1,0 +1,19 @@
+{
+  "App": "featherwall",
+  "Label": "Video 4K60, auto-paused",
+  "SampledSeconds": 32.4,
+  "Processes": 1,
+  "Threads": 129,
+  "Handles": 1347,
+  "WorkingSetMB": 204.2,
+  "PrivateMB": 219.5,
+  "GpuDedicatedMB": 231.6,
+  "GpuSharedMB": 68.1,
+  "CpuPercentMachine": 0.034,
+  "CpuPercentOneCore": 0.8,
+  "BusiestGpuEngine": "copy",
+  "BusiestGpuPercent": 0.0,
+  "Cores": 24,
+  "PauseState": "Paused, verified for the full window",
+  "MeasuredAtUtc": "2026-08-20T14:18:57Z"
+}

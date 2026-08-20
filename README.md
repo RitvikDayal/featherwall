@@ -109,11 +109,19 @@ those percentages do not add up to a total. The table shows the busiest single e
 roughly what Task Manager displays. At 4K60 the video decode engine was also at 17.9 % and 3D at
 7.6 %; summing them to 67 % would be meaningless.
 
-**Graphics memory is not the working set, and it is not VRAM.** It is a separate allocation, and
-dedicated VRAM reads **0 MB** on every row because integrated graphics have no memory of their own
-and borrow system RAM instead. Add the two memory columns for the honest total: a 4K60 wallpaper
-costs roughly 480 MB of system memory, not 248 MB. The old version of this table listed only the
-working set, which undersold the real footprint by about half.
+**Graphics memory is not the working set.** It is a separate allocation, so add the columns for
+the honest total: a 4K60 wallpaper costs roughly 480 MB of system memory, not 248 MB. An earlier
+version of this table listed only the working set, which undersold the real footprint by about
+half.
+
+> **Correction, 2026-08-20.** This paragraph used to say dedicated VRAM "reads 0 MB on every row
+> because integrated graphics have no memory of their own". That is wrong. The Intel Arc
+> integrated GPU on this machine reports 2048 MB of adapter RAM, and Windows attributes **231.6 MB
+> of dedicated usage** to FeatherWall on it. The scripted harness in
+> [`scripts/bench/`](scripts/bench/) found this on its first real run, which is roughly why it
+> exists. The table above was measured by hand before that harness existed and is **due a re-run**
+> — [`docs/benchmark.md`](docs/benchmark.md) is where the scripted numbers land, and its playing
+> rows are still empty because they have not yet been measured on an idle machine.
 
 **Frame rate costs as much as resolution.** Both video rows are 60 fps. Dropping the same clip from
 4K to 1080p saved 12 points on the video processing engine and 112 MB of graphics memory, but
