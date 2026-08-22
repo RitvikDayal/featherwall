@@ -32,6 +32,16 @@ public sealed class PowerNotifications : IDisposable
     /// <summary>Battery-saver on/off.</summary>
     public static readonly Guid PowerSavingStatus = new("E00958C0-C213-4ACE-AC77-FECCED2EEEA5");
 
+    /// <summary>True for the two settings that report a display on/off/dimmed state, both of which
+    /// carry the same MONITOR_DISPLAY_STATE values.
+    ///
+    /// Both are registered for, and until 2026-08-22 only the console one was routed anywhere —
+    /// so the session signal was subscribed to and then dropped. That is the one that carries the
+    /// answer in a Remote Desktop session, which is exactly where the console display state does
+    /// not describe what the user is looking at.</summary>
+    public static bool IsDisplayState(Guid setting) =>
+        setting == ConsoleDisplayState || setting == SessionDisplayStatus;
+
     public const int DEVICE_NOTIFY_WINDOW_HANDLE = 0x00000000;
 
     /// <summary>Values of GUID_CONSOLE_DISPLAY_STATE.</summary>
@@ -62,8 +72,18 @@ public sealed class PowerNotifications : IDisposable
     private static extern nuint VirtualQuery(IntPtr address, out MEMORY_BASIC_INFORMATION buffer, nuint length);
 
     private const uint MEM_COMMIT = 0x1000;
-    private const uint PAGE_NOACCESS = 0x01;
     private const uint PAGE_GUARD = 0x100;
+
+    /// <summary>The protections that actually grant read access. An allowlist rather than a list
+    /// of things to reject: PAGE_EXECUTE grants execute and *not* read, so a denylist naming only
+    /// PAGE_NOACCESS lets an execute-only region through and the marshal faults anyway.</summary>
+    private const uint ReadableProtections =
+        0x02 |  // PAGE_READONLY
+        0x04 |  // PAGE_READWRITE
+        0x08 |  // PAGE_WRITECOPY
+        0x20 |  // PAGE_EXECUTE_READ
+        0x40 |  // PAGE_EXECUTE_READWRITE
+        0x80;   // PAGE_EXECUTE_WRITECOPY
 
     private readonly List<IntPtr> _handles = [];
     private bool _disposed;
@@ -96,7 +116,10 @@ public sealed class PowerNotifications : IDisposable
         var size = (nuint)Marshal.SizeOf<MEMORY_BASIC_INFORMATION>();
         if (VirtualQuery(address, out var info, size) == 0) return false;
         if (info.State != MEM_COMMIT) return false;
-        if ((info.Protect & (PAGE_GUARD | PAGE_NOACCESS)) != 0) return false;
+        if ((info.Protect & PAGE_GUARD) != 0) return false;
+        // The low byte carries the base protection; PAGE_GUARD, PAGE_NOCACHE and
+        // PAGE_WRITECOMBINE are modifiers layered on top of it.
+        if ((info.Protect & 0xFF & ReadableProtections) == 0) return false;
 
         ulong start = (ulong)address;
         ulong regionStart = (ulong)info.BaseAddress;
