@@ -55,10 +55,17 @@ samples and the GPU memory counters on 5 of 8, so those two cells are an average
 read rather than of the whole window. Its CPU and memory figures are complete. The row records this
 itself in `GpuCounters`; it is marked here rather than quietly published as if clean.
 
-**The 4K60 playing row is the headline number and it is now measured:** 0.318 % of a 24-core
-machine, 7.6 % of one core, one process, with the work sitting on the video-decode engine at 5.8 %
-where it belongs. A still image costs 0.008 % — the "zero ongoing cost after first paint" claim,
-measured.
+**The 4K60 playing row is the headline number and it is now measured:** one process, with the work
+sitting on the video-decode engine at 5.8 % where it belongs. A still image costs well under a
+tenth of a percent — the "zero ongoing cost after first paint" claim, measured.
+
+**CPU moves between runs, so treat the table cell as one sample.** The row above is
+`featherwall-playing-verified.json` at 0.318 % of the machine. A second full run
+(`featherwall-playing-verified-run2.json`) measured **0.466 %**, and a reading taken straight from
+`TotalProcessorTime` outside the harness gave **0.236 %** — a spread of roughly 2× on the same
+machine with the same clip. Decode cost tracks scene content and background load. The GPU engine
+figure barely moved across those runs (5.8 % and 5.9 %); the CPU figure is the volatile one, and
+quoting any single run of it to three decimals would be false precision.
 
 **Only the settings-panel row is still blank, and it is blank for a specific reason.** Rows that need
 a window over the desktop cannot be produced from a *background* session: `PauseDecision` reads

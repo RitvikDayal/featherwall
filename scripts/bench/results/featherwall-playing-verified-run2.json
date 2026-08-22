@@ -1,0 +1,54 @@
+[
+  {
+    "App": "featherwall",
+    "Label": "Still image",
+    "SampledSeconds": 32.1,
+    "Processes": 1,
+    "Threads": 94,
+    "Handles": 741,
+    "WorkingSetMB": 112.3,
+    "PrivateMB": 113.1,
+    "GpuDedicatedMB": 47.9,
+    "GpuSharedMB": 13.6,
+    "CpuPercentMachine": 0.016,
+    "CpuPercentOneCore": 0.4,
+    "BusiestGpuEngine": null,
+    "BusiestGpuPercent": 0.0,
+    "GpuCounters": "all read",
+    "ProcessReadErrors": 0,
+    "Cores": 24,
+    "PauseState": "Playing, verified for the full window on 1 monitor(s): \\\\.\\DISPLAY5",
+    "MeasuredAtUtc": "2026-08-22T17:50:57Z"
+  },
+  {
+    "App": "featherwall",
+    "Label": "Video playing",
+    "SampledSeconds": 33.0,
+    "Processes": 1,
+    "Threads": 133,
+    "Handles": 1326,
+    "WorkingSetMB": 216.0,
+    "PrivateMB": 225.4,
+    "GpuDedicatedMB": 220.2,
+    "GpuSharedMB": 87.4,
+    "CpuPercentMachine": 0.466,
+    "CpuPercentOneCore": 11.2,
+    "BusiestGpuEngine": "videodecode",
+    "BusiestGpuPercent": 5.9,
+    "GpuCounters": "all read",
+    "ProcessReadErrors": 0,
+    "Cores": 24,
+    "PauseState": "Playing, verified for the full window on 1 monitor(s): \\\\.\\DISPLAY5",
+    "MeasuredAtUtc": "2026-08-22T17:51:44Z"
+  },
+  {
+    "Label": "Video auto-paused",
+    "Refused": "The blocker window opened but could not be brought to the foreground, so nothing is covering the desktop and the paused rows cannot be produced from this session.",
+    "ExpectedState": "Paused"
+  },
+  {
+    "Label": "Settings panel open",
+    "Refused": "FeatherWall never reported a new 'Paused' event after the settings panel opening over the desktop. The step did not do what it claims, so the row it would produce would be measuring something else.",
+    "ExpectedState": "Paused"
+  }
+]
