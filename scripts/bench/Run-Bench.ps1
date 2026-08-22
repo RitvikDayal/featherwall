@@ -78,16 +78,37 @@ function Open-Blocker {
     <#
       Puts a maximised window over the desktop and returns once one is actually there.
 
-      Not `(Start-Process notepad -PassThru).MainWindowHandle`, which is what this used to do and
-      which silently does nothing on Windows 11: Notepad is packaged, so the process you start
-      hands off to a DIFFERENT one and its own MainWindowHandle stays 0 forever. Measured on
-      26200 — the launched pid reported handle 0 after 15 seconds of polling while the real
-      window belonged to another pid entirely. ShowWindow(0, SW_MAXIMIZE) is a no-op, the desktop
-      was never covered, and the "auto-paused" row was measured against a playing wallpaper.
-      The harness refused it, which is the only reason this was ever noticed.
+      The window is one this script CREATES, rather than an app's borrowed from the system, because
+      on Windows 11 you cannot reliably find an app's window from the process you started:
+
+      * Notepad, which this used to launch, is packaged — the process you start hands off to a
+        DIFFERENT one and its own MainWindowHandle stays 0 forever. Measured on 26200: the launched
+        pid still reported 0 after 15 seconds while the real window belonged to another pid.
+        ShowWindow(0, SW_MAXIMIZE) is a no-op, the desktop was never covered, and the "auto-paused"
+        row was measured against a playing wallpaper. The harness refused it, which is the only
+        reason this was noticed at all.
+      * Taking "any Notepad window" instead is worse: with one already open it grabs the USER'S
+        window, measures against it, foregrounds it, and leaves it in front — Close-Blocker only
+        kills what this run started.
+      * Filtering to our own pid then finds nothing, because a second Notepad launch opens a window
+        in the process that already exists rather than a new one.
+      * A console window is no better; conhost or Windows Terminal owns it, not us.
+
+      A WinForms form owned by a process we spawned has none of those problems. Its handle is real,
+      it is ours by construction, and cleanup is exact.
     #>
-    $before = @(Get-Process -Name notepad -EA SilentlyContinue | ForEach-Object { $_.Id })
-    [void](Start-Process notepad -PassThru)
+    $formScript = @'
+Add-Type -AssemblyName System.Windows.Forms
+$f = New-Object System.Windows.Forms.Form
+$f.Text = "FeatherWall benchmark blocker"
+$f.WindowState = "Maximized"
+$f.TopMost = $true
+[void]$f.ShowDialog()
+'@
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($formScript))
+    $proc = Start-Process powershell -PassThru `
+        -ArgumentList '-NoProfile', '-STA', '-WindowStyle', 'Hidden', '-EncodedCommand', $encoded
+    $script:blockerPids = @($proc.Id)
 
     $sig = @'
 [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c);
@@ -98,9 +119,9 @@ function Open-Blocker {
 
     $deadline = (Get-Date).AddSeconds(20)
     while ((Get-Date) -lt $deadline) {
-        $now = @(Get-Process -Name notepad -EA SilentlyContinue)
-        $script:blockerPids = @($now | ForEach-Object { $_.Id } | Where-Object { $before -notcontains $_ })
-        $window = $now | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
+        if ($proc.HasExited) { throw "The blocker process exited before showing a window." }
+        $proc.Refresh()
+        $window = if ($proc.MainWindowHandle -ne 0) { $proc } else { $null }
         if ($window) {
             [void]$u::ShowWindow($window.MainWindowHandle, 3) # SW_MAXIMIZE
             [void]$u::SetForegroundWindow($window.MainWindowHandle)
@@ -126,7 +147,7 @@ remote session or an automation harness.
         }
         Start-Sleep -Milliseconds 250
     }
-    throw "No Notepad window appeared within 20s, so nothing is covering the desktop and the paused row cannot be produced honestly."
+    throw "The blocker window did not appear within 20s, so nothing is covering the desktop and the paused row cannot be produced honestly."
 }
 
 function Close-Blocker {
@@ -135,28 +156,42 @@ function Close-Blocker {
     $script:blockerPids = @()
 }
 
+function Get-LastPauseEvent {
+    <#
+      The most recent Paused/Resumed line, or $null. Taken BEFORE a setup action so
+      Wait-ForPauseState can insist on a NEWER one.
+    #>
+    $log = "$env:LOCALAPPDATA\FeatherWall\featherwall.log"
+    (Get-Content $log -Tail 40 -EA SilentlyContinue |
+        Select-String -Pattern '\[INF\] (Paused|Resumed) \\\\' |
+        Select-Object -Last 1).Line
+}
+
 function Wait-ForPauseState {
     <#
-      Blocks until FeatherWall's log says it reached the expected state, and throws naming the
-      real cause if it never does. The old code slept 8 seconds and hoped; when the blocker
-      silently failed, what surfaced was Measure-App refusing the row with a message about
-      closing windows — true, but pointing at the user's desktop rather than at the broken step.
-    #>
-    param([ValidateSet('Paused', 'Playing')][string] $Expected, [string] $Because)
+      Blocks until FeatherWall's log reports the expected state IN AN EVENT THE SETUP ACTION
+      CAUSED, and throws naming the real cause if it never does. The old code slept 8 seconds and
+      hoped; when the blocker silently failed, what surfaced was Measure-App refusing the row with
+      a message about closing windows — true, but pointing at the user's desktop rather than at the
+      broken step.
 
-    $log = "$env:LOCALAPPDATA\FeatherWall\featherwall.log"
+      -Since is what makes it a check rather than a coincidence. Accepting any matching line means
+      that when the wallpaper is ALREADY paused, this returns instantly whether or not the settings
+      panel opened at all — and the row then measures an unrelated paused state with full
+      confidence. A state the setup did not produce is not evidence the setup worked.
+    #>
+    param([ValidateSet('Paused', 'Playing')][string] $Expected, [string] $Because, [string] $Since)
+
     $deadline = (Get-Date).AddSeconds(25)
     while ((Get-Date) -lt $deadline) {
-        $last = Get-Content $log -Tail 40 -EA SilentlyContinue |
-                Select-String -Pattern '\[INF\] (Paused|Resumed) \\\\' |
-                Select-Object -Last 1
-        if ($last) {
-            $state = if ($last.Line -match '\[INF\] Paused ') { 'Paused' } else { 'Playing' }
+        $last = Get-LastPauseEvent
+        if ($last -and $last -ne $Since) {
+            $state = if ($last -match '\[INF\] Paused ') { 'Paused' } else { 'Playing' }
             if ($state -eq $Expected) { Start-Sleep -Seconds 2; return }
         }
         Start-Sleep -Milliseconds 500
     }
-    throw "FeatherWall never reported '$Expected' after $Because. The step did not do what it claims, so the row it would produce would be measuring something else."
+    throw "FeatherWall never reported a new '$Expected' event after $Because. The step did not do what it claims, so the row it would produce would be measuring something else."
 }
 
 function Measure-State {
@@ -175,7 +210,10 @@ function Measure-State {
         return (& $measure -ProcessName featherwall -Seconds $Seconds -Label $Label -ExpectState $Expect)
     }
     catch {
-        $reason = ($_.Exception.Message -split "`n" | Where-Object { $_.Trim() } | Select-Object -First 2) -join ' '
+        # Trim each line: a Windows exception carries \r that -split "`n" leaves behind, and those
+        # control characters ended up inside the committed results JSON.
+        $reason = ($_.Exception.Message -split "`n" | ForEach-Object { $_.Trim() } |
+                   Where-Object { $_ } | Select-Object -First 2) -join ' '
         Write-Host "  REFUSED: $reason" -ForegroundColor Yellow
         return [pscustomobject]@{ Label = $Label; Refused = $reason; ExpectedState = $Expect }
     }
@@ -232,8 +270,9 @@ try {
     # pause being simulated. Measuring "paused" by trusting a config flag would measure nothing.
     Write-Host "[3/4] video auto-paused (maximised window over the desktop)" -ForegroundColor Cyan
     [void]$results.Add((Measure-State -Label 'Video auto-paused' -Expect Paused -Setup {
+        $since = Get-LastPauseEvent
         [void](Open-Blocker)
-        Wait-ForPauseState -Expected 'Paused' -Because 'the maximised blocker window'
+        Wait-ForPauseState -Expected 'Paused' -Because 'the maximised blocker window' -Since $since
     }))
     Close-Blocker
     Start-Sleep -Seconds 2
@@ -243,8 +282,9 @@ try {
     # row is what that claim costs when the claim is being exercised.
     Write-Host "[4/4] settings panel open" -ForegroundColor Cyan
     [void]$results.Add((Measure-State -Label 'Settings panel open' -Expect Paused -Setup {
+        $since = Get-LastPauseEvent
         Start-Process $Exe -ArgumentList '--settings'
-        Wait-ForPauseState -Expected 'Paused' -Because 'the settings panel opening over the desktop'
+        Wait-ForPauseState -Expected 'Paused' -Because 'the settings panel opening over the desktop' -Since $since
     }))
 }
 finally {
@@ -277,8 +317,10 @@ $json = Join-Path $outDir "featherwall-$stamp.json"
 $results | ConvertTo-Json -Depth 4 | Set-Content -Path $json -Encoding UTF8
 
 Write-Host ""
-Write-Host "| State | Processes | Private MB | Working set MB | GPU dedicated MB | GPU shared MB | CPU (machine) | CPU (one core) | Busiest GPU engine |"
-Write-Host "|---|---|---|---|---|---|---|---|---|"
+# Ten columns including Verified, matching the schema in docs/benchmark.md — this output is meant
+# to be pasted straight in, and a row with nine cells silently shifts every value left of it.
+Write-Host "| State | Processes | Private MB | Working set MB | GPU dedicated MB | GPU shared MB | CPU (machine) | CPU (one core) | Busiest GPU engine | Verified |"
+Write-Host "|---|---|---|---|---|---|---|---|---|---|"
 foreach ($r in $results) {
     if ($r.PSObject.Properties.Name -contains 'Refused') {
         # Blank cells, not zeroes. docs/benchmark.md already reads an empty cell as "nobody
@@ -288,9 +330,9 @@ foreach ($r in $results) {
         # No engine name when nothing was busy — "0 % ()" is a stray empty bracket in a table
         # that gets pasted straight into docs/benchmark.md.
         $engine = if ($r.BusiestGpuEngine) { " ($($r.BusiestGpuEngine))" } else { "" }
-        "| {0} | {1} | {2} | {3} | {4} | {5} | {6} % | {7} % | {8} %{9} |" -f `
+        "| {0} | {1} | {2} | {3} | {4} | {5} | {6} % | {7} % | {8} %{9} | {10} |" -f `
             $r.Label, $r.Processes, $r.PrivateMB, $r.WorkingSetMB, $r.GpuDedicatedMB, $r.GpuSharedMB,
-            $r.CpuPercentMachine, $r.CpuPercentOneCore, $r.BusiestGpuPercent, $engine
+            $r.CpuPercentMachine, $r.CpuPercentOneCore, $r.BusiestGpuPercent, $engine, $r.PauseState
     }
 }
 

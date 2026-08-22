@@ -93,11 +93,11 @@ and has been fully re-measured; what follows replaces it.
 | Video, 1080p60 playing | — | — | — | — | — |
 | Video, 4K60 playing | 0.318 % | 7.6 % | 189 MB | 279 MB | 5.8 % (video decode) |
 
-Every row is produced by [`scripts/bench/Run-Bench.ps1`](scripts/bench/), which reads FeatherWall's
-own log and **refuses to report a row** whose pause state was not the expected one for the whole
-sampling window. The raw records are in
-[`scripts/bench/results/`](scripts/bench/results/); `docs/benchmark.md` carries the same numbers
-with their provenance.
+Every **filled** row is produced by [`scripts/bench/Run-Bench.ps1`](scripts/bench/), which reads
+FeatherWall's own log and **refuses to report a row** whose pause state was not the expected one for
+the whole sampling window. The 1080p60 row is an intentionally empty placeholder, not a measurement.
+The raw records are in [`scripts/bench/results/`](scripts/bench/results/); `docs/benchmark.md`
+carries the same numbers with their provenance.
 
 **† The still-image graphics figures are partial** — that run read the GPU counters on 5 of 8
 samples, which the record states. Its CPU and memory figures are complete.
@@ -123,9 +123,15 @@ would land on that card instead.
 
 **Read the GPU column carefully.** Windows reports GPU work per engine, not as one number, and
 those percentages do not add up to a total. The table shows the busiest single engine. This adapter
-exposes **two** video-decode engines, and at 4K60 they measured 5.31 % and 5.49 % with 3D at 1.24 %
-— adding them to 12 % would be meaningless, and reporting the pair as one summed 10.8 % engine
-would be wrong in a way that looks plausible. The harness used to do exactly that and was corrected.
+exposes **two** video-decode engines, and adding them together would be meaningless — reporting the
+pair as one summed figure would be wrong in a way that looks plausible, which the harness used to do
+and was corrected.
+
+A separate 12-sample verification run, taken to check the table's GPU figure against the raw
+`\GPU Engine(*)` counters, put the two decode engines at 5.31 % and 5.49 % with 3D at 1.24 %. Those
+are a different run from the 5.8 % in the table above, which is why they do not match to the decimal:
+each number is the busiest engine averaged across that run's own samples. The agreement that matters
+is that both put the work on video decode at around 5–6 %, not on a video-processing engine at 42 %.
 
 **Graphics memory is not the working set.** It is a separate allocation, so add the columns for
 the honest total: a 4K60 wallpaper costs roughly **470 MB** of system memory, not 189 MB. An earlier
