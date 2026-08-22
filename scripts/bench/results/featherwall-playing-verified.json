@@ -43,7 +43,7 @@
   },
   {
     "Label": "Video auto-paused",
-    "Refused": "The blocker window opened but could not be brought to the foreground, so nothing is covering the\r desktop and the paused rows cannot be produced from this session.\r",
+    "Refused": "The blocker window opened but could not be brought to the foreground, so nothing is covering the desktop and the paused rows cannot be produced from this session.",
     "ExpectedState": "Paused"
   },
   {

@@ -60,12 +60,16 @@ machine, 7.6 % of one core, one process, with the work sitting on the video-deco
 where it belongs. A still image costs 0.008 % — the "zero ongoing cost after first paint" claim,
 measured.
 
-**The two remaining rows cannot be produced by a script.** Both need a window over the desktop, and
-`PauseDecision` reads `GetForegroundWindow` — Windows only grants foreground activation to a process
-that already owns the foreground, so a benchmark driven from a background task, a scheduled job or an
-automation harness opens its blocker window *behind* the desktop and pauses nothing.
-`Run-Bench.ps1` now detects that and refuses those rows by name instead of producing them wrongly.
-Run it from an interactive console you are sitting in front of and they fill in.
+**Only the settings-panel row is still blank, and it is blank for a specific reason.** Rows that need
+a window over the desktop cannot be produced from a *background* session: `PauseDecision` reads
+`GetForegroundWindow`, and Windows only grants foreground activation to a process that already owns
+the foreground, so a benchmark driven from a scheduled task, a CI agent or an automation harness
+opens its blocker window *behind* the desktop and pauses nothing. `Run-Bench.ps1` now detects that
+and refuses the row by name instead of producing it wrongly.
+
+The auto-paused row above was produced exactly that way — from an interactive session, with a real
+window covering the desktop. Run the harness from a console you are sitting in front of and the
+settings-panel row fills in too.
 
 The 1080p60 row is simply not measured yet; it needs a 1080p clip.
 
