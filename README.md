@@ -88,14 +88,31 @@ and has been fully re-measured; what follows replaces it.
 
 | State | CPU (whole machine) | CPU (one core) | Memory (working set) | Graphics memory | Busiest GPU engine |
 |---|---|---|---|---|---|
-| Still image | 0.06 % | 1.4 % | 156 MB | 44 MB | 0.1 % (3D) |
-| Video, auto-paused | 0.004 % | 0.1 % | 309 MB | 269 MB | 0 % (no video engine work) |
-| Video, 1080p60 playing | 0.79 % | 19 % | 212 MB | 122 MB | 29.4 % (video processing) |
-| Video, 4K60 playing | 0.84 % | 20 % | 248 MB | 234 MB | 41.8 % (video processing) |
+| Still image | 0.008 % | 0.2 % | 108 MB | 58 MB † | 0 % |
+| Video, auto-paused | 0.034 % | 0.8 % | 204 MB | 300 MB | 0 % (copy) |
+| Video, 1080p60 playing | — | — | — | — | — |
+| Video, 4K60 playing | 0.318 % | 7.6 % | 189 MB | 279 MB | 5.8 % (video decode) |
 
-The first CPU column is what Task Manager shows you. The second is the same measurement divided
-by one core instead of twenty-four, because a sub-1 % figure on a machine this wide deserves the
-honest denominator next to it.
+Every row is produced by [`scripts/bench/Run-Bench.ps1`](scripts/bench/), which reads FeatherWall's
+own log and **refuses to report a row** whose pause state was not the expected one for the whole
+sampling window. The raw records are in
+[`scripts/bench/results/`](scripts/bench/results/); `docs/benchmark.md` carries the same numbers
+with their provenance.
+
+**† The still-image graphics figures are partial** — that run read the GPU counters on 5 of 8
+samples, which the record states. Its CPU and memory figures are complete.
+
+**The 1080p60 row is empty because nobody has measured it with the harness.** It needs a 1080p
+clip. An empty cell here means exactly that, and never "probably fine".
+
+The first CPU column is the honest one for a 24-core machine. The second is the same measurement
+divided by one core instead of twenty-four, because a sub-1 % figure on a machine this wide
+deserves the honest denominator next to it.
+
+**Working set grows with uptime.** These rows are measured about twelve seconds after launch, which
+is what a script can reproduce. A copy of FeatherWall left running for several hours on this machine
+measured **233 MB** rather than 189 MB. Neither is wrong; they are different questions, and the
+reproducible one is published.
 
 **This runs on the integrated GPU, not the discrete one.** Every GPU number above belongs to the
 **Intel Arc integrated graphics**. `nvidia-smi` lists no FeatherWall process on the RTX 5090, which
@@ -105,12 +122,13 @@ competes with a game on the discrete card. On a desktop whose only GPU is discre
 would land on that card instead.
 
 **Read the GPU column carefully.** Windows reports GPU work per engine, not as one number, and
-those percentages do not add up to a total. The table shows the busiest single engine, which is
-roughly what Task Manager displays. At 4K60 the video decode engine was also at 17.9 % and 3D at
-7.6 %; summing them to 67 % would be meaningless.
+those percentages do not add up to a total. The table shows the busiest single engine. This adapter
+exposes **two** video-decode engines, and at 4K60 they measured 5.31 % and 5.49 % with 3D at 1.24 %
+— adding them to 12 % would be meaningless, and reporting the pair as one summed 10.8 % engine
+would be wrong in a way that looks plausible. The harness used to do exactly that and was corrected.
 
 **Graphics memory is not the working set.** It is a separate allocation, so add the columns for
-the honest total: a 4K60 wallpaper costs roughly 480 MB of system memory, not 248 MB. An earlier
+the honest total: a 4K60 wallpaper costs roughly **470 MB** of system memory, not 189 MB. An earlier
 version of this table listed only the working set, which undersold the real footprint by about
 half.
 
@@ -119,26 +137,42 @@ half.
 > integrated GPU on this machine reports 2048 MB of adapter RAM, and Windows attributes **231.6 MB
 > of dedicated usage** to FeatherWall on it. The scripted harness in
 > [`scripts/bench/`](scripts/bench/) found this on its first real run, which is roughly why it
-> exists. The table above was measured by hand before that harness existed and is **due a re-run**
-> — [`docs/benchmark.md`](docs/benchmark.md) is where the scripted numbers land.
+> exists.
 >
-> **Update, 2026-08-22.** The scripted playing rows are now measured, and they do not agree with
-> the hand-measured table above. The harness reports 4K60 playing at **0.318 %** of the machine
-> and **5.8 %** on the video-decode engine, against **0.84 %** and **41.8 % (video processing)**
-> here. Both are recorded rather than one being quietly replaced by the other, because the
-> disagreement is not yet explained — the hand measurement predates several corrections to how
-> the harness attributes CPU and identifies GPU engines, and it is not known how much of the gap
-> that accounts for. Treat `docs/benchmark.md` as the reproducible figure and this table as the
-> historical one until someone reconciles them.
+> **Re-run, 2026-08-22. The table above is now the scripted one, and the hand-measured figures it
+> replaced were substantially wrong.** They read:
+>
+> | State | CPU (machine) | CPU (one core) | Working set | Graphics | Busiest engine |
+> |---|---|---|---|---|---|
+> | Still image | 0.06 % | 1.4 % | 156 MB | 44 MB | 0.1 % (3D) |
+> | Video, auto-paused | 0.004 % | 0.1 % | 309 MB | 269 MB | 0 % |
+> | Video, 1080p60 playing | 0.79 % | 19 % | 212 MB | 122 MB | 29.4 % (video processing) |
+> | Video, 4K60 playing | 0.84 % | 20 % | 248 MB | 234 MB | 41.8 % (video processing) |
+>
+> The 4K60 CPU figure was **2.6× too high** and the GPU figure named an engine that is not busy at
+> all. Checked against the raw `\GPU Engine(*)` counters, filtered to FeatherWall's pid, with the
+> same clip on the same machine: the busiest engines are two video-decode engines at 5.31 % and
+> 5.49 %, with 3D at 1.24 %. **No video-processing engine appears in FeatherWall's counters.** CPU
+> was checked the same way, straight from `TotalProcessorTime` over a 30 s window with no harness
+> involved: **0.236 %** of the machine, against 0.84 % published. The old numbers were read by hand
+> off Task Manager, and a hand-read peak is not an average.
+>
+> The paused row's CPU moved the other way — 0.034 % rather than 0.004 % — so this is not a
+> correction that only ever flatters the project.
+>
+> Working set is the one figure the old table got closest to: 248 MB against 189 MB measured twelve
+> seconds after launch, because it was read from a long-running copy. That difference is uptime, not
+> error, and is stated above the table now.
 
-**Frame rate costs as much as resolution.** Both video rows are 60 fps. Dropping the same clip from
-4K to 1080p saved 12 points on the video processing engine and 112 MB of graphics memory, but
-halving the frame rate is the other dial and it is just as effective. A 24 fps 4K clip measured
-22.5 % on that engine, roughly half the 60 fps figure.
+**Frame rate is a dial as well as resolution.** The 1080p and 24 fps comparisons that used to sit
+here were built on the hand-measured numbers above, so they have been removed rather than rescaled
+— the shape of the claim may well survive a re-measurement, but it has not had one, and a
+plausible number is not a measured one. Re-run the harness with a 1080p clip and a 24 fps clip to
+put it back on evidence.
 
 **Pausing costs nothing to run, but it does not give the memory back.** Put a fullscreen app in
 front, lock the session, connect over RDP or switch on battery saver, and playback stops rather
-than throttling: 0.004 % CPU and no video engine activity at all. The buffers stay allocated so
+than throttling: 0.034 % CPU and no video engine activity at all. The buffers stay allocated so
 resuming is instant, which makes paused the highest-memory row in the table. That is the honest
 shape of it, and it is the state the wallpaper is in whenever you are actually gaming.
 
@@ -320,10 +354,16 @@ Gallery entries are labelled when they need one.
 
 Things that are true and worth saying out loud.
 
-CPU while a video plays is about 1 % of the machine, which is about 24 % of a single core. That is
-the cost of copying every decoded frame onto the composition surface and presenting it, and it is
-not zero. A still image is free, and auto-pause means the video is not running most of the time
-anyway, but the number is the number.
+CPU while a 4K60 video plays is about **0.3 %** of the machine, which is about 8 % of a single core.
+That is the cost of copying every decoded frame onto the composition surface and presenting it, and
+it is not zero. A still image is effectively free at 0.008 %, and auto-pause means the video is not
+running most of the time anyway, but the number is the number.
+
+This paragraph said "about 1 % of the machine, about 24 % of a single core" until 2026-08-22. That
+came from the hand-measured table, which the scripted harness has since shown was roughly 2.6× too
+high. The correction makes the project look better, which is exactly the direction that deserves the
+most scepticism — so the measurement is reproducible by anyone with the repo and one command, and
+the raw record is committed.
 
 The re-apply leak is fixed, and it was bad. Until recently every full re-apply, which includes
 display changes, monitor hot-plug and explorer restarts, stranded roughly 27 threads and 24 MB
