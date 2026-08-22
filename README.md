@@ -88,10 +88,10 @@ and has been fully re-measured; what follows replaces it.
 
 | State | CPU (whole machine) | CPU (one core) | Memory (working set) | Graphics memory | Busiest GPU engine |
 |---|---|---|---|---|---|
-| Still image | 0.008 % | 0.2 % | 108 MB | 58 MB † | 0 % |
+| Still image | 0.008–0.016 % | 0.2–0.4 % | 108–112 MB | 58–62 MB † | 0 % |
 | Video, auto-paused | 0.034 % | 0.8 % | 204 MB | 300 MB | 0 % (copy) |
 | Video, 1080p60 playing | — | — | — | — | — |
-| Video, 4K60 playing | 0.318 % | 7.6 % | 189 MB | 279 MB | 5.8 % (video decode) |
+| Video, 4K60 playing | 0.32–0.47 % | 7.6–11.2 % | 189–216 MB | 279–308 MB | 5.8–5.9 % (video decode) |
 
 Every **filled** row is produced by [`scripts/bench/Run-Bench.ps1`](scripts/bench/), which reads
 FeatherWall's own log and **refuses to report a row** whose pause state was not the expected one for
@@ -109,10 +109,20 @@ The first CPU column is the honest one for a 24-core machine. The second is the 
 divided by one core instead of twenty-four, because a sub-1 % figure on a machine this wide
 deserves the honest denominator next to it.
 
+**Ranges, not points, because CPU moves between runs.** Two full harness runs of the 4K60 row on
+the same machine with the same clip measured **0.318 %** and **0.466 %**, and a third measurement
+taken straight from `TotalProcessorTime` with no harness involved gave **0.236 %**. Decode cost
+tracks scene content and whatever else the machine is doing, so a single run quoted to three
+decimals would be false precision — which is the same mistake as the hand-read peak this table
+replaced, just a smaller one. The GPU engine figure is stable across runs; CPU is not.
+
+The rows with one measurement show a point value. The auto-paused row is a single run from
+2026-08-20, so treat its CPU the same way until it has been repeated.
+
 **Working set grows with uptime.** These rows are measured about twelve seconds after launch, which
 is what a script can reproduce. A copy of FeatherWall left running for several hours on this machine
-measured **233 MB** rather than 189 MB. Neither is wrong; they are different questions, and the
-reproducible one is published.
+measured **233 MB**. Neither is wrong; they are different questions, and the reproducible one is
+published.
 
 **This runs on the integrated GPU, not the discrete one.** Every GPU number above belongs to the
 **Intel Arc integrated graphics**. `nvidia-smi` lists no FeatherWall process on the RTX 5090, which
@@ -360,7 +370,8 @@ Gallery entries are labelled when they need one.
 
 Things that are true and worth saying out loud.
 
-CPU while a 4K60 video plays is about **0.3 %** of the machine, which is about 8 % of a single core.
+CPU while a 4K60 video plays is **0.3 % to 0.5 %** of the machine, which is 8 % to 11 % of a single
+core, and it moves between runs.
 That is the cost of copying every decoded frame onto the composition surface and presenting it, and
 it is not zero. A still image is effectively free at 0.008 %, and auto-pause means the video is not
 running most of the time anyway, but the number is the number.
