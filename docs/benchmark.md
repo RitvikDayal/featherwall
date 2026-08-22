@@ -77,9 +77,11 @@ and refuses the row by name instead of producing it wrongly.
 The auto-paused row above was produced exactly that way — from an interactive session, with a real
 window covering the desktop — so an interactive run is known to be able to produce *a* paused row.
 
-**The settings-panel row has never succeeded, in any session.** Every attempt so far has been from a
-background one, so it is expected to fill in from an interactive console rather than known to. There
-is no record of it passing, and until there is, this file should not imply otherwise.
+**The settings-panel row is unverified.** It has never succeeded in any session. Every attempt so
+far has run from a background session, where the blocker cannot take the foreground, so the row was
+refused rather than measured. An interactive run is *expected* to produce it, by the same mechanism
+that produced the auto-paused row — but expected is not verified, no run has yet produced it, and
+this file should not read as though one has.
 
 The 1080p60 row has simply never been run through the harness. The 1920x1080 downscale the
 hand-measured table used is not on this machine, so filling it means regenerating that clip from
