@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Drives FeatherWall through each wallpaper state and measures every one with Measure-App.ps1.
 
