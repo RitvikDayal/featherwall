@@ -201,7 +201,7 @@ public sealed class Engine : IDisposable
     {
         if (!PowerNotifications.TryRead(lParam, out var setting, out byte value)) return;
 
-        if (setting == PowerNotifications.ConsoleDisplayState)
+        if (PowerNotifications.IsDisplayState(setting))
         {
             bool off = value == PowerNotifications.DisplayOff;
             Log.Info($"Display state: {value switch

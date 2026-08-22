@@ -22,6 +22,67 @@ public class PowerPayloadTests
         return block;
     }
 
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr VirtualAlloc(IntPtr address, nuint size, uint allocationType, uint protect);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool VirtualProtect(IntPtr address, nuint size, uint newProtect, out uint oldProtect);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool VirtualFree(IntPtr address, nuint size, uint freeType);
+
+    private const uint MEM_COMMIT_RESERVE = 0x1000 | 0x2000;
+    private const uint MEM_RELEASE = 0x8000;
+    private const uint PAGE_READWRITE = 0x04;
+    private const uint PAGE_EXECUTE = 0x10;
+    private const uint PAGE_NOACCESS = 0x01;
+
+    [Theory]
+    [InlineData(PAGE_EXECUTE)]  // grants execute and NOT read
+    [InlineData(PAGE_NOACCESS)]
+    public void APageWithoutReadAccess_IsRejected(uint protection)
+    {
+        // Written while the page is still writable, then locked down — the payload is perfectly
+        // well-formed, so the only thing that can reject it is the protection check.
+        nuint size = (nuint)Marshal.SizeOf<POWERBROADCAST_SETTING>();
+        IntPtr page = VirtualAlloc(IntPtr.Zero, size, MEM_COMMIT_RESERVE, PAGE_READWRITE);
+        Assert.NotEqual(IntPtr.Zero, page);
+        try
+        {
+            Marshal.StructureToPtr(
+                new POWERBROADCAST_SETTING
+                {
+                    PowerSetting = PowerNotifications.ConsoleDisplayState,
+                    DataLength = sizeof(uint),
+                    Data = PowerNotifications.DisplayOn,
+                }, page, false);
+
+            Assert.True(VirtualProtect(page, size, protection, out _));
+
+            Assert.False(PowerNotifications.TryRead(page, out _, out _));
+        }
+        finally { VirtualFree(page, 0, MEM_RELEASE); }
+    }
+
+    [Fact]
+    public void BothDisplayStateSettings_AreRoutedAsDisplayState()
+    {
+        // Both are registered for. Routing only the console one subscribed to the session signal
+        // and then dropped it — and the session one is what carries the answer over RDP.
+        Assert.True(PowerNotifications.IsDisplayState(PowerNotifications.ConsoleDisplayState));
+        Assert.True(PowerNotifications.IsDisplayState(PowerNotifications.SessionDisplayStatus));
+    }
+
+    [Fact]
+    public void ThePowerSourceSettings_AreNotDisplayState()
+    {
+        Assert.False(PowerNotifications.IsDisplayState(PowerNotifications.AcDcPowerSource));
+        Assert.False(PowerNotifications.IsDisplayState(PowerNotifications.PowerSavingStatus));
+        Assert.False(PowerNotifications.IsDisplayState(Guid.Empty));
+    }
+
     [Fact]
     public void NullPointer_IsRejected()
     {
