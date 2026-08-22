@@ -88,20 +88,27 @@ function Get-ProcessTree {
 
     # One CIM query, then walk in memory. Querying per-process is slow enough to perturb a
     # short sampling window on a machine with many processes.
+    # Both ids are cast to [int]. Win32_Process reports UInt32 and Diagnostics.Process.Id is
+    # Int32, and a Hashtable does not consider a boxed UInt32 equal to a boxed Int32 — so a
+    # lookup keyed on a root's .Id missed every entry and the walk found no children at all.
+    # FeatherWall is one process, so its rows were unaffected and nothing looked wrong; a
+    # multi-process competitor would have been measured as its root alone, which is the whole
+    # comparison this script exists for, wrong in the direction that flatters FeatherWall.
     $all = Get-CimInstance Win32_Process -Property ProcessId, ParentProcessId, Name
     $byParent = @{}
     foreach ($p in $all) {
-        if (-not $byParent.ContainsKey($p.ParentProcessId)) { $byParent[$p.ParentProcessId] = [System.Collections.ArrayList]::new() }
-        [void]$byParent[$p.ParentProcessId].Add($p.ProcessId)
+        $parent = [int]$p.ParentProcessId
+        if (-not $byParent.ContainsKey($parent)) { $byParent[$parent] = [System.Collections.ArrayList]::new() }
+        [void]$byParent[$parent].Add([int]$p.ProcessId)
     }
 
     $seen = [System.Collections.Generic.HashSet[int]]::new()
     $queue = [System.Collections.Queue]::new()
-    foreach ($r in $roots) { [void]$seen.Add($r.Id); $queue.Enqueue($r.Id) }
+    foreach ($r in $roots) { [void]$seen.Add([int]$r.Id); $queue.Enqueue([int]$r.Id) }
 
     while ($queue.Count -gt 0) {
         # Not $pid — that is a read-only automatic variable holding this shell's own id.
-        $current = $queue.Dequeue()
+        $current = [int]$queue.Dequeue()
         if (-not $byParent.ContainsKey($current)) { continue }
         foreach ($child in $byParent[$current]) {
             if ($seen.Add($child)) { $queue.Enqueue($child) }
@@ -374,7 +381,11 @@ if ($memoryOkSamples.Count -eq 0) { [void]$counterNotes.Add('GPU Process Memory 
 elseif ($memoryOkSamples.Count -lt $gpuSamples.Count) { [void]$counterNotes.Add("GPU Process Memory counters read on $($memoryOkSamples.Count)/$($gpuSamples.Count) samples") }
 $counterNote = if ($counterNotes.Count -eq 0) { 'all read' } else { $counterNotes -join '; ' }
 
-function Avg($values) { if ($values.Count -eq 0) { 0 } else { ($values | Measure-Object -Average).Average } }
+# @() before .Count: a pipeline that yields exactly one value is unrolled to a bare scalar, which
+# has no .Count and dies under StrictMode. One sample happens whenever the window is short or the
+# tree is big enough that a single pass fills it — found measuring a 57-process tree, which is
+# exactly the competitor shape this script is for.
+function Avg($values) { $v = @($values); if ($v.Count -eq 0) { 0 } else { ($v | Measure-Object -Average).Average } }
 
 [pscustomobject]@{
     App               = $ProcessName
