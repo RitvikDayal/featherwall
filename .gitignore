@@ -484,3 +484,4 @@ $RECYCLE.BIN/
 # Benchmark runs are machine-specific; only curated results are committed by hand.
 scripts/bench/results/*.json
 !scripts/bench/results/featherwall-paused-verified.json
+!scripts/bench/results/featherwall-playing-verified.json
