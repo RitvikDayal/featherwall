@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 
 namespace FeatherWall.Common;
 
@@ -32,7 +33,12 @@ public static class Log
 
     private static void Write(string level, string message)
     {
-        var line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{level}] {message}";
+        // InvariantCulture: '-' and ':' are culture-sensitive placeholders in a custom format
+        // string, so on a machine whose culture uses different date or time separators this line
+        // came out in a different shape. The log is parsed — scripts/bench/Measure-App.ps1 reads
+        // pause events out of it to decide whether a benchmark row is honest — so its timestamp
+        // is a format, not decoration, and it should not vary by locale.
+        var line = $"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture)} [{level}] {message}";
         Debug.WriteLine(line);
         if (_path is null) return;
         lock (Sync)

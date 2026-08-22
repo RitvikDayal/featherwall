@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Measures what a running wallpaper application costs: processes, memory, CPU, GPU.
 
@@ -206,7 +206,10 @@ function Get-PauseEvents {
         $m = [regex]::Match($line, '^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}) \[INF\] (Paused|Resumed) (\\\\[.?]\\[^\s:]+)')
         if (-not $m.Success) { continue }
         [void]$events.Add([pscustomobject]@{
-            At     = [datetime]::ParseExact($m.Groups[1].Value, 'yyyy-MM-dd HH:mm:ss.fff', $null)
+            # InvariantCulture at both ends. '-' and ':' are culture-sensitive placeholders in a
+            # custom format string, so a machine with different date or time separators writes and
+            # reads a different shape; Log.cs is pinned to invariant for the same reason.
+            At     = [datetime]::ParseExact($m.Groups[1].Value, 'yyyy-MM-dd HH:mm:ss.fff', [Globalization.CultureInfo]::InvariantCulture)
             State  = if ($m.Groups[2].Value -eq 'Paused') { 'Paused' } else { 'Playing' }
             Device = $m.Groups[3].Value
         })
@@ -227,12 +230,18 @@ $startPids = @($tree | ForEach-Object { $_.Id })
 # inside the window. Retaining the last total after a pid disappears is the whole point.
 $cpuBaseline = @{}
 $cpuLast = @{}
+# Pids that existed before the window opened. A pid absent from $cpuBaseline is otherwise
+# indistinguishable from a brand-new one, and giving a pre-existing process a zero baseline
+# charges its ENTIRE lifetime of CPU to this window.
+$startPids = [System.Collections.Generic.HashSet[int]]::new()
+$readErrors = 0
 foreach ($p in $tree) {
+    [void]$startPids.Add([int]$p.Id)
     try {
         $t = $p.TotalProcessorTime.TotalSeconds
         $cpuBaseline[$p.Id] = $t
         $cpuLast[$p.Id] = $t
-    } catch { }
+    } catch { $readErrors++ }
 }
 $wallStart = Get-Date
 
@@ -257,9 +266,15 @@ while ((Get-Date) -lt $deadline) {
             $threads += $p.Threads.Count
             $handles += $p.HandleCount
             $t = $p.TotalProcessorTime.TotalSeconds
-            if (-not $cpuBaseline.ContainsKey($p.Id)) { $cpuBaseline[$p.Id] = 0.0 }
+            if (-not $cpuBaseline.ContainsKey($p.Id)) {
+                # A pid whose baseline read failed at the start is NOT a new process. Anchoring it
+                # here attributes zero CPU to the part of the window before it became readable,
+                # which is a small under-count; a zero baseline would have charged its whole
+                # lifetime to this window instead, which is unbounded.
+                $cpuBaseline[$p.Id] = if ($startPids.Contains([int]$p.Id)) { $t } else { 0.0 }
+            }
             $cpuLast[$p.Id] = $t
-        } catch { }
+        } catch { $readErrors++ }
     }
     [void]$memSamples.Add([pscustomobject]@{
         Processes = $now.Count; WorkingSet = $ws; Private = $pws; Threads = $threads; Handles = $handles
@@ -272,15 +287,20 @@ while ((Get-Date) -lt $deadline) {
     if ($remaining -gt 1) { Start-Sleep -Milliseconds 500 }
 }
 
-$wallEnd = Get-Date
 $endTree = Get-ProcessTree -Name $ProcessName
 foreach ($p in $endTree) {
     try {
         $t = $p.TotalProcessorTime.TotalSeconds
-        if (-not $cpuBaseline.ContainsKey($p.Id)) { $cpuBaseline[$p.Id] = 0.0 }
+        if (-not $cpuBaseline.ContainsKey($p.Id)) {
+            $cpuBaseline[$p.Id] = if ($startPids.Contains([int]$p.Id)) { $t } else { 0.0 }
+        }
         $cpuLast[$p.Id] = $t
-    } catch { }
+    } catch { $readErrors++ }
 }
+# AFTER the final CPU snapshot, not before it. Get-ProcessTree runs a CIM query that takes real
+# time on a machine with many processes, and CPU burned during it landed in $cpuLast while being
+# excluded from $elapsed — inflating both CPU percentages by whatever the enumeration cost.
+$wallEnd = Get-Date
 
 $elapsed = ($wallEnd - $wallStart).TotalSeconds
 $cpuSeconds = 0.0
@@ -293,6 +313,14 @@ foreach ($id in $cpuLast.Keys) {
 # flattering direction and nothing in the output shows it.
 $stateNote = 'not checked'
 if ($ExpectState -ne 'Any') {
+    # The state comes from FeatherWall's log, so it can only describe FeatherWall. Measuring a
+    # competitor with -ExpectState would have read THIS app's log and discarded or accepted the
+    # competitor's row on the strength of FeatherWall's monitors — a verdict about the wrong
+    # program, delivered with the same confidence as a real one.
+    if ($ProcessName -ine 'featherwall') {
+        throw "-ExpectState is only meaningful for ProcessName 'featherwall'; it is read from FeatherWall's own log. Measure '$ProcessName' with -ExpectState Any."
+    }
+
     $events = Get-PauseEvents -Path $LogPath
 
     # Two separate things have to be true, and checking only the first is a hole: a wallpaper
@@ -403,6 +431,10 @@ function Avg($values) { $v = @($values); if ($v.Count -eq 0) { 0 } else { ($v | 
     BusiestGpuEngine  = $busiest
     BusiestGpuPercent = if ($null -eq $busiestValue) { $null } else { [math]::Round($busiestValue, 1) }
     GpuCounters       = $counterNote
+    # Non-zero means some process property could not be read at some point, so this row is
+    # missing part of a contribution. Reported rather than swallowed: the numbers still look
+    # complete, and only this field says whether they are.
+    ProcessReadErrors = $readErrors
     Cores             = $cores
     PauseState        = $stateNote
     MeasuredAtUtc     = $wallStart.ToUniversalTime().ToString('s') + 'Z'
