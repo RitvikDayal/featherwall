@@ -75,10 +75,15 @@ opens its blocker window *behind* the desktop and pauses nothing. `Run-Bench.ps1
 and refuses the row by name instead of producing it wrongly.
 
 The auto-paused row above was produced exactly that way — from an interactive session, with a real
-window covering the desktop. Run the harness from a console you are sitting in front of and the
-settings-panel row fills in too.
+window covering the desktop — so an interactive run is known to be able to produce *a* paused row.
 
-The 1080p60 row is simply not measured yet; it needs a 1080p clip.
+**The settings-panel row has never succeeded, in any session.** Every attempt so far has been from a
+background one, so it is expected to fill in from an interactive console rather than known to. There
+is no record of it passing, and until there is, this file should not imply otherwise.
+
+The 1080p60 row has simply never been run through the harness. The 1920x1080 downscale the
+hand-measured table used is not on this machine, so filling it means regenerating that clip from
+the same source and running the harness once — not a limitation, just work nobody has done.
 
 ## Against the competition
 

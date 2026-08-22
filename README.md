@@ -82,9 +82,13 @@ and has been fully re-measured; what follows replaces it.
 > Intel Arc integrated graphics driving the display, NVIDIA RTX 5090 Laptop idle · 2560x1600 at
 > 240 Hz, 150 % scaling · .NET 10 Release build, single monitor.
 >
-> **Test media:** Hubble Ultra Deep Field, 6200x6200 JPEG, public domain. For video, a
-> 3840x2160 H.264 clip at 60 fps and 12 Mbps, plus a 1920x1080 downscale of **the same clip**,
-> so the two video rows differ only in resolution.
+> **Test media, as measured:** the still-image row used `docs/media/hero.jpg`, 1800x1125. The
+> 4K60 row used a 3840x2160 H.264 clip at 60 fps and 12 Mbps. Both video rows below were meant to
+> be the same clip at two resolutions; only the 4K one has been run through the harness.
+>
+> The earlier hand-measured table used a 6200x6200 Hubble Ultra Deep Field JPEG and a 1920x1080
+> downscale of the video. Those are **not** the files behind the numbers above, which is one more
+> reason the two tables should not be compared cell by cell.
 
 | State | CPU (whole machine) | CPU (one core) | Memory (working set) | Graphics memory | Busiest GPU engine |
 |---|---|---|---|---|---|
@@ -102,8 +106,10 @@ carries the same numbers with their provenance.
 **† The still-image graphics figures are partial** — that run read the GPU counters on 5 of 8
 samples, which the record states. Its CPU and memory figures are complete.
 
-**The 1080p60 row is empty because nobody has measured it with the harness.** It needs a 1080p
-clip. An empty cell here means exactly that, and never "probably fine".
+**The 1080p60 row is empty because nobody has measured it with the harness.** The 1080p downscale
+described above was made for the hand-measured table and is not on this machine, so filling the row
+means regenerating that clip and running the harness once. An empty cell here means exactly that,
+and never "probably fine".
 
 The first CPU column is the honest one for a 24-core machine. The second is the same measurement
 divided by one core instead of twenty-four, because a sub-1 % figure on a machine this wide
