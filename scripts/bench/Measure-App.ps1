@@ -235,6 +235,14 @@ $cpuLast = @{}
 # charges its ENTIRE lifetime of CPU to this window.
 $startPids = [System.Collections.Generic.HashSet[int]]::new()
 $readErrors = 0
+
+# BEFORE the baseline reads, as $wallEnd is taken after the closing ones. Baselines are collected
+# sequentially, so with $wallStart set afterwards the numerator covered the collection itself while
+# the denominator did not — inflating both percentages by more the bigger the tree, which is
+# backwards for a script whose reason to exist is measuring a competitor's larger tree fairly.
+# Bracketing the window outside both snapshots leaves a bias that under-reports by at most the
+# snapshot cost, which is the direction an honest benchmark should err in.
+$wallStart = Get-Date
 foreach ($p in $tree) {
     [void]$startPids.Add([int]$p.Id)
     try {
@@ -243,7 +251,6 @@ foreach ($p in $tree) {
         $cpuLast[$p.Id] = $t
     } catch { $readErrors++ }
 }
-$wallStart = Get-Date
 
 # GPU and memory are instantaneous, so they are averaged across the window rather than read once.
 $gpuSamples = [System.Collections.ArrayList]::new()
