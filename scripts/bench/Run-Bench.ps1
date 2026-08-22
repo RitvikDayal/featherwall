@@ -11,7 +11,8 @@
     accidentally records a paused wallpaper as a cheap one. This script minimises all windows
     for the duration and restores them at the end. Do not use the machine while it runs.
 
-    It backs up your config.json first and restores it at the end, including on Ctrl-C.
+    It backs up your config.json first and restores it at the end, including on Ctrl-C. If you had
+    no config.json, it removes the one it wrote rather than leaving the benchmark's settings behind.
 
 .PARAMETER Video
     A video file to measure. Use the same file at different resolutions to isolate resolution.
@@ -80,9 +81,26 @@ function Start-AndSettle {
 
 $results = [System.Collections.ArrayList]::new()
 
+# Whether a config EXISTED decides what restoring even means, and the old code could not tell the
+# two failures apart: a silenced Copy-Item error and "there was nothing to copy" both left no
+# backup file, and the finally block then left the benchmark's own config in place as if it were
+# the user's. A stale backup from an earlier interrupted run would restore the wrong config again.
+$hadConfig = Test-Path $configPath
+if (Test-Path $backup) { Remove-Item $backup -Force }
+
+# Declared before the try so the finally block can always reach it — Measure-App.ps1 throws BY
+# DESIGN when it refuses a row, which is precisely the path that used to leave a maximised
+# Notepad sitting on the user's desktop.
+$blocker = $null
+
 try {
-    Copy-Item $configPath $backup -Force -EA SilentlyContinue
-    Write-Host "Config backed up to $backup" -ForegroundColor DarkGray
+    if ($hadConfig) {
+        # No -EA SilentlyContinue: failing to preserve a real config is not a warning.
+        Copy-Item $configPath $backup -Force
+        Write-Host "Config backed up to $backup" -ForegroundColor DarkGray
+    } else {
+        Write-Host "No existing config; the benchmark's own will be removed afterwards." -ForegroundColor DarkGray
+    }
 
     $shell.MinimizeAll()
     Start-Sleep -Seconds 2
@@ -121,12 +139,23 @@ try {
     [void]$results.Add((& $measure -ProcessName featherwall -Seconds $Seconds -Label 'Settings panel open' -ExpectState Paused))
 }
 finally {
+    if ($blocker) { Stop-Process -Id $blocker.Id -Force -EA SilentlyContinue }
     $shell.UndoMinimizeALL()
     Stop-FeatherWall
-    if (Test-Path $backup) {
-        Move-Item $backup $configPath -Force
-        Write-Host "Config restored." -ForegroundColor DarkGray
+
+    if ($hadConfig) {
+        if (Test-Path $backup) {
+            Move-Item $backup $configPath -Force
+            Write-Host "Config restored." -ForegroundColor DarkGray
+        } else {
+            Write-Warning "Backup $backup is gone - config.json is the benchmark's, not yours."
+        }
     }
+    elseif (Test-Path $configPath) {
+        Remove-Item $configPath -Force
+        Write-Host "Removed the benchmark's config." -ForegroundColor DarkGray
+    }
+
     Start-Process $Exe
 }
 
