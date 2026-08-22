@@ -28,6 +28,9 @@
     * GPU is read per-engine from '\GPU Engine(*)' filtered to our pids. Windows reports GPU
       work per engine and those percentages DO NOT sum to a total, so the busiest single
       engine is reported along with its name, which is roughly what Task Manager shows.
+      If the counters cannot be read — they are localised, so these English paths do not
+      resolve on every Windows — the GPU fields are NULL and GpuCounters says so. Reporting
+      an unreadable counter as 0 would publish a perfect GPU row for a video engine.
 
     * Dedicated and shared GPU memory are reported separately, and BOTH are real. A modern
       integrated GPU does carve out dedicated memory — measured 2026-08-20, Intel Arc reports
@@ -128,6 +131,8 @@ function Get-GpuSample {
     $engines = @{}
     $dedicated = 0.0
     $shared = 0.0
+    $enginesOk = $false
+    $memoryOk = $false
 
     try {
         $util = (Get-Counter '\GPU Engine(*)\Utilization Percentage' -ErrorAction Stop).CounterSamples
@@ -141,6 +146,7 @@ function Get-GpuSample {
             }
             $engines[$key].Value += $s.CookedValue
         }
+        $enginesOk = $true
     } catch {
         Write-Verbose "GPU Engine counters unavailable: $_"
     }
@@ -155,11 +161,18 @@ function Get-GpuSample {
                 if ($name -eq 'Dedicated Usage') { $dedicated += $s.CookedValue } else { $shared += $s.CookedValue }
             }
         }
+        $memoryOk = $true
     } catch {
         Write-Verbose "GPU Process Memory counters unavailable: $_"
     }
 
-    return [pscustomobject]@{ Engines = $engines; DedicatedBytes = $dedicated; SharedBytes = $shared }
+    # Availability travels with the sample. A counter that could not be read is not zero usage,
+    # and on a localised Windows these counter paths do not resolve at all — which would have
+    # published a flawless-looking 0 MB / 0 %% GPU row for a video wallpaper engine.
+    return [pscustomobject]@{
+        Engines = $engines; EnginesOk = $enginesOk
+        DedicatedBytes = $dedicated; SharedBytes = $shared; MemoryOk = $memoryOk
+    }
 }
 
 function Get-PauseEvents {
@@ -177,11 +190,18 @@ function Get-PauseEvents {
         # truncating to the second puts an event at 14:00:00.900 BEFORE a window that opened at
         # 14:00:00.500 — so a state change inside the first half-second is classified as having
         # happened before the run, and the row it should have discarded gets reported.
-        $m = [regex]::Match($line, '^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}) \[INF\] (Paused|Resumed) ')
+        # The device is captured, because pause state is PER MONITOR: Engine.cs logs
+        # "Paused \\.\DISPLAY2: Fullscreen" and one monitor can be paused while another plays.
+        # Collapsing them to a single app-wide state accepts a mixed run as a clean one.
+        #
+        # Anchoring on a device path also rejects "Resumed from sleep - refreshing clock", which
+        # the previous pattern parsed as a pause event on a monitor named "from".
+        $m = [regex]::Match($line, '^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}) \[INF\] (Paused|Resumed) (\\\\[.?]\\[^\s:]+)')
         if (-not $m.Success) { continue }
         [void]$events.Add([pscustomobject]@{
-            At    = [datetime]::ParseExact($m.Groups[1].Value, 'yyyy-MM-dd HH:mm:ss.fff', $null)
-            State = if ($m.Groups[2].Value -eq 'Paused') { 'Paused' } else { 'Playing' }
+            At     = [datetime]::ParseExact($m.Groups[1].Value, 'yyyy-MM-dd HH:mm:ss.fff', $null)
+            State  = if ($m.Groups[2].Value -eq 'Paused') { 'Paused' } else { 'Playing' }
+            Device = $m.Groups[3].Value
         })
     }
     return ,@($events.ToArray())
@@ -272,24 +292,42 @@ if ($ExpectState -ne 'Any') {
     # that was paused for the WHOLE window has no transitions in it, so a transitions-only check
     # would happily report a paused measurement as a playing one.
     $inside = @($events | Where-Object { $_.At -ge $wallStart -and $_.At -le $wallEnd })
-    $before = @($events | Where-Object { $_.At -lt $wallStart })
-    $entering = if ($before.Count -gt 0) { $before[-1].State } else { 'unknown' }
 
     if ($inside.Count -gt 0) {
-        $detail = ($inside | ForEach-Object { "  $($_.At.ToString('HH:mm:ss'))  -> $($_.State)" }) -join "`n"
+        $detail = ($inside | ForEach-Object { "  $($_.At.ToString('HH:mm:ss.fff'))  $($_.Device) -> $($_.State)" }) -join "`n"
         throw @"
 DISCARDED: the wallpaper changed pause state during the '$Label' window, so this number is an
 average of two different states and means nothing.
 
 $detail
 
-Expected it to stay $ExpectState for the whole $([math]::Round($elapsed))s.
+Expected every monitor to stay $ExpectState for the whole $([math]::Round($elapsed))s.
 "@
     }
 
-    if ($entering -ne $ExpectState) {
+    # Per monitor, because the state is per monitor. The app-wide "latest event wins" version
+    # accepted a run where DISPLAY1 was paused and DISPLAY2 was playing, which is two different
+    # measurements averaged into one row.
+    $devices = @($events | ForEach-Object { $_.Device } | Sort-Object -Unique)
+    if ($devices.Count -eq 0) {
         throw @"
-DISCARDED: the wallpaper was '$entering' for the whole '$Label' window, not '$ExpectState'.
+DISCARDED: no pause-state events for any monitor were found in $LogPath, so the state during the
+'$Label' window is unknown and cannot be verified. An unverified row is not a row.
+"@
+    }
+
+    $wrong = [System.Collections.ArrayList]::new()
+    foreach ($device in $devices) {
+        $before = @($events | Where-Object { $_.Device -eq $device -and $_.At -lt $wallStart })
+        $entering = if ($before.Count -gt 0) { $before[-1].State } else { 'unknown' }
+        if ($entering -ne $ExpectState) { [void]$wrong.Add("  $device was '$entering'") }
+    }
+
+    if ($wrong.Count -gt 0) {
+        throw @"
+DISCARDED: not every monitor was '$ExpectState' for the whole '$Label' window.
+
+$($wrong -join "`n")
 
 FeatherWall stops decoding when a window covers the desktop, so measuring a 'playing' row on a
 machine that is in use records a paused wallpaper as a cheap playing one. That is the most
@@ -300,7 +338,7 @@ it again on an otherwise idle machine.
 "@
     }
 
-    $stateNote = "$ExpectState, verified for the full window"
+    $stateNote = "$ExpectState, verified for the full window on $($devices.Count) monitor(s): $($devices -join ', ')"
 }
 
 # Average each engine across the window, then report the busiest one. Summing engines would
@@ -314,13 +352,27 @@ foreach ($s in $gpuSamples) {
         $engineTotals[$k].Sum += $s.Engines[$k].Value
     }
 }
-$busiest = $null; $busiestValue = 0.0
-if ($gpuSamples.Count -gt 0) {
+# Only samples whose counters actually read are averaged, and if none did the metric is null
+# rather than zero. "Unavailable" and "measured zero" are different answers and this harness
+# exists to stop the second one being printed when the first is true.
+$engineOkSamples = @($gpuSamples | Where-Object { $_.EnginesOk })
+$memoryOkSamples = @($gpuSamples | Where-Object { $_.MemoryOk })
+
+$busiest = $null; $busiestValue = $null
+if ($engineOkSamples.Count -gt 0) {
+    $busiestValue = 0.0
     foreach ($k in $engineTotals.Keys) {
-        $avg = $engineTotals[$k].Sum / $gpuSamples.Count
+        $avg = $engineTotals[$k].Sum / $engineOkSamples.Count
         if ($avg -gt $busiestValue) { $busiestValue = $avg; $busiest = $engineTotals[$k].Name }
     }
 }
+
+$counterNotes = [System.Collections.ArrayList]::new()
+if ($engineOkSamples.Count -eq 0) { [void]$counterNotes.Add('GPU Engine counters unavailable') }
+elseif ($engineOkSamples.Count -lt $gpuSamples.Count) { [void]$counterNotes.Add("GPU Engine counters read on $($engineOkSamples.Count)/$($gpuSamples.Count) samples") }
+if ($memoryOkSamples.Count -eq 0) { [void]$counterNotes.Add('GPU Process Memory counters unavailable') }
+elseif ($memoryOkSamples.Count -lt $gpuSamples.Count) { [void]$counterNotes.Add("GPU Process Memory counters read on $($memoryOkSamples.Count)/$($gpuSamples.Count) samples") }
+$counterNote = if ($counterNotes.Count -eq 0) { 'all read' } else { $counterNotes -join '; ' }
 
 function Avg($values) { if ($values.Count -eq 0) { 0 } else { ($values | Measure-Object -Average).Average } }
 
@@ -333,12 +385,13 @@ function Avg($values) { if ($values.Count -eq 0) { 0 } else { ($values | Measure
     Handles           = [int](Avg ($memSamples | ForEach-Object { $_.Handles }))
     WorkingSetMB      = [math]::Round((Avg ($memSamples | ForEach-Object { $_.WorkingSet })) / 1MB, 1)
     PrivateMB         = [math]::Round((Avg ($memSamples | ForEach-Object { $_.Private })) / 1MB, 1)
-    GpuDedicatedMB    = [math]::Round((Avg ($gpuSamples | ForEach-Object { $_.DedicatedBytes })) / 1MB, 1)
-    GpuSharedMB       = [math]::Round((Avg ($gpuSamples | ForEach-Object { $_.SharedBytes })) / 1MB, 1)
+    GpuDedicatedMB    = if ($memoryOkSamples.Count -eq 0) { $null } else { [math]::Round((Avg ($memoryOkSamples | ForEach-Object { $_.DedicatedBytes })) / 1MB, 1) }
+    GpuSharedMB       = if ($memoryOkSamples.Count -eq 0) { $null } else { [math]::Round((Avg ($memoryOkSamples | ForEach-Object { $_.SharedBytes })) / 1MB, 1) }
     CpuPercentMachine = [math]::Round(100 * $cpuSeconds / ($elapsed * $cores), 3)
     CpuPercentOneCore = [math]::Round(100 * $cpuSeconds / $elapsed, 1)
     BusiestGpuEngine  = $busiest
-    BusiestGpuPercent = [math]::Round($busiestValue, 1)
+    BusiestGpuPercent = if ($null -eq $busiestValue) { $null } else { [math]::Round($busiestValue, 1) }
+    GpuCounters       = $counterNote
     Cores             = $cores
     PauseState        = $stateNote
     MeasuredAtUtc     = $wallStart.ToUniversalTime().ToString('s') + 'Z'
