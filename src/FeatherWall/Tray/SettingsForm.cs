@@ -280,7 +280,12 @@ public sealed class SettingsForm : Form
             using var dialog = new ColorDialog { Color = swatch.BackColor, FullOpen = true };
             if (dialog.ShowDialog(this) != DialogResult.OK) return;
             var c = dialog.Color;
-            _config.Clock.DateColor = $"#{CurrentAlpha():X2}{c.R:X2}{c.G:X2}{c.B:X2}";
+            // The date's own alpha, not the time's. An inherited date is timeColor.A * DateOpacity
+            // and an explicit one carries its own; CurrentAlpha() returns neither, so picking a new
+            // RGB used to silently reset the date's opacity to the time's.
+            byte alpha = Widgets.ClockRenderer.DateColorFor(
+                _config.Clock, Widgets.ClockRenderer.ParseColor(_config.Clock.Color)).A;
+            _config.Clock.DateColor = $"#{alpha:X2}{c.R:X2}{c.G:X2}{c.B:X2}";
             Sync();
             ApplyClock();
         };
@@ -484,7 +489,18 @@ public sealed class SettingsForm : Form
         };
         combo.Leave += (_, _) =>
         {
-            if (_loading || combo.Text.Length == 0) return;
+            if (_loading) return;
+            if (combo.Text.Length == 0)
+            {
+                // Only the date picker has a placeholder, and there an erased box is a real choice
+                // — "inherit the time font" — which the early return used to discard, leaving the
+                // old family set and the inheritance unreachable from the UI. The time picker has
+                // no such state, so a blank there is still treated as a half-finished edit.
+                if (placeholder is null) return;
+                set("");
+                ApplyClock();
+                return;
+            }
             set(combo.Text == placeholder ? "" : combo.Text);
             ApplyClock();
         };

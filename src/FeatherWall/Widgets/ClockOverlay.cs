@@ -101,7 +101,10 @@ public sealed class ClockOverlay : IDisposable
     {
         lock (_sync)
         {
-            if (_disposed) return;
+            // _suspended as well as _disposed: stopping the timer prevents future scheduling, but
+            // a tick already queued before SetSuspended took _sync still arrives and would paint
+            // into a display that is off — the exact redraw suspension exists to avoid.
+            if (_disposed || _suspended) return;
 
             var metrics = ClockRenderer.Measure(_config, DateTime.Now, (float)_dpiScale);
             var size = new SIZE { Cx = metrics.Total.Width, Cy = metrics.Total.Height };

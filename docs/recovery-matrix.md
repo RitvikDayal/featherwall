@@ -39,7 +39,7 @@ capture is not evidence.
 | R4 | Monitor power-cycle | Switch the display off at the monitor, wait 10 s, switch it on | Wallpaper returns; no stale swapchain; no duplicate visuals | | |
 | R5 | Display topology change | Plug or unplug an external display; `Win+P` between Extend and Duplicate | Per-monitor windows rebuilt at the new geometry; no leaked swapchain; clock lands on its configured monitor | | |
 | R6 | RDP in and out | Connect over Remote Desktop, then disconnect and log back in at the console | Paused during the remote session; recovers at the console without a black desktop | | |
-| R7 | GPU device removal (TDR) | Force a driver reset, or update or roll back the display driver while running | `DeviceLost` fires, the composition tree is rebuilt automatically, and the log shows the recovery. **This is the leg that regressed silently before 2026-08-20** — the event existed and nothing subscribed to it | | |
+| R7 | GPU device removal (TDR) | Force a driver reset, or update or roll back the display driver while running | `DeviceLost` fires, the composition tree is rebuilt automatically, and the log shows the recovery. **This is the leg that regressed silently before 2026-08-20** — the event existed and nothing subscribed to it. Recovery is bounded to 3 consecutive attempts; a device lost *again* during the rebuild is carried forward rather than dropped, so an adapter that fails repeatedly gives up with a log line instead of looping | | |
 | R8 | Classic WorkerW topology | Run on Windows 10 1809 or Windows 11 ≤ 23H2, where `--diag` reports `Topology : Classic` rather than `RaisedDesktop` | Wallpaper renders behind the icons on the classic path. **Never verified on hardware** — issue #4 | | |
 
 ## Desktop integrity

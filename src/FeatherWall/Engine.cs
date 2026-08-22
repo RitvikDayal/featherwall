@@ -182,9 +182,11 @@ public sealed class Engine : IDisposable
         RunOnMainThread(() =>
         {
             string codec = detail == "unsupported or missing decoder" ? "unsupported" : detail;
-            string hint = CodecSupport.StoreExtensionFor(Path.GetExtension(path).TrimStart('.')) is { } store
-                ? $"Install \"{store}\" from the Microsoft Store."
-                : "HEVC, VP9 and AV1 need their free extension from the Microsoft Store; anything else needs re-encoding to H.264.";
+            // No codec identifier reaches here: MediaPlayerFailedEventArgs carries no FourCC, and
+            // the container extension does not identify the codec — an .mp4 can hold HEVC. Feeding
+            // the extension to StoreExtensionFor only ever produced the generic branch anyway, so
+            // the guidance says so plainly rather than pretending to know which extension to name.
+            const string hint = "HEVC, VP9 and AV1 need their free extension from the Microsoft Store; anything else needs re-encoding to H.264.";
 
             Log.Warn($"Surfacing playback failure to the user: {Path.GetFileName(path)} ({codec})");
             _tray?.ShowBalloon($"Cannot play {Path.GetFileName(path)}", $"{char.ToUpper(codec[0])}{codec[1..]} video. {hint}");
@@ -249,7 +251,16 @@ public sealed class Engine : IDisposable
             }
             finally
             {
-                _deviceLoss.Complete();
+                // A device lost again *during* the rebuild is reported while the guard is still
+                // in flight, so nothing else will raise it a second time — the replacement surface
+                // is already dead and will never present again to say so. The guard held that
+                // signal; act on it. Re-entry is bounded by the same attempt budget, and
+                // RunOnMainThread only ever enqueues, so this is a queued retry, not recursion.
+                if (_deviceLoss.Complete())
+                {
+                    Log.Warn("GPU device lost again during recovery — rebuilding once more");
+                    OnDeviceLost();
+                }
             }
         });
     }

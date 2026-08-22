@@ -14,6 +14,33 @@ public class MonitorDpiTests
         new(device, new RECT(0, 0, 1920, 1080), new RECT(0, 0, 1920, 1040), primary, dpi);
 
     [Fact]
+    public void PrimaryDpi_SkipsAMonitorThatReportedNothing_AndTakesTheFirstRealOne()
+    {
+        // A display-topology change really does enumerate [0, 144] mid-flight. Taking all[0] there
+        // returned the 96 default, and every widget on the machine was then scaled against a DPI
+        // no monitor has.
+        var monitors = new List<MonitorInfo>
+        {
+            Mon(@"\.\DISPLAY1", primary: false, dpi: 0),
+            Mon(@"\.\DISPLAY2", primary: false, dpi: 144),
+        };
+
+        Assert.Equal(144u, MonitorTracker.PrimaryDpi(monitors));
+    }
+
+    [Fact]
+    public void PrimaryDpi_FallsBackTo96_OnlyWhenNoMonitorReportsOne()
+    {
+        var monitors = new List<MonitorInfo>
+        {
+            Mon(@"\.\DISPLAY1", primary: false, dpi: 0),
+            Mon(@"\.\DISPLAY2", primary: false, dpi: 0),
+        };
+
+        Assert.Equal(Shcore.DefaultDpi, MonitorTracker.PrimaryDpi(monitors));
+    }
+
+    [Fact]
     public void SingleMonitor_ScalesByExactlyOne_WhateverItsDpi()
     {
         // The whole point: a 150% single-display machine must render identically to v0.1.0.

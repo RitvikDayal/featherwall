@@ -30,6 +30,28 @@ public class ClockDateStyleTests
     }
 
     [Fact]
+    public void TheDateMinimum_ScalesWithTheWidget_SoTheProportionSurvivesALowerDpiMonitor()
+    {
+        // DateMinFontSize is configured in primary-monitor pixels. Left unscaled on a monitor at
+        // 50%, the floor stops shrinking while the time keeps going, and the date ends up larger
+        // relative to the time than it is anywhere else on the machine.
+        var config = new ClockConfig { DateFontScale = 0.16f, DateMinFontSize = 20f };
+
+        float unscaled = ClockRenderer.DateFontSize(config, 110f);
+        float halved = ClockRenderer.DateFontSize(config, 55f, 0.5f);
+
+        Assert.Equal(20f, unscaled, 4);   // the floor dominates 110 * 0.16 = 17.6
+        Assert.Equal(10f, halved, 4);     // and it must halve with everything else
+    }
+
+    [Fact]
+    public void TheDateMinimum_NeverFallsBelowAPixel_WhateverTheScale()
+    {
+        var config = new ClockConfig { DateFontScale = 0f, DateMinFontSize = 20f };
+        Assert.True(ClockRenderer.DateFontSize(config, 110f, 0.001f) >= 1f);
+    }
+
+    [Fact]
     public void DefaultDateColour_IsTheTimeColourAtEightyPercentAlpha()
     {
         var time = Color.FromArgb(240, 255, 255, 255);
