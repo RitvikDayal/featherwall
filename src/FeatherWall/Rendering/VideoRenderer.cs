@@ -25,6 +25,7 @@ public sealed class VideoRenderer : IWallpaperRenderer
     private MediaSource? _source;
     private Windows.Foundation.Rect? _targetRect;
     private bool _retriedAfterFailure;
+    private int _loadGeneration;
     private bool _disposed;
     private string _path = "";
 
@@ -92,6 +93,10 @@ public sealed class VideoRenderer : IWallpaperRenderer
     {
         if (_player is null) return;
         _path = path;
+        // Identifies this selection for the delayed retry below. Without it, a retry armed for the
+        // previous file lands a second later and reinstates a source that Load has already disposed
+        // and replaced — either an error on a dead source or the new wallpaper silently reverting.
+        Interlocked.Increment(ref _loadGeneration);
         _retriedAfterFailure = false; // a new file deserves its own retry
         var previous = _source;
         _source = MediaSource.CreateFromUri(new Uri(path));
@@ -167,11 +172,13 @@ public sealed class VideoRenderer : IWallpaperRenderer
         {
             _retriedAfterFailure = true;
             var source = sender.Source;
+            int failedGeneration = Volatile.Read(ref _loadGeneration);
             _ = Task.Delay(1000).ContinueWith(_ =>
             {
                 try
                 {
                     if (_disposed || _player is null) return;
+                    if (failedGeneration != Volatile.Read(ref _loadGeneration)) return; // superseded
                     _player.Source = source;
                     _player.Play();
                 }

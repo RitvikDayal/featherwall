@@ -46,6 +46,25 @@ public sealed class PowerNotifications : IDisposable
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool UnregisterPowerSettingNotification(IntPtr handle);
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MEMORY_BASIC_INFORMATION
+    {
+        public IntPtr BaseAddress;
+        public IntPtr AllocationBase;
+        public uint AllocationProtect;
+        public IntPtr RegionSize;
+        public uint State;
+        public uint Protect;
+        public uint Type;
+    }
+
+    [DllImport("kernel32.dll")]
+    private static extern nuint VirtualQuery(IntPtr address, out MEMORY_BASIC_INFORMATION buffer, nuint length);
+
+    private const uint MEM_COMMIT = 0x1000;
+    private const uint PAGE_NOACCESS = 0x01;
+    private const uint PAGE_GUARD = 0x100;
+
     private readonly List<IntPtr> _handles = [];
     private bool _disposed;
 
@@ -60,15 +79,45 @@ public sealed class PowerNotifications : IDisposable
         }
     }
 
-    /// <summary>Reads a WM_POWERBROADCAST / PBT_POWERSETTINGCHANGE lParam. Returns false when the
-    /// payload is not a single-byte-readable setting rather than guessing at a value.</summary>
+    /// <summary>True when the whole span sits in one committed, readable region of this process.
+    ///
+    /// WM_POWERBROADCAST is below WM_USER, so Windows will not marshal its lParam across a process
+    /// boundary — any local process at this integrity level can SendMessage a PBT_POWERSETTINGCHANGE
+    /// carrying an arbitrary pointer, and dereferencing it takes the process down with an access
+    /// violation that no catch block can intercept. VirtualQuery is the screen, checked before the
+    /// only dereference on this path.
+    ///
+    /// Not a security boundary and not sold as one: a same-integrity caller can already terminate
+    /// FeatherWall outright. It stops a wild pointer from turning a stray message into a crash.</summary>
+    private static bool Readable(IntPtr address, int bytes)
+    {
+        if (address == IntPtr.Zero || bytes <= 0) return false;
+
+        var size = (nuint)Marshal.SizeOf<MEMORY_BASIC_INFORMATION>();
+        if (VirtualQuery(address, out var info, size) == 0) return false;
+        if (info.State != MEM_COMMIT) return false;
+        if ((info.Protect & (PAGE_GUARD | PAGE_NOACCESS)) != 0) return false;
+
+        ulong start = (ulong)address;
+        ulong regionStart = (ulong)info.BaseAddress;
+        ulong regionEnd = regionStart + (ulong)info.RegionSize;
+        return start >= regionStart && start + (ulong)bytes <= regionEnd;
+    }
+
+    /// <summary>Reads a WM_POWERBROADCAST / PBT_POWERSETTINGCHANGE lParam. Returns false rather than
+    /// guessing whenever the payload is not one this process can trust: an unreadable pointer, or a
+    /// setting whose data is narrower than the DWORD every setting registered here actually carries.
+    /// A short DataLength used to be accepted and its first byte returned, which invented a display
+    /// or power state out of a truncated payload.</summary>
     public static bool TryRead(IntPtr lParam, out Guid setting, out byte value)
     {
         setting = Guid.Empty;
         value = 0;
-        if (lParam == IntPtr.Zero) return false;
+        if (!Readable(lParam, Marshal.SizeOf<POWERBROADCAST_SETTING>())) return false;
+
         var payload = Marshal.PtrToStructure<POWERBROADCAST_SETTING>(lParam);
-        if (payload.DataLength < 1) return false;
+        if (payload.DataLength < sizeof(uint)) return false;
+
         setting = payload.PowerSetting;
         value = payload.Data;
         return true;

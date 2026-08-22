@@ -21,9 +21,15 @@ public static class ClockRenderer
     }
 
     /// <summary>Date size in pixels, derived from the time's size. Pure, so the fallback chain
-    /// is testable without a font installed.</summary>
-    public static float DateFontSize(ClockConfig config, float timeFontSize) =>
-        Math.Max(timeFontSize * Math.Max(config.DateFontScale, 0f), Math.Max(config.DateMinFontSize, 1f));
+    /// is testable without a font installed.
+    ///
+    /// <paramref name="scale"/> must match the one applied to the time font. The floor is a
+    /// configured pixel value expressed against the primary monitor, so leaving it unscaled makes
+    /// it dominate on any display scaled below 1.0 — the date then renders larger relative to the
+    /// time than it does anywhere else, which is the one proportion this widget must not break.</summary>
+    public static float DateFontSize(ClockConfig config, float timeFontSize, float scale = 1f) =>
+        Math.Max(timeFontSize * Math.Max(config.DateFontScale, 0f),
+                 Math.Max(config.DateMinFontSize * Math.Max(scale, 0f), 1f));
 
     /// <summary>Empty or unset inherits the time face — the pre-2026-08-20 behaviour is the
     /// default value "Segoe UI", not a hardcode, so it can now be overridden.</summary>
@@ -39,9 +45,9 @@ public static class ClockRenderer
         return Color.FromArgb((int)(timeColor.A * opacity), timeColor.R, timeColor.G, timeColor.B);
     }
 
-    public static Font CreateDateFont(ClockConfig config, float timeFontSize)
+    public static Font CreateDateFont(ClockConfig config, float timeFontSize, float scale = 1f)
     {
-        float size = DateFontSize(config, timeFontSize);
+        float size = DateFontSize(config, timeFontSize, scale);
         try { return new Font(DateFontFamily(config), size, FontStyle.Regular, GraphicsUnit.Pixel); }
         catch { return new Font(FontFamily.GenericSansSerif, size, FontStyle.Regular, GraphicsUnit.Pixel); }
     }
@@ -55,7 +61,7 @@ public static class ClockRenderer
         string? date = config.ShowDate ? ClockLayout.DateText(now) : null;
 
         using var timeFont = CreateTimeFont(config, fontSize);
-        using var dateFont = CreateDateFont(config, fontSize);
+        using var dateFont = CreateDateFont(config, fontSize, scale);
 
         SizeF timeSize, dateSize = SizeF.Empty;
         using (var measure = Graphics.FromHwnd(IntPtr.Zero))

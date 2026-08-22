@@ -54,6 +54,10 @@ public static class MonitorTracker
         if (all is null || all.Count == 0) return Shcore.DefaultDpi;
         foreach (var m in all)
             if (m.Primary && m.Dpi > 0) return m.Dpi;
-        return all[0].Dpi > 0 ? all[0].Dpi : Shcore.DefaultDpi;
+        // Any real DPI beats the 96 default: a topology change can report [0, 144], and taking
+        // all[0] there would scale every widget against a monitor that reported nothing.
+        foreach (var m in all)
+            if (m.Dpi > 0) return m.Dpi;
+        return Shcore.DefaultDpi;
     }
 }
