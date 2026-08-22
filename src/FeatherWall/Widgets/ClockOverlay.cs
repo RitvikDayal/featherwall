@@ -19,18 +19,23 @@ public sealed class ClockOverlay : IDisposable
     private readonly CompositionHost _host;
     private readonly ClockConfig _config;
     private readonly MonitorInfo _monitor;
+    private readonly double _dpiScale;
     private readonly Color _color;
     private readonly Timer _timer;
     private readonly Lock _sync = new();
 
     private SIZE _size;
     private bool _disposed;
+    private bool _suspended;
 
-    public ClockOverlay(CompositionHost host, ClockConfig config, MonitorInfo monitor)
+    /// <summary><paramref name="dpiScale"/> is this monitor's DPI relative to the primary's, so
+    /// it is 1.0 on a single-DPI machine and the widget renders exactly as it did in v0.1.0.</summary>
+    public ClockOverlay(CompositionHost host, ClockConfig config, MonitorInfo monitor, double dpiScale = 1.0)
     {
         _host = host;
         _config = config;
         _monitor = monitor;
+        _dpiScale = dpiScale > 0 ? dpiScale : 1.0;
         _color = ClockRenderer.ParseColor(config.Color);
         _timer = new Timer(_ => Tick(), null, Timeout.Infinite, Timeout.Infinite);
         Render();
@@ -43,11 +48,31 @@ public sealed class ClockOverlay : IDisposable
         Arm();
     }
 
+    /// <summary>Stops the tick entirely while the display is off, then repaints once on the way
+    /// back so the time is not stale for up to a minute. Not a throttle: a suspended clock does
+    /// zero redraws, which is the honest answer to "widgets that go idle" — the whole point is
+    /// that Windows pushes this state rather than the clock polling to discover it.</summary>
+    public void SetSuspended(bool suspended)
+    {
+        lock (_sync)
+        {
+            if (_disposed || _suspended == suspended) return;
+            _suspended = suspended;
+            if (suspended)
+            {
+                try { _timer.Change(Timeout.Infinite, Timeout.Infinite); }
+                catch (ObjectDisposedException) { }
+                return;
+            }
+        }
+        Refresh();
+    }
+
     private void Arm()
     {
         lock (_sync)
         {
-            if (_disposed) return;
+            if (_disposed || _suspended) return;
             try
             {
                 _timer.Change(ClockLayout.MillisecondsToNextTick(DateTime.Now, _config.ShowSeconds), Timeout.Infinite);
@@ -76,14 +101,22 @@ public sealed class ClockOverlay : IDisposable
     {
         lock (_sync)
         {
-            if (_disposed) return;
+            // _suspended as well as _disposed: stopping the timer prevents future scheduling, but
+            // a tick already queued before SetSuspended took _sync still arrives and would paint
+            // into a display that is off — the exact redraw suspension exists to avoid.
+            if (_disposed || _suspended) return;
 
-            var metrics = ClockRenderer.Measure(_config, DateTime.Now);
+            var metrics = ClockRenderer.Measure(_config, DateTime.Now, (float)_dpiScale);
             var size = new SIZE { Cx = metrics.Total.Width, Cy = metrics.Total.Height };
 
             // Overlay offsets are relative to the wallpaper window, whose origin is the
-            // monitor's top-left.
-            var screenPos = ClockLayout.Position(_monitor.WorkArea, size.Cx, size.Cy, _config.Anchor, _config.MarginX, _config.MarginY);
+            // monitor's top-left. Margins scale with the monitor so the widget keeps the same
+            // physical inset on a display with a different DPI.
+            var screenPos = ClockLayout.Position(_monitor.WorkArea, size.Cx, size.Cy, _config.Anchor,
+                ClockLayout.ScaleMargin(_config.MarginLeft ?? _config.MarginX, _dpiScale),
+                ClockLayout.ScaleMargin(_config.MarginTop ?? _config.MarginY, _dpiScale),
+                ClockLayout.ScaleMargin(_config.MarginRight ?? _config.MarginX, _dpiScale),
+                ClockLayout.ScaleMargin(_config.MarginBottom ?? _config.MarginY, _dpiScale));
             int offsetX = screenPos.X - _monitor.Bounds.Left;
             int offsetY = screenPos.Y - _monitor.Bounds.Top;
 

@@ -35,6 +35,12 @@ public sealed class CompositionHost : IDisposable
     public CompositionSurface? Content { get; private set; }
     public CompositionSurface? Overlay { get; private set; }
 
+    /// <summary>Raised when a surface reports DXGI device removal or reset. The device belongs
+    /// to the host, so a single surface cannot recover on its own — the whole tree is rebuilt
+    /// by the engine's re-apply path. Surfaces forward here rather than the engine subscribing
+    /// to each one, because surfaces are recreated on every layout change.</summary>
+    public event Action? DeviceLost;
+
     public CompositionHost(IntPtr hwnd)
     {
         D3D11.D3D11CreateDevice(null, DriverType.Hardware,
@@ -79,6 +85,7 @@ public sealed class CompositionHost : IDisposable
     {
         Content?.Dispose();
         Content = new CompositionSurface(this, width, height, premultipliedAlpha: false, offsetX, offsetY);
+        Content.DeviceLost += RaiseDeviceLost;
         _rootVisual.AddVisual(Content.Visual, false, Overlay?.Visual);
         _dcompDevice.Commit();
         return Content;
@@ -89,10 +96,13 @@ public sealed class CompositionHost : IDisposable
     {
         Overlay?.Dispose();
         Overlay = new CompositionSurface(this, width, height, premultipliedAlpha: true, offsetX, offsetY);
+        Overlay.DeviceLost += RaiseDeviceLost;
         _rootVisual.AddVisual(Overlay.Visual, true, Content?.Visual);
         _dcompDevice.Commit();
         return Overlay;
     }
+
+    private void RaiseDeviceLost() => DeviceLost?.Invoke();
 
     public void RemoveOverlay()
     {

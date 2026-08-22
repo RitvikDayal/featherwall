@@ -57,6 +57,7 @@ public sealed class SettingsForm : Form
         var rail = new Panel { Dock = DockStyle.Left, Width = RailWidth, BackColor = Theme.Colors.Window };
 
         AddPage(pages, rail, "Clock", BuildClockSection());
+        AddPage(pages, rail, "Date", BuildDateSection());
         AddPage(pages, rail, "Wallpaper", BuildWallpaperSection());
         AddPage(pages, rail, "Behaviour", BuildBehaviorSection());
         SelectPage(0);
@@ -179,8 +180,8 @@ public sealed class SettingsForm : Form
         rows.AddRow("Time format", Choice(["12-hour", "24-hour"], _config.Clock.TwentyFourHour ? 1 : 0,
             i => { _config.Clock.TwentyFourHour = i == 1; ApplyClock(); }));
         rows.AddRow("Show seconds", Check(_config.Clock.ShowSeconds, v => { _config.Clock.ShowSeconds = v; ApplyClock(); }));
-        rows.AddRow("Show date", Check(_config.Clock.ShowDate, v => { _config.Clock.ShowDate = v; ApplyClock(); }));
-        rows.AddRow("Separator rule", Check(_config.Clock.Separator, v => { _config.Clock.Separator = v; ApplyClock(); }));
+        // "Show date" and "Separator rule" live on the Date page — two controls bound to one
+        // property desync the moment either is used.
         rows.AddRow("Drop shadow", Check(_config.Clock.Shadow, v => { _config.Clock.Shadow = v; ApplyClock(); }));
         rows.AddRow("Position", BuildAnchorPicker());
         rows.AddRow("Margin X", Spinner(0, 2000, _config.Clock.MarginX, v => { _config.Clock.MarginX = v; ApplyClock(); }, "px"));
@@ -197,6 +198,113 @@ public sealed class SettingsForm : Form
 
         return card;
     }
+
+    /// <summary>The date line used to be unstyleable — "Segoe UI" at 16% of the time's size,
+    /// hardcoded. Asked for on r/coolgithubprojects. Every control here defaults to the value
+    /// that reproduces the old rendering, so an untouched install looks the same.</summary>
+    private Control BuildDateSection()
+    {
+        var (card, rows) = NewSection("Date");
+        var clock = _config.Clock;
+
+        rows.AddRow("Show date", Check(clock.ShowDate, v => { clock.ShowDate = v; ApplyClock(); }));
+        rows.AddRow("Separator rule", Check(clock.Separator, v => { clock.Separator = v; ApplyClock(); }));
+        rows.AddRow("Font", BuildFontPicker(
+            () => clock.DateFontFamily,
+            v => clock.DateFontFamily = v,
+            placeholder: SameAsTime));
+        rows.AddRow("Size", Spinner(5, 100, (int)Math.Round(clock.DateFontScale * 100),
+            v => { clock.DateFontScale = v / 100f; ApplyClock(); }, "% of time"));
+        rows.AddRow("Minimum size", Spinner(6, 200, (int)clock.DateMinFontSize,
+            v => { clock.DateMinFontSize = v; ApplyClock(); }, "px"));
+        rows.AddRow("Colour", BuildDateColorPicker());
+        rows.AddRow("Opacity", Spinner(10, 100, (int)Math.Round(clock.DateOpacity * 100),
+            v => { clock.DateOpacity = v / 100f; ApplyClock(); }, "% of time colour"));
+
+        return card;
+    }
+
+    /// <summary>Unlike the time's picker this one can be cleared back to "inherit", which is the
+    /// default, so it carries a reset rather than only a colour dialog.</summary>
+    private Control BuildDateColorPicker()
+    {
+        var row = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.LeftToRight,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Theme.Colors.Card,
+            Margin = new Padding(0, 2, 0, 2),
+        };
+
+        var swatch = new Button
+        {
+            Width = 58,
+            Height = 26,
+            FlatStyle = FlatStyle.Flat,
+            Margin = new Padding(0, 0, 10, 0),
+        };
+        swatch.FlatAppearance.BorderColor = Theme.Colors.Border;
+
+        var label = new Label
+        {
+            AutoSize = true,
+            ForeColor = Theme.Colors.Subtle,
+            Margin = new Padding(0, 5, 10, 0),
+            Font = new Font("Consolas", 9f),
+        };
+
+        var reset = new Button
+        {
+            Text = "Inherit",
+            Width = 66,
+            Height = 26,
+            FlatStyle = FlatStyle.Flat,
+            BackColor = Theme.Colors.Control,
+            ForeColor = Theme.Colors.Text,
+            Margin = new Padding(0, 0, 0, 0),
+        };
+        reset.FlatAppearance.BorderColor = Theme.Colors.Border;
+
+        void Sync()
+        {
+            bool inherited = string.IsNullOrWhiteSpace(_config.Clock.DateColor);
+            var effective = Widgets.ClockRenderer.DateColorFor(_config.Clock, Widgets.ClockRenderer.ParseColor(_config.Clock.Color));
+            swatch.BackColor = Color.FromArgb(255, effective.R, effective.G, effective.B);
+            label.Text = inherited ? "inherited" : _config.Clock.DateColor!.ToUpperInvariant();
+            reset.Enabled = !inherited;
+        }
+
+        swatch.Click += (_, _) =>
+        {
+            using var dialog = new ColorDialog { Color = swatch.BackColor, FullOpen = true };
+            if (dialog.ShowDialog(this) != DialogResult.OK) return;
+            var c = dialog.Color;
+            // The date's own alpha, not the time's. An inherited date is timeColor.A * DateOpacity
+            // and an explicit one carries its own; CurrentAlpha() returns neither, so picking a new
+            // RGB used to silently reset the date's opacity to the time's.
+            byte alpha = Widgets.ClockRenderer.DateColorFor(
+                _config.Clock, Widgets.ClockRenderer.ParseColor(_config.Clock.Color)).A;
+            _config.Clock.DateColor = $"#{alpha:X2}{c.R:X2}{c.G:X2}{c.B:X2}";
+            Sync();
+            ApplyClock();
+        };
+
+        reset.Click += (_, _) =>
+        {
+            _config.Clock.DateColor = null;
+            Sync();
+            ApplyClock();
+        };
+
+        row.Controls.Add(swatch);
+        row.Controls.Add(label);
+        row.Controls.Add(reset);
+        Sync();
+        return row;
+    }
+
+    private const string SameAsTime = "(same as time)";
 
     private Control BuildWallpaperSection()
     {
@@ -327,7 +435,12 @@ public sealed class SettingsForm : Form
     }
 
     /// <summary>Every family is drawn in its own face, so you pick a font by looking at it.</summary>
-    private Control BuildFontPicker()
+    private Control BuildFontPicker() => BuildFontPicker(() => _config.Clock.FontFamily, v => _config.Clock.FontFamily = v);
+
+    /// <summary>Font picker over an arbitrary property, so the time and the date can each have
+    /// one. <paramref name="placeholder"/> is shown when the value is empty, which for the date
+    /// means "whatever the time is using".</summary>
+    private Control BuildFontPicker(Func<string?> get, Action<string> set, string? placeholder = null)
     {
         var combo = new ComboBox
         {
@@ -347,6 +460,7 @@ public sealed class SettingsForm : Form
 
         using (var installed = new InstalledFontCollection())
             combo.Items.AddRange(installed.Families.Select(f => (object)f.Name).OrderBy(n => n).ToArray());
+        if (placeholder is not null) combo.Items.Insert(0, placeholder);
 
         combo.DrawItem += (_, e) =>
         {
@@ -365,17 +479,29 @@ public sealed class SettingsForm : Form
                 e.Graphics.DrawString(name, face, text, e.Bounds.Left + 6, e.Bounds.Top + 4);
         };
 
-        combo.Text = _config.Clock.FontFamily;
+        string current = get() ?? "";
+        combo.Text = current.Length == 0 && placeholder is not null ? placeholder : current;
         combo.SelectedIndexChanged += (_, _) =>
         {
             if (_loading || combo.SelectedItem is not string family) return;
-            _config.Clock.FontFamily = family;
+            set(family == placeholder ? "" : family);
             ApplyClock();
         };
         combo.Leave += (_, _) =>
         {
-            if (_loading || combo.Text.Length == 0) return;
-            _config.Clock.FontFamily = combo.Text;
+            if (_loading) return;
+            if (combo.Text.Length == 0)
+            {
+                // Only the date picker has a placeholder, and there an erased box is a real choice
+                // — "inherit the time font" — which the early return used to discard, leaving the
+                // old family set and the inheritance unreachable from the UI. The time picker has
+                // no such state, so a blank there is still treated as a half-finished edit.
+                if (placeholder is null) return;
+                set("");
+                ApplyClock();
+                return;
+            }
+            set(combo.Text == placeholder ? "" : combo.Text);
             ApplyClock();
         };
         return combo;

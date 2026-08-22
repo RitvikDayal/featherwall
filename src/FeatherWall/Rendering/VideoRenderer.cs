@@ -25,7 +25,14 @@ public sealed class VideoRenderer : IWallpaperRenderer
     private MediaSource? _source;
     private Windows.Foundation.Rect? _targetRect;
     private bool _retriedAfterFailure;
+    private int _loadGeneration;
     private bool _disposed;
+    private string _path = "";
+
+    /// <summary>Raised when playback has failed and the one retry has also failed. Until
+    /// 2026-08-20 a codec Windows cannot decode produced a log line and a black desktop, with
+    /// nothing shown to the user. Carries (path, codecOrError) so the caller can name the fix.</summary>
+    public event Action<string, string>? PlaybackFailed;
 
     private readonly string? _staticFramePath;
     private readonly Action? _onStaticFrame;
@@ -85,6 +92,12 @@ public sealed class VideoRenderer : IWallpaperRenderer
     public void Load(string path)
     {
         if (_player is null) return;
+        _path = path;
+        // Identifies this selection for the delayed retry below. Without it, a retry armed for the
+        // previous file lands a second later and reinstates a source that Load has already disposed
+        // and replaced — either an error on a dead source or the new wallpaper silently reverting.
+        Interlocked.Increment(ref _loadGeneration);
+        _retriedAfterFailure = false; // a new file deserves its own retry
         var previous = _source;
         _source = MediaSource.CreateFromUri(new Uri(path));
         _player.Source = _source;
@@ -159,18 +172,32 @@ public sealed class VideoRenderer : IWallpaperRenderer
         {
             _retriedAfterFailure = true;
             var source = sender.Source;
+            int failedGeneration = Volatile.Read(ref _loadGeneration);
             _ = Task.Delay(1000).ContinueWith(_ =>
             {
                 try
                 {
                     if (_disposed || _player is null) return;
+                    if (failedGeneration != Volatile.Read(ref _loadGeneration)) return; // superseded
                     _player.Source = source;
                     _player.Play();
                 }
                 catch (Exception ex) { Log.Error("Video retry failed", ex); }
             });
+            return;
         }
+
+        // Second failure: the retry did not help, so stop logging into the void and say so.
+        PlaybackFailed?.Invoke(_path, DescribeFailure(args));
     }
+
+    /// <summary>Best available codec name. MediaPlayerFailedEventArgs does not carry the FourCC,
+    /// so an unsupported-format error is reported as exactly that rather than guessed at — a
+    /// wrong codec name in an error message is worse than an honest "unsupported".</summary>
+    private static string DescribeFailure(MediaPlayerFailedEventArgs args) =>
+        args.Error == MediaPlayerError.DecodingError || args.Error == MediaPlayerError.SourceNotSupported
+            ? "unsupported or missing decoder"
+            : $"{args.Error}";
 
     private void OnVideoFrameAvailable(MediaPlayer sender, object args)
     {

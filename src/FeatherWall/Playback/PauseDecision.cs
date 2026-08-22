@@ -4,9 +4,12 @@ namespace FeatherWall.Playback;
 
 public sealed record ForegroundInfo(string ClassName, RECT WindowRect, bool IsZoomed, IntPtr MonitorHandle);
 
-public sealed record SystemFlags(bool SessionLocked, bool RemoteSession, bool BatterySaver, bool D3DFullscreen);
+/// <summary><paramref name="DisplayOff"/> comes from GUID_CONSOLE_DISPLAY_STATE as a pushed
+/// notification, not from a poll — see PowerNotifications.</summary>
+public sealed record SystemFlags(bool SessionLocked, bool RemoteSession, bool BatterySaver, bool D3DFullscreen,
+    bool DisplayOff = false);
 
-public enum PauseReason { None, Fullscreen, SessionLocked, RemoteSession, BatterySaver }
+public enum PauseReason { None, Fullscreen, SessionLocked, RemoteSession, BatterySaver, DisplayOff }
 
 /// <summary>Pure pause policy — no Win32 calls, fully unit-testable.</summary>
 public static class PauseDecision
@@ -39,6 +42,9 @@ public static class PauseDecision
         SystemFlags flags,
         Config.PauseConfig config)
     {
+        // Outranks everything, and is not configurable: there is no reading of "pause on
+        // fullscreen: off" under which the user wants frames decoded into a dark panel.
+        if (flags.DisplayOff) return PauseReason.DisplayOff;
         if (flags.SessionLocked) return PauseReason.SessionLocked;
         if (config.OnRemoteSession && flags.RemoteSession) return PauseReason.RemoteSession;
         if (config.OnBatterySaver && flags.BatterySaver) return PauseReason.BatterySaver;

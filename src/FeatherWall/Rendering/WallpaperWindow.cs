@@ -24,9 +24,21 @@ public sealed class WallpaperWindow : Win32Window
             IntPtr.Zero);
     }
 
+    /// <summary>Raised when this window's GPU device is removed or reset (driver update, TDR).
+    /// Forwarded from the composition host so callers do not have to re-subscribe every time a
+    /// surface is recreated.</summary>
+    public event Action? DeviceLost;
+
     /// <summary>Creates the composition host — call after the window is attached to the
-    /// wallpaper layer.</summary>
-    public CompositionHost EnsureHost() => Host ??= new CompositionHost(Hwnd);
+    /// wallpaper layer. Idempotent, so the DeviceLost forwarding is wired exactly once.</summary>
+    public CompositionHost EnsureHost()
+    {
+        if (Host is not null) return Host;
+        var host = new CompositionHost(Hwnd);
+        host.DeviceLost += () => DeviceLost?.Invoke();
+        Host = host;
+        return host;
+    }
 
     public void SetRenderer(IWallpaperRenderer renderer)
     {

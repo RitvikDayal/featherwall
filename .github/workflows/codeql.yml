@@ -1,0 +1,55 @@
+name: CodeQL
+
+# Static analysis for the language this project is actually written in.
+#
+# Added after issue #7 asked whether a pull-request security scan would be useful. The scanner
+# offered there had no C# rules, so it would have matched nothing in src/FeatherWall — but the
+# question was fair and the gap was real. CodeQL is GitHub-native, free on public repositories,
+# and adds no third-party supply chain.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Weekly, so a newly-published query finds this repo without waiting for a commit.
+    - cron: '27 5 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze C#
+    runs-on: windows-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: csharp
+          # security-extended over the default pack: this codebase is unusually interop-heavy
+          # (raw Win32, a cross-process SetParent, manual COM lifetimes) and the default suite
+          # is tuned for web-shaped applications.
+          queries: security-extended
+
+      # Explicit build rather than autobuild: the project pins net10.0-windows and autobuild
+      # picks whatever SDK it finds, which is how this silently starts analysing nothing.
+      - name: Build
+        run: dotnet build -c Release
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:csharp

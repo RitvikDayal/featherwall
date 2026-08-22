@@ -25,9 +25,11 @@ public sealed class Engine : IDisposable
     private readonly GalleryService _gallery = new();
     private readonly Dictionary<string, WallpaperWindow> _windows = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentQueue<Action> _mainThreadActions = new();
+    private readonly DeviceLossGuard _deviceLoss = new();
     private readonly uint _taskbarCreatedMessage = User32.RegisterWindowMessageW("TaskbarCreated");
 
     private MessageWindow? _messageWindow;
+    private PowerNotifications? _power;
     private TrayIcon? _tray;
     private ClockOverlay? _clock;
     private PlaybackMonitor? _playback;
@@ -46,10 +48,13 @@ public sealed class Engine : IDisposable
     {
         _messageWindow = new MessageWindow(this);
         WtsApi32.WTSRegisterSessionNotification(_messageWindow.Hwnd, WtsApi32.NOTIFY_FOR_THIS_SESSION);
+        _power = new PowerNotifications(_messageWindow.Hwnd);
 
         SaveOriginalWallpaper();
 
-        _host.LayerLost += () => RunOnMainThread(ReapplyAll);
+        // An explorer restart or display change rebuilds the layer for reasons unrelated to the
+        // GPU, and produces a fresh device anyway — so it clears any device-loss failure history.
+        _host.LayerLost += () => RunOnMainThread(() => { _deviceLoss.Reset(); ReapplyAll(); });
         _host.EnsureLayer();
 
         _tray = new TrayIcon(_messageWindow.Hwnd);
@@ -95,6 +100,7 @@ public sealed class Engine : IDisposable
         if (!_windows.TryGetValue(monitor.Device, out var window))
         {
             window = new WallpaperWindow(monitor);
+            window.DeviceLost += OnDeviceLost;
             _host.Attach(window.Hwnd, monitor.Bounds);
             window.EnsureHost();
             _windows[monitor.Device] = window;
@@ -120,10 +126,18 @@ public sealed class Engine : IDisposable
             }
         });
 
-        IWallpaperRenderer renderer = ImageExtensions.Contains(Path.GetExtension(path))
-            ? new ImageRenderer(host, monitor.Bounds.Width, monitor.Bounds.Height, _config.Fit, staticPath, onStatic)
-            : new VideoRenderer(host, monitor.Bounds.Width, monitor.Bounds.Height, _config.Fit,
+        IWallpaperRenderer renderer;
+        if (ImageExtensions.Contains(Path.GetExtension(path)))
+        {
+            renderer = new ImageRenderer(host, monitor.Bounds.Width, monitor.Bounds.Height, _config.Fit, staticPath, onStatic);
+        }
+        else
+        {
+            var video = new VideoRenderer(host, monitor.Bounds.Width, monitor.Bounds.Height, _config.Fit,
                 _config.MuteVideo, _config.Volume, staticPath, onStatic);
+            video.PlaybackFailed += OnPlaybackFailed;
+            renderer = video;
+        }
         window.SetRenderer(renderer);
         renderer.Load(path);
 
@@ -158,6 +172,99 @@ public sealed class Engine : IDisposable
     }
 
     /// <summary>Full rebuild: display change, explorer restart, or layer destruction.</summary>
+    /// <summary>Playback failed twice on a file. Before this, an undecodable codec produced a
+    /// log line and a black desktop with nothing shown to the user — one of the two worst first
+    /// impressions the product can make, and the one a stranger from a download link is most
+    /// likely to hit. A tray balloon rather than a dialog: the wallpaper is decoration, and a
+    /// modal box over someone's desktop is a worse bug than the one being reported.</summary>
+    private void OnPlaybackFailed(string path, string detail)
+    {
+        RunOnMainThread(() =>
+        {
+            string codec = detail == "unsupported or missing decoder" ? "unsupported" : detail;
+            // No codec identifier reaches here: MediaPlayerFailedEventArgs carries no FourCC, and
+            // the container extension does not identify the codec — an .mp4 can hold HEVC. Feeding
+            // the extension to StoreExtensionFor only ever produced the generic branch anyway, so
+            // the guidance says so plainly rather than pretending to know which extension to name.
+            const string hint = "HEVC, VP9 and AV1 need their free extension from the Microsoft Store; anything else needs re-encoding to H.264.";
+
+            Log.Warn($"Surfacing playback failure to the user: {Path.GetFileName(path)} ({codec})");
+            _tray?.ShowBalloon($"Cannot play {Path.GetFileName(path)}", $"{char.ToUpper(codec[0])}{codec[1..]} video. {hint}");
+        });
+    }
+
+    /// <summary>A pushed power/display notification. Windows already knows the panel went dark
+    /// or the laptop came off AC; this is the app being told instead of polling to find out.
+    /// The pause poll still runs for the foreground-window cases it cannot be told about — this
+    /// only removes work, it does not add a second source of truth.</summary>
+    private void OnPowerSettingChanged(IntPtr lParam)
+    {
+        if (!PowerNotifications.TryRead(lParam, out var setting, out byte value)) return;
+
+        if (PowerNotifications.IsDisplayState(setting))
+        {
+            bool off = value == PowerNotifications.DisplayOff;
+            Log.Info($"Display state: {value switch
+            {
+                PowerNotifications.DisplayOff => "off",
+                PowerNotifications.DisplayOn => "on",
+                PowerNotifications.DisplayDimmed => "dimmed",
+                _ => $"unknown ({value})",
+            }}");
+
+            if (_playback is { } playback) playback.DisplayOff = off;
+            // Dimmed still shows the wallpaper, so only a true off suspends the clock.
+            _clock?.SetSuspended(off);
+        }
+        else if (setting == PowerNotifications.PowerSavingStatus || setting == PowerNotifications.AcDcPowerSource)
+        {
+            // The pause poll reads battery saver directly; nudging it just makes the transition
+            // land immediately instead of up to 500 ms later.
+            _playback?.Invalidate();
+        }
+    }
+
+    /// <summary>A surface reported DXGI device removal or reset — a GPU driver update, a TDR, or
+    /// an adapter change. The device belongs to the composition host, so nothing recovers in
+    /// place: the whole layer is rebuilt, which is what ReapplyAll already does for a lost
+    /// wallpaper layer.
+    ///
+    /// Until 2026-08-20 this event was raised by CompositionSurface.Present and nothing
+    /// subscribed to it, so a driver update logged a warning and left a dead device presenting
+    /// nothing until the user re-applied by hand.</summary>
+    private void OnDeviceLost()
+    {
+        if (!_deviceLoss.TryBegin())
+        {
+            if (_deviceLoss.GaveUp)
+                Log.Error($"GPU device lost {DeviceLossGuard.MaxConsecutiveAttempts} times in a row — " +
+                          "giving up on automatic recovery. Re-apply the wallpaper from the tray once the display driver is stable.");
+            return;
+        }
+
+        RunOnMainThread(() =>
+        {
+            try
+            {
+                Log.Warn("GPU device lost — rebuilding the composition tree");
+                ReapplyAll();
+            }
+            finally
+            {
+                // A device lost again *during* the rebuild is reported while the guard is still
+                // in flight, so nothing else will raise it a second time — the replacement surface
+                // is already dead and will never present again to say so. The guard held that
+                // signal; act on it. Re-entry is bounded by the same attempt budget, and
+                // RunOnMainThread only ever enqueues, so this is a queued retry, not recursion.
+                if (_deviceLoss.Complete())
+                {
+                    Log.Warn("GPU device lost again during recovery — rebuilding once more");
+                    OnDeviceLost();
+                }
+            }
+        });
+    }
+
     private void ReapplyAll()
     {
         if (_reapplying) return;
@@ -202,11 +309,13 @@ public sealed class Engine : IDisposable
             if (!_windows.TryGetValue(target.Device, out var window))
             {
                 window = new WallpaperWindow(target);
+                window.DeviceLost += OnDeviceLost;
                 _host.Attach(window.Hwnd, target.Bounds);
                 window.EnsureHost();
                 _windows[target.Device] = window;
             }
-            _clock = new ClockOverlay(window.EnsureHost(), _config.Clock, target);
+            _clock = new ClockOverlay(window.EnsureHost(), _config.Clock, target,
+                MonitorTracker.DpiScale(target, monitors));
         }
         catch (Exception ex)
         {
@@ -666,6 +775,9 @@ public sealed class Engine : IDisposable
                     _engine._clock?.Refresh();
                     _engine._host.ValidateLayer();
                     return IntPtr.Zero;
+                case WM_POWERBROADCAST when (int)wParam == PBT_POWERSETTINGCHANGE:
+                    _engine.OnPowerSettingChanged(lParam);
+                    return IntPtr.Zero;
             }
             return base.HandleMessage(msg, wParam, lParam);
         }
@@ -680,6 +792,8 @@ public sealed class Engine : IDisposable
         foreach (var window in _windows.Values) window.Dispose();
         _windows.Clear();
         _tray?.Dispose();
+        _power?.Dispose(); // before the window — the handles are registered against its hwnd
+        _power = null;
         if (_messageWindow is not null)
         {
             WtsApi32.WTSUnRegisterSessionNotification(_messageWindow.Hwnd);

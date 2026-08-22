@@ -273,6 +273,7 @@ public static class Win32Constants
     public const int WTS_SESSION_LOCK = 0x7;
     public const int WTS_SESSION_UNLOCK = 0x8;
     public const int PBT_APMRESUMEAUTOMATIC = 0x12;
+    public const int PBT_POWERSETTINGCHANGE = 0x8013;
 
     // SendMessageTimeout
     public const uint SMTO_NORMAL = 0x0000;

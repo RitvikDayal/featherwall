@@ -20,8 +20,37 @@ public static class ClockRenderer
         catch { return new Font(FontFamily.GenericSansSerif, fontSize, FontStyle.Regular, GraphicsUnit.Pixel); }
     }
 
-    public static Font CreateDateFont(float fontSize) =>
-        new("Segoe UI", Math.Max(fontSize * 0.16f, 11f), FontStyle.Regular, GraphicsUnit.Pixel);
+    /// <summary>Date size in pixels, derived from the time's size. Pure, so the fallback chain
+    /// is testable without a font installed.
+    ///
+    /// <paramref name="scale"/> must match the one applied to the time font. The floor is a
+    /// configured pixel value expressed against the primary monitor, so leaving it unscaled makes
+    /// it dominate on any display scaled below 1.0 — the date then renders larger relative to the
+    /// time than it does anywhere else, which is the one proportion this widget must not break.</summary>
+    public static float DateFontSize(ClockConfig config, float timeFontSize, float scale = 1f) =>
+        Math.Max(timeFontSize * Math.Max(config.DateFontScale, 0f),
+                 Math.Max(config.DateMinFontSize * Math.Max(scale, 0f), 1f));
+
+    /// <summary>Empty or unset inherits the time face — the pre-2026-08-20 behaviour is the
+    /// default value "Segoe UI", not a hardcode, so it can now be overridden.</summary>
+    public static string DateFontFamily(ClockConfig config) =>
+        string.IsNullOrWhiteSpace(config.DateFontFamily) ? config.FontFamily : config.DateFontFamily;
+
+    /// <summary>Date colour: an explicit DateColor wins, otherwise the time's colour dimmed by
+    /// DateOpacity, which at its 0.80 default reproduces the original rendering exactly.</summary>
+    public static Color DateColorFor(ClockConfig config, Color timeColor)
+    {
+        if (!string.IsNullOrWhiteSpace(config.DateColor)) return ParseColor(config.DateColor);
+        float opacity = Math.Clamp(config.DateOpacity, 0f, 1f);
+        return Color.FromArgb((int)(timeColor.A * opacity), timeColor.R, timeColor.G, timeColor.B);
+    }
+
+    public static Font CreateDateFont(ClockConfig config, float timeFontSize, float scale = 1f)
+    {
+        float size = DateFontSize(config, timeFontSize, scale);
+        try { return new Font(DateFontFamily(config), size, FontStyle.Regular, GraphicsUnit.Pixel); }
+        catch { return new Font(FontFamily.GenericSansSerif, size, FontStyle.Regular, GraphicsUnit.Pixel); }
+    }
 
     /// <summary><paramref name="scale"/> shrinks the whole widget for the settings preview while
     /// keeping every proportion identical to the desktop rendering.</summary>
@@ -32,7 +61,7 @@ public static class ClockRenderer
         string? date = config.ShowDate ? ClockLayout.DateText(now) : null;
 
         using var timeFont = CreateTimeFont(config, fontSize);
-        using var dateFont = CreateDateFont(fontSize);
+        using var dateFont = CreateDateFont(config, fontSize, scale);
 
         SizeF timeSize, dateSize = SizeF.Empty;
         using (var measure = Graphics.FromHwnd(IntPtr.Zero))
@@ -57,7 +86,7 @@ public static class ClockRenderer
         g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
 
         using var timeFont = CreateTimeFont(config, m.FontSize);
-        using var dateFont = CreateDateFont(m.FontSize);
+        using var dateFont = CreateDateFont(config, m.FontSize);
 
         // GDI+ MeasureString pads generously above thin faces; tuck the blocks together.
         float y = m.Pad;
@@ -81,8 +110,7 @@ public static class ClockRenderer
             y += m.SeparatorGap;
         }
 
-        var dateColor = Color.FromArgb((int)(color.A * 0.80), color.R, color.G, color.B);
-        DrawText(g, config, m.Date, dateFont, (surface.Width - m.DateSize.Width) / 2f, y, dateColor);
+        DrawText(g, config, m.Date, dateFont, (surface.Width - m.DateSize.Width) / 2f, y, DateColorFor(config, color));
     }
 
     private static void DrawText(Graphics g, ClockConfig config, string text, Font font, float x, float y, Color color)
