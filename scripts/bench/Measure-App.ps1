@@ -14,8 +14,12 @@
       spending that memory whether or not its main window is the one you named.
 
     * CPU comes from TotalProcessorTime deltas over wall-clock, not from a performance
-      counter. It is exact rather than sampled, it survives a process tree that changes shape
-      mid-run, and it makes the denominator explicit instead of hidden.
+      counter. It is exact rather than sampled and it makes the denominator explicit instead of
+      hidden. It is accumulated PER PID across the whole window, not differenced between the
+      first and last process tree: a child that burns CPU and exits before the end is in the
+      start tree and not the end one, so the endpoint subtraction lost its time entirely and
+      under-reported the app. This file used to claim the measurement survived a tree that
+      changes shape while doing exactly that.
 
     * Both CPU denominators are reported. "0.8% of a 24-core machine" and "19% of one core"
       are the same measurement, and quoting only the first is how a busy process is made to
@@ -64,7 +68,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][string] $ProcessName,
-    [int] $Seconds = 30,
+    [ValidateRange(1, 86400)][int] $Seconds = 30,
     [string] $Label = "",
     [ValidateSet('Playing', 'Paused', 'Any')][string] $ExpectState = 'Any',
     [string] $LogPath = "$env:LOCALAPPDATA\FeatherWall\featherwall.log"
@@ -116,6 +120,11 @@ function Get-GpuSample {
     param([int[]] $Pids)
 
     # Instance names look like: pid_1234_luid_0x..._phys_0_eng_3_engtype_VideoDecode
+    #
+    # Keyed on (luid, phys, eng) — the identity of a physical engine — and NOT on engtype. Two
+    # different VideoDecode engines are two pieces of hardware; adding them produces a number that
+    # cannot be compared with Task Manager and can exceed 100%. Summing across pids within one
+    # engine is correct, because that is this process tree's share of that one engine.
     $engines = @{}
     $dedicated = 0.0
     $shared = 0.0
@@ -123,12 +132,14 @@ function Get-GpuSample {
     try {
         $util = (Get-Counter '\GPU Engine(*)\Utilization Percentage' -ErrorAction Stop).CounterSamples
         foreach ($s in $util) {
-            $m = [regex]::Match($s.InstanceName, '^pid_(\d+)_.*engtype_(.+)$')
+            $m = [regex]::Match($s.InstanceName, '^pid_(\d+)_luid_(.+?)_phys_(\d+)_eng_(\d+)_engtype_(.+)$')
             if (-not $m.Success) { continue }
             if ($Pids -notcontains [int]$m.Groups[1].Value) { continue }
-            $engine = $m.Groups[2].Value
-            if (-not $engines.ContainsKey($engine)) { $engines[$engine] = 0.0 }
-            $engines[$engine] += $s.CookedValue
+            $key = "$($m.Groups[2].Value)|$($m.Groups[3].Value)|$($m.Groups[4].Value)"
+            if (-not $engines.ContainsKey($key)) {
+                $engines[$key] = [pscustomobject]@{ Name = $m.Groups[5].Value; Value = 0.0 }
+            }
+            $engines[$key].Value += $s.CookedValue
         }
     } catch {
         Write-Verbose "GPU Engine counters unavailable: $_"
@@ -162,10 +173,14 @@ function Get-PauseEvents {
     if (-not (Test-Path $Path)) { return ,@() }
     $events = [System.Collections.ArrayList]::new()
     foreach ($line in Get-Content $Path -Tail 600) {
-        $m = [regex]::Match($line, '^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\.\d+ \[INF\] (Paused|Resumed) ')
+        # The milliseconds are captured, not discarded. Log.cs writes 'HH:mm:ss.fff', and
+        # truncating to the second puts an event at 14:00:00.900 BEFORE a window that opened at
+        # 14:00:00.500 — so a state change inside the first half-second is classified as having
+        # happened before the run, and the row it should have discarded gets reported.
+        $m = [regex]::Match($line, '^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}) \[INF\] (Paused|Resumed) ')
         if (-not $m.Success) { continue }
         [void]$events.Add([pscustomobject]@{
-            At    = [datetime]::ParseExact($m.Groups[1].Value, 'yyyy-MM-dd HH:mm:ss', $null)
+            At    = [datetime]::ParseExact($m.Groups[1].Value, 'yyyy-MM-dd HH:mm:ss.fff', $null)
             State = if ($m.Groups[2].Value -eq 'Paused') { 'Paused' } else { 'Playing' }
         })
     }
@@ -179,8 +194,19 @@ $tree = Get-ProcessTree -Name $ProcessName
 if ($tree.Count -eq 0) { throw "No process named '$ProcessName' is running." }
 
 $startPids = @($tree | ForEach-Object { $_.Id })
-$cpuStart = 0.0
-foreach ($p in $tree) { try { $cpuStart += $p.TotalProcessorTime.TotalSeconds } catch { } }
+
+# pid -> CPU seconds already burned when we first saw it, and the last total we observed for it.
+# A pid first seen mid-window gets a zero baseline, because everything it has ever spent happened
+# inside the window. Retaining the last total after a pid disappears is the whole point.
+$cpuBaseline = @{}
+$cpuLast = @{}
+foreach ($p in $tree) {
+    try {
+        $t = $p.TotalProcessorTime.TotalSeconds
+        $cpuBaseline[$p.Id] = $t
+        $cpuLast[$p.Id] = $t
+    } catch { }
+}
 $wallStart = Get-Date
 
 # GPU and memory are instantaneous, so they are averaged across the window rather than read once.
@@ -203,6 +229,9 @@ while ((Get-Date) -lt $deadline) {
             $pws += $p.PrivateMemorySize64
             $threads += $p.Threads.Count
             $handles += $p.HandleCount
+            $t = $p.TotalProcessorTime.TotalSeconds
+            if (-not $cpuBaseline.ContainsKey($p.Id)) { $cpuBaseline[$p.Id] = 0.0 }
+            $cpuLast[$p.Id] = $t
         } catch { }
     }
     [void]$memSamples.Add([pscustomobject]@{
@@ -218,11 +247,19 @@ while ((Get-Date) -lt $deadline) {
 
 $wallEnd = Get-Date
 $endTree = Get-ProcessTree -Name $ProcessName
-$cpuEnd = 0.0
-foreach ($p in $endTree) { try { $cpuEnd += $p.TotalProcessorTime.TotalSeconds } catch { } }
+foreach ($p in $endTree) {
+    try {
+        $t = $p.TotalProcessorTime.TotalSeconds
+        if (-not $cpuBaseline.ContainsKey($p.Id)) { $cpuBaseline[$p.Id] = 0.0 }
+        $cpuLast[$p.Id] = $t
+    } catch { }
+}
 
 $elapsed = ($wallEnd - $wallStart).TotalSeconds
-$cpuSeconds = [math]::Max($cpuEnd - $cpuStart, 0)
+$cpuSeconds = 0.0
+foreach ($id in $cpuLast.Keys) {
+    $cpuSeconds += [math]::Max($cpuLast[$id] - $cpuBaseline[$id], 0)
+}
 
 # Refuse to report a row whose pause state moved under it. A benchmark that quietly averages a
 # paused wallpaper into a "playing" row is worse than no benchmark, because it is wrong in the
@@ -271,14 +308,18 @@ it again on an otherwise idle machine.
 $engineTotals = @{}
 foreach ($s in $gpuSamples) {
     foreach ($k in $s.Engines.Keys) {
-        if (-not $engineTotals.ContainsKey($k)) { $engineTotals[$k] = 0.0 }
-        $engineTotals[$k] += $s.Engines[$k]
+        if (-not $engineTotals.ContainsKey($k)) {
+            $engineTotals[$k] = [pscustomobject]@{ Name = $s.Engines[$k].Name; Sum = 0.0 }
+        }
+        $engineTotals[$k].Sum += $s.Engines[$k].Value
     }
 }
 $busiest = $null; $busiestValue = 0.0
-foreach ($k in $engineTotals.Keys) {
-    $avg = $engineTotals[$k] / $gpuSamples.Count
-    if ($avg -gt $busiestValue) { $busiestValue = $avg; $busiest = $k }
+if ($gpuSamples.Count -gt 0) {
+    foreach ($k in $engineTotals.Keys) {
+        $avg = $engineTotals[$k].Sum / $gpuSamples.Count
+        if ($avg -gt $busiestValue) { $busiestValue = $avg; $busiest = $engineTotals[$k].Name }
+    }
 }
 
 function Avg($values) { if ($values.Count -eq 0) { 0 } else { ($values | Measure-Object -Average).Average } }

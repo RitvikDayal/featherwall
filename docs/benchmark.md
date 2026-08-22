@@ -43,7 +43,7 @@ The check exists because it caught that.
 | Still image | | | | | | | | | |
 | Video 1080p60 playing | | | | | | | | | |
 | Video 4K60 playing | | | | | | | | | |
-| **Video 4K60, auto-paused** | **1** | **219.5** | **204.2** | **231.6** | **68.1** | **0.034 %** | **0.8 %** | **0 %** | paused, full window |
+| **Video 4K60, auto-paused** | **1** | **219.5** | **204.2** | **231.6** | **68.1** | **0.034 %** | **0.8 %** | **0 % (copy)** | paused, full window |
 | Settings panel open | | | | | | | | | |
 
 *Paused row measured 2026-08-20, 32.4 s window, source `scripts/bench/results/featherwall-paused-verified.json`.*
