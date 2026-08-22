@@ -40,18 +40,34 @@ The check exists because it caught that.
 
 | State | Processes | Private MB | Working set MB | GPU dedicated MB | GPU shared MB | CPU (machine) | CPU (one core) | Busiest GPU engine | Verified |
 |---|---|---|---|---|---|---|---|---|---|
-| Still image | | | | | | | | | |
+| **Still image** | **1** | **110.5** | **108.5** | 48.6 † | 9.7 † | **0.008 %** | **0.2 %** | **0 %** | playing, full window |
 | Video 1080p60 playing | | | | | | | | | |
-| Video 4K60 playing | | | | | | | | | |
+| **Video 4K60 playing** | **1** | **199.4** | **188.6** | **220.6** | **58.5** | **0.318 %** | **7.6 %** | **5.8 % (videodecode)** | playing, full window |
 | **Video 4K60, auto-paused** | **1** | **219.5** | **204.2** | **231.6** | **68.1** | **0.034 %** | **0.8 %** | **0 % (copy)** | paused, full window |
 | Settings panel open | | | | | | | | | |
 
-*Paused row measured 2026-08-20, 32.4 s window, source `scripts/bench/results/featherwall-paused-verified.json`.*
+*Playing rows measured 2026-08-22 on build 26200, 24 cores, Intel Arc, single 2560×1600 display at
+150 %. Source `scripts/bench/results/featherwall-playing-verified.json`. Paused row measured
+2026-08-20, 32.4 s window, source `scripts/bench/results/featherwall-paused-verified.json`.*
 
-**The playing rows are empty because they could not be honestly measured.** A game was running on
-the machine and holding the foreground, so FeatherWall was correctly paused the whole time and the
-harness refused every playing row. Filling them in needs one command on an otherwise idle machine
-with nothing covering the desktop.
+**† The still-image GPU figures are partial.** That run read the GPU engine counters on 6 of 8
+samples and the GPU memory counters on 5 of 8, so those two cells are an average of what could be
+read rather than of the whole window. Its CPU and memory figures are complete. The row records this
+itself in `GpuCounters`; it is marked here rather than quietly published as if clean.
+
+**The 4K60 playing row is the headline number and it is now measured:** 0.318 % of a 24-core
+machine, 7.6 % of one core, one process, with the work sitting on the video-decode engine at 5.8 %
+where it belongs. A still image costs 0.008 % — the "zero ongoing cost after first paint" claim,
+measured.
+
+**The two remaining rows cannot be produced by a script.** Both need a window over the desktop, and
+`PauseDecision` reads `GetForegroundWindow` — Windows only grants foreground activation to a process
+that already owns the foreground, so a benchmark driven from a background task, a scheduled job or an
+automation harness opens its blocker window *behind* the desktop and pauses nothing.
+`Run-Bench.ps1` now detects that and refuses those rows by name instead of producing them wrongly.
+Run it from an interactive console you are sitting in front of and they fill in.
+
+The 1080p60 row is simply not measured yet; it needs a 1080p clip.
 
 ## Against the competition
 

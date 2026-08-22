@@ -120,8 +120,16 @@ half.
 > of dedicated usage** to FeatherWall on it. The scripted harness in
 > [`scripts/bench/`](scripts/bench/) found this on its first real run, which is roughly why it
 > exists. The table above was measured by hand before that harness existed and is **due a re-run**
-> — [`docs/benchmark.md`](docs/benchmark.md) is where the scripted numbers land, and its playing
-> rows are still empty because they have not yet been measured on an idle machine.
+> — [`docs/benchmark.md`](docs/benchmark.md) is where the scripted numbers land.
+>
+> **Update, 2026-08-22.** The scripted playing rows are now measured, and they do not agree with
+> the hand-measured table above. The harness reports 4K60 playing at **0.318 %** of the machine
+> and **5.8 %** on the video-decode engine, against **0.84 %** and **41.8 % (video processing)**
+> here. Both are recorded rather than one being quietly replaced by the other, because the
+> disagreement is not yet explained — the hand measurement predates several corrections to how
+> the harness attributes CPU and identifies GPU engines, and it is not known how much of the gap
+> that accounts for. Treat `docs/benchmark.md` as the reproducible figure and this table as the
+> historical one until someone reconciles them.
 
 **Frame rate costs as much as resolution.** Both video rows are 60 fps. Dropping the same clip from
 4K to 1080p saved 12 points on the video processing engine and 112 MB of graphics memory, but
