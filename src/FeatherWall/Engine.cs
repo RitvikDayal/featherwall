@@ -567,19 +567,19 @@ public sealed class Engine : IDisposable
                 return;
             case CmdClockEnabled:
                 _config.Clock.Enabled = !_config.Clock.Enabled;
-                SaveAndRefreshWidgets();
+                SaveAndRefreshClockOnly();
                 return;
             case CmdClock24h:
                 _config.Clock.TwentyFourHour = !_config.Clock.TwentyFourHour;
-                SaveAndRefreshWidgets();
+                SaveAndRefreshClockOnly();
                 return;
             case CmdClockSeconds:
                 _config.Clock.ShowSeconds = !_config.Clock.ShowSeconds;
-                SaveAndRefreshWidgets();
+                SaveAndRefreshClockOnly();
                 return;
             case CmdClockDate:
                 _config.Clock.ShowDate = !_config.Clock.ShowDate;
-                SaveAndRefreshWidgets();
+                SaveAndRefreshClockOnly();
                 return;
             case CmdMute:
                 _config.MuteVideo = !_config.MuteVideo;
@@ -618,7 +618,7 @@ public sealed class Engine : IDisposable
         if (cmd >= CmdAnchorBase && cmd < CmdAnchorBase + 10)
         {
             _config.Clock.Anchor = (ClockAnchor)(cmd - CmdAnchorBase);
-            SaveAndRefreshWidgets();
+            SaveAndRefreshClockOnly();
             return;
         }
         if (cmd >= CmdGalleryBase && cmd < CmdGalleryBase + (uint)_gallery.Manifest.Entries.Count)
