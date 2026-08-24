@@ -306,20 +306,24 @@ public sealed class Engine : IDisposable
         RecreateInfo();
     }
 
-    /// <summary>Rebuilds the info widget and the sources behind it.
+    /// <summary>Rebuilds the info widget. The sources OUTLIVE it.
     ///
-    /// The sources are rebuilt with the overlay rather than kept alive across it. Keeping them
-    /// would save a media-session round trip, at the cost of a second lifetime to reason about
-    /// and a stale MaxCharacters after a settings change. This path runs on a display change or
-    /// a settings apply — rare enough that the simpler lifetime is worth more than the round
-    /// trip.</summary>
+    /// They were originally rebuilt with the overlay, on the argument that this path only runs on
+    /// a display change or a settings apply and so is rare. That was wrong about settings: a
+    /// NumericUpDown raises ValueChanged on every increment, so one drag on a spinner rebuilt the
+    /// media-session manager dozens of times and made the widget blink out and back on each one.
+    /// The sources now read their config live and are disposed only when the widget is switched
+    /// off or the engine goes down.</summary>
     private void RecreateInfo()
     {
         _info?.Dispose();
         _info = null;
-        DisposeSources();
         Log.Info($"Info widget: enabled={_config.Info.Enabled}, sources=[{string.Join(", ", _config.Info.Sources)}]");
-        if (!_config.Info.Enabled) return;
+        if (!_config.Info.Enabled)
+        {
+            DisposeSources();
+            return;
+        }
 
         var monitors = MonitorTracker.Enumerate();
         var target = monitors.FirstOrDefault(m =>
@@ -339,6 +343,9 @@ public sealed class Engine : IDisposable
             }
             _info = new InfoOverlay(window.EnsureHost(), _config.Info, target, ResolveSources(),
                 MonitorTracker.DpiScale(target, monitors));
+            // The character budget may have just changed, and the surviving source is still
+            // holding text formatted to the old one.
+            _nowPlaying?.Refresh();
         }
         catch (Exception ex)
         {
@@ -360,7 +367,7 @@ public sealed class Engine : IDisposable
                     ordered.Add(_battery ??= new BatterySource());
                     break;
                 case "nowplaying":
-                    ordered.Add(_nowPlaying ??= new NowPlayingSource(_config.Info.MaxCharacters, RunOnMainThread));
+                    ordered.Add(_nowPlaying ??= new NowPlayingSource(() => _config.Info.MaxCharacters, RunOnMainThread));
                     break;
                 default:
                     Log.Warn($"Unknown info source '{name}' ignored");
@@ -685,6 +692,15 @@ public sealed class Engine : IDisposable
         RecreateWidgets();
     }
 
+    /// <summary>A clock-only change. Deliberately does not touch the info widget: every clock
+    /// control in the settings panel lands here, once per spinner increment, and rebuilding the
+    /// other widget's overlay for each of those is work nobody asked for.</summary>
+    private void SaveAndRefreshClockOnly()
+    {
+        ConfigStore.Save(_config);
+        RecreateClock();
+    }
+
     // ---- settings panel hooks ------------------------------------------------------------
 
     public AppConfig Config => _config;
@@ -699,6 +715,9 @@ public sealed class Engine : IDisposable
 
     /// <summary>Clock appearance changed: persist and rebuild the overlay (cheap).</summary>
     public void RefreshWidgets() => SaveAndRefreshWidgets();
+
+    /// <summary>For the settings panel's clock and date pages.</summary>
+    public void RefreshClock() => SaveAndRefreshClockOnly();
 
     /// <summary>Fit mode (or similar) changed: persist and swap renderers in place —
     /// windows and hosts are reused, so there is no flicker.</summary>
