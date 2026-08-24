@@ -117,7 +117,14 @@ function Find-CoveringWindow {
 
         $r = New-Object Bench.Fg+RECT
         if (-not [Bench.Fg]::GetWindowRect($h, [ref]$r)) { continue }
-        if (($r.R - $r.L) -lt $screen.Width * 0.9 -or ($r.B - $r.T) -lt $screen.Height * 0.9) { continue }
+
+        # Intersect with the primary screen rather than measuring the window alone. A full-screen
+        # window on a SECOND monitor is large enough to pass a width/height test while covering
+        # none of the desktop being measured, and would abort a run that was fine.
+        $overlapW = [Math]::Min($r.R, $screen.Right) - [Math]::Max($r.L, $screen.Left)
+        $overlapH = [Math]::Min($r.B, $screen.Bottom) - [Math]::Max($r.T, $screen.Top)
+        if ($overlapW -le 0 -or $overlapH -le 0) { continue }
+        if (($overlapW * [double]$overlapH) -lt ($screen.Width * [double]$screen.Height * 0.9)) { continue }
 
         $title = New-Object System.Text.StringBuilder 256
         [void][Bench.Fg]::GetWindowTextW($h, $title, 256)

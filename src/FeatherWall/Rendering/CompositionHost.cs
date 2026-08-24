@@ -173,11 +173,18 @@ public sealed class CompositionHost : IDisposable
         lock (_tree) _dcompDevice.Commit();
     }
 
-    /// <summary>Runs <paramref name="mutate"/> under the visual-tree lock. Used by
-    /// CompositionSurface.SetOffset, which changes a visual and commits.</summary>
-    internal void UnderTreeLock(Action mutate)
+    /// <summary>Runs <paramref name="mutate"/> under the visual-tree lock and commits it.
+    ///
+    /// The commit is part of this method rather than the caller's business: DirectComposition
+    /// batches property changes until Commit, so a mutation without one is invisible, and the
+    /// first version of this left SetOffset committing nowhere.</summary>
+    internal void MutateTree(Action mutate)
     {
-        lock (_tree) mutate();
+        lock (_tree)
+        {
+            mutate();
+            _dcompDevice.Commit();
+        }
     }
 
     public void Dispose()
@@ -246,10 +253,10 @@ public sealed class CompositionSurface : IDisposable
             AlphaMode = _premultiplied ? AlphaMode.Premultiplied : AlphaMode.Ignore,
         });
 
-    public void SetOffset(int x, int y) => _host.UnderTreeLock(() =>
+    /// <summary>Both offsets and the commit under one lock, so another widget's visual change
+    /// cannot land between them.</summary>
+    public void SetOffset(int x, int y) => _host.MutateTree(() =>
     {
-        // Offset and commit under one lock: a separate commit could land between another
-        // widget's visual change and its own commit.
         Visual.SetOffsetX(x);
         Visual.SetOffsetY(y);
     });

@@ -39,6 +39,11 @@ public sealed partial class NowPlayingSource : IWidgetSource
     private int _generation;
     private bool _disposed;
 
+    /// <summary>Serialises the end of InitialiseAsync against Dispose. RequestAsync resumes on a
+    /// pool thread, so checking _disposed and then subscribing is two steps a main-thread Dispose
+    /// can run between — leaving a handler attached to a source nobody will unsubscribe.</summary>
+    private readonly Lock _lifetime = new();
+
     public string? Value => _value;
     public event Action? Changed;
 
@@ -68,11 +73,14 @@ public sealed partial class NowPlayingSource : IWidgetSource
             // RequestAsync can outlive this source — the engine disposes and rebuilds widgets on
             // any display change. Subscribing after that would leave a handler on a manager
             // nobody unsubscribes from, and queue an AttachSession onto a disposed source.
-            if (_disposed) return;
+            lock (_lifetime)
+            {
+                if (_disposed) return;
 
-            _manager = manager;
-            _onSessionChanged = (_, _) => _toMainThread(AttachSession);
-            _manager.CurrentSessionChanged += _onSessionChanged;
+                _manager = manager;
+                _onSessionChanged = (_, _) => _toMainThread(AttachSession);
+                _manager.CurrentSessionChanged += _onSessionChanged;
+            }
             _toMainThread(AttachSession);
         }
         catch (Exception ex)
@@ -142,14 +150,17 @@ public sealed partial class NowPlayingSource : IWidgetSource
 
     public void Dispose()
     {
-        _disposed = true;
-
-        if (_manager is not null && _onSessionChanged is not null)
+        lock (_lifetime)
         {
-            _manager.CurrentSessionChanged -= _onSessionChanged;
-            _onSessionChanged = null;
+            _disposed = true;
+
+            if (_manager is not null && _onSessionChanged is not null)
+            {
+                _manager.CurrentSessionChanged -= _onSessionChanged;
+                _onSessionChanged = null;
+            }
+            _manager = null;
         }
-        _manager = null;
 
         if (_session is null) return;
         _session.MediaPropertiesChanged -= OnMediaChanged;

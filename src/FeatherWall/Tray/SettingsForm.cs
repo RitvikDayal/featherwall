@@ -330,7 +330,7 @@ public sealed class SettingsForm : Form
         rows.AddRow("Margin X", Spinner(0, 2000, info.MarginX, v => { info.MarginX = v; ApplyInfo(); }, "px"));
         rows.AddRow("Margin Y", Spinner(0, 2000, info.MarginY, v => { info.MarginY = v; ApplyInfo(); }, "px"));
         rows.AddRow("Font size", Spinner(10, 200, (int)info.FontSize, v => { info.FontSize = v; ApplyInfo(); }, "px"));
-        rows.AddRow("Font", BuildFontPicker(() => info.FontFamily, v => info.FontFamily = v));
+        rows.AddRow("Font", BuildFontPicker(() => info.FontFamily, v => info.FontFamily = v, apply: ApplyInfo));
         rows.AddRow("Colour", BuildInfoColorPicker());
         rows.AddRow("Opacity", Spinner(10, 100, (int)Math.Round(InfoAlpha() / 2.55), v =>
         {
@@ -593,7 +593,10 @@ public sealed class SettingsForm : Form
     /// <summary>Font picker over an arbitrary property, so the time and the date can each have
     /// one. <paramref name="placeholder"/> is shown when the value is empty, which for the date
     /// means "whatever the time is using".</summary>
-    private Control BuildFontPicker(Func<string?> get, Action<string> set, string? placeholder = null)
+    /// <summary><paramref name="apply"/> defaults to the clock's refresh because most callers are
+    /// clock pages. The info widget must pass its own — since the clock and info refresh paths
+    /// split, ApplyClock no longer rebuilds the info overlay.</summary>
+    private Control BuildFontPicker(Func<string?> get, Action<string> set, string? placeholder = null, Action? apply = null)
     {
         var combo = new ComboBox
         {
@@ -638,7 +641,7 @@ public sealed class SettingsForm : Form
         {
             if (_loading || combo.SelectedItem is not string family) return;
             set(family == placeholder ? "" : family);
-            ApplyClock();
+            (apply ?? ApplyClock)();
         };
         combo.Leave += (_, _) =>
         {
@@ -651,11 +654,11 @@ public sealed class SettingsForm : Form
                 // no such state, so a blank there is still treated as a half-finished edit.
                 if (placeholder is null) return;
                 set("");
-                ApplyClock();
+                (apply ?? ApplyClock)();
                 return;
             }
             set(combo.Text == placeholder ? "" : combo.Text);
-            ApplyClock();
+            (apply ?? ApplyClock)();
         };
         return combo;
     }
