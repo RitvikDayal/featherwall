@@ -85,6 +85,9 @@ public sealed class InfoOverlay : IDisposable
             for (int i = 0; i < _sources.Count; i++) values[i] = _sources[i].Value;
 
             var metrics = InfoRenderer.Measure(_config, values, (float)_dpiScale);
+            // Every one of these lines is a source event. If they ever appear at a regular
+            // interval, a timer has crept in and the feature has failed its cost budget.
+            Log.Info($"Info repaint: [{string.Join(" | ", metrics.Lines)}]");
             if (metrics.Lines.Count == 0)
             {
                 // Nothing to say: no battery and nothing playing. Drop the visual rather than

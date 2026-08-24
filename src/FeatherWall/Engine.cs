@@ -32,6 +32,9 @@ public sealed class Engine : IDisposable
     private PowerNotifications? _power;
     private TrayIcon? _tray;
     private ClockOverlay? _clock;
+    private InfoOverlay? _info;
+    private BatterySource? _battery;
+    private NowPlayingSource? _nowPlaying;
     private PlaybackMonitor? _playback;
     private bool _reapplying;
     private string _originalWallpaper = "";
@@ -90,7 +93,7 @@ public sealed class Engine : IDisposable
                 Log.Error($"Failed to apply wallpaper on {monitor.Device}", ex);
             }
         }
-        RecreateClock();
+        RecreateWidgets();
     }
 
     private void ApplyToMonitor(MonitorInfo monitor, string path)
@@ -167,7 +170,7 @@ public sealed class Engine : IDisposable
         {
             _config.Assign(monitorDevice, path);
             ConfigStore.Save(_config);
-            if (_clock is null) RecreateClock();
+            if (_clock is null && _info is null) RecreateWidgets();
         }
     }
 
@@ -215,6 +218,7 @@ public sealed class Engine : IDisposable
             if (_playback is { } playback) playback.DisplayOff = off;
             // Dimmed still shows the wallpaper, so only a true off suspends the clock.
             _clock?.SetSuspended(off);
+            _info?.SetSuspended(off);
         }
         else if (setting == PowerNotifications.PowerSavingStatus || setting == PowerNotifications.AcDcPowerSource)
         {
@@ -222,6 +226,10 @@ public sealed class Engine : IDisposable
             // land immediately instead of up to 500 ms later.
             _playback?.Invalidate();
         }
+
+        // Outside the chain above: the battery source filters for the two settings that can
+        // change its text, and an AC transition is one of them, so it must see that branch too.
+        _battery?.OnPowerSettingChanged(setting);
     }
 
     /// <summary>A surface reported DXGI device removal or reset — a GPU driver update, a TDR, or
@@ -274,6 +282,8 @@ public sealed class Engine : IDisposable
             Log.Info("Re-applying all wallpapers");
             _clock?.Dispose(); // before the windows — its timer renders into their hosts
             _clock = null;
+            _info?.Dispose();
+            _info = null;
             foreach (var window in _windows.Values) window.Dispose();
             _windows.Clear();
             VideoRenderer.ReclaimMediaPipeline(); // disposed players hold their MF threads until collected
@@ -288,6 +298,84 @@ public sealed class Engine : IDisposable
         {
             _reapplying = false;
         }
+    }
+
+    private void RecreateWidgets()
+    {
+        RecreateClock();
+        RecreateInfo();
+    }
+
+    /// <summary>Rebuilds the info widget and the sources behind it.
+    ///
+    /// The sources are rebuilt with the overlay rather than kept alive across it. Keeping them
+    /// would save a media-session round trip, at the cost of a second lifetime to reason about
+    /// and a stale MaxCharacters after a settings change. This path runs on a display change or
+    /// a settings apply — rare enough that the simpler lifetime is worth more than the round
+    /// trip.</summary>
+    private void RecreateInfo()
+    {
+        _info?.Dispose();
+        _info = null;
+        DisposeSources();
+        Log.Info($"Info widget: enabled={_config.Info.Enabled}, sources=[{string.Join(", ", _config.Info.Sources)}]");
+        if (!_config.Info.Enabled) return;
+
+        var monitors = MonitorTracker.Enumerate();
+        var target = monitors.FirstOrDefault(m =>
+                string.Equals(m.Device, _config.Info.Monitor, StringComparison.OrdinalIgnoreCase))
+            ?? monitors.FirstOrDefault(m => m.Primary) ?? monitors.FirstOrDefault();
+        if (target is null) return;
+
+        try
+        {
+            if (!_windows.TryGetValue(target.Device, out var window))
+            {
+                window = new WallpaperWindow(target);
+                window.DeviceLost += OnDeviceLost;
+                _host.Attach(window.Hwnd, target.Bounds);
+                window.EnsureHost();
+                _windows[target.Device] = window;
+            }
+            _info = new InfoOverlay(window.EnsureHost(), _config.Info, target, ResolveSources(),
+                MonitorTracker.DpiScale(target, monitors));
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Info widget failed", ex);
+        }
+    }
+
+    /// <summary>Config source names to sources, in the configured order. An unknown name is
+    /// logged and skipped rather than throwing, so a config written by a later version still
+    /// starts this one.</summary>
+    private IReadOnlyList<IWidgetSource> ResolveSources()
+    {
+        var ordered = new List<IWidgetSource>();
+        foreach (var name in _config.Info.Sources)
+        {
+            switch (name.Trim().ToLowerInvariant())
+            {
+                case "battery":
+                    ordered.Add(_battery ??= new BatterySource());
+                    break;
+                case "nowplaying":
+                    ordered.Add(_nowPlaying ??= new NowPlayingSource(_config.Info.MaxCharacters, RunOnMainThread));
+                    break;
+                default:
+                    Log.Warn($"Unknown info source '{name}' ignored");
+                    break;
+            }
+        }
+        return ordered;
+    }
+
+    private void DisposeSources()
+    {
+        _battery?.Dispose();
+        _battery = null;
+        _nowPlaying?.Dispose();
+        _nowPlaying = null;
     }
 
     private void RecreateClock()
@@ -594,7 +682,7 @@ public sealed class Engine : IDisposable
     private void SaveAndRefreshClock()
     {
         ConfigStore.Save(_config);
-        RecreateClock();
+        RecreateWidgets();
     }
 
     // ---- settings panel hooks ------------------------------------------------------------
@@ -708,7 +796,7 @@ public sealed class Engine : IDisposable
         sb.AppendLine($"Progman: 0x{layer.Progman:X}  WorkerW: 0x{layer.WorkerW:X}  DefView: 0x{layer.DefView:X}");
         foreach (var monitor in MonitorTracker.Enumerate())
             sb.AppendLine($"Monitor {monitor.Device}: {monitor.Bounds}{(monitor.Primary ? " (primary)" : "")}");
-        sb.AppendLine($"Attached surfaces: {_windows.Count}   Clock: {(_clock is null ? "off" : "on")}");
+        sb.AppendLine($"Attached surfaces: {_windows.Count}   Clock: {(_clock is null ? "off" : "on")}   Info: {(_info is null ? "off" : "on")}");
         sb.AppendLine($"Config: {ConfigStore.ConfigPath}");
         sb.AppendLine($"Log: {Path.Combine(Log.Directory, "featherwall.log")}");
         return sb.ToString();
@@ -771,8 +859,9 @@ public sealed class Engine : IDisposable
                     }
                     return IntPtr.Zero;
                 case WM_POWERBROADCAST when (int)wParam == PBT_APMRESUMEAUTOMATIC:
-                    Log.Info("Resumed from sleep — refreshing clock and validating layer");
+                    Log.Info("Resumed from sleep — refreshing widgets and validating layer");
                     _engine._clock?.Refresh();
+                    _engine._info?.Refresh();
                     _engine._host.ValidateLayer();
                     return IntPtr.Zero;
                 case WM_POWERBROADCAST when (int)wParam == PBT_POWERSETTINGCHANGE:
@@ -789,6 +878,9 @@ public sealed class Engine : IDisposable
         _playback?.Dispose();
         _clock?.Dispose(); // before the windows — its timer renders into their hosts
         _clock = null;
+        _info?.Dispose();
+        _info = null;
+        DisposeSources();
         foreach (var window in _windows.Values) window.Dispose();
         _windows.Clear();
         _tray?.Dispose();
