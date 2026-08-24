@@ -83,3 +83,50 @@ public class ConfigTests
         Assert.Contains("\"Stretch\"", json);
     }
 }
+
+/// <summary>The info widget's defaults. An upgrade must render exactly as it did before, so
+/// every default here is chosen to produce nothing on screen until someone asks for it.</summary>
+public class InfoConfigTests
+{
+    [Fact]
+    public void InfoWidget_IsOffByDefault()
+    {
+        // An upgrade must not silently add lines to someone's wallpaper.
+        Assert.False(new AppConfig().Info.Enabled);
+    }
+
+    [Fact]
+    public void InfoWidget_DefaultsToNowPlayingThenBattery()
+    {
+        Assert.Equal(["nowPlaying", "battery"], new AppConfig().Info.Sources);
+    }
+
+    [Fact]
+    public void ConfigWrittenBeforeTheWidgetExisted_LoadsWithItOff()
+    {
+        // The upgrade path, asserted rather than assumed: a config.json from v0.1.x has no
+        // "info" key at all, and must still start with the widget silent.
+        const string old = """
+        { "wallpapers": [], "fit": "Fill", "clock": { "enabled": true } }
+        """;
+        var loaded = JsonSerializer.Deserialize(old, ConfigJsonContext.Default.AppConfig)!;
+        Assert.NotNull(loaded.Info);
+        Assert.False(loaded.Info.Enabled);
+    }
+
+    [Fact]
+    public void InfoConfig_SurvivesARoundTrip()
+    {
+        var config = new AppConfig();
+        config.Info.Enabled = true;
+        config.Info.Sources = ["battery"];
+        config.Info.MaxCharacters = 30;
+
+        var json = JsonSerializer.Serialize(config, ConfigJsonContext.Default.AppConfig);
+        var back = JsonSerializer.Deserialize(json, ConfigJsonContext.Default.AppConfig)!;
+
+        Assert.True(back.Info.Enabled);
+        Assert.Equal(["battery"], back.Info.Sources);
+        Assert.Equal(30, back.Info.MaxCharacters);
+    }
+}
