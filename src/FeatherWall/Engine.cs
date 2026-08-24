@@ -560,19 +560,19 @@ public sealed class Engine : IDisposable
                 return;
             case CmdClockEnabled:
                 _config.Clock.Enabled = !_config.Clock.Enabled;
-                SaveAndRefreshClock();
+                SaveAndRefreshWidgets();
                 return;
             case CmdClock24h:
                 _config.Clock.TwentyFourHour = !_config.Clock.TwentyFourHour;
-                SaveAndRefreshClock();
+                SaveAndRefreshWidgets();
                 return;
             case CmdClockSeconds:
                 _config.Clock.ShowSeconds = !_config.Clock.ShowSeconds;
-                SaveAndRefreshClock();
+                SaveAndRefreshWidgets();
                 return;
             case CmdClockDate:
                 _config.Clock.ShowDate = !_config.Clock.ShowDate;
-                SaveAndRefreshClock();
+                SaveAndRefreshWidgets();
                 return;
             case CmdMute:
                 _config.MuteVideo = !_config.MuteVideo;
@@ -611,7 +611,7 @@ public sealed class Engine : IDisposable
         if (cmd >= CmdAnchorBase && cmd < CmdAnchorBase + 10)
         {
             _config.Clock.Anchor = (ClockAnchor)(cmd - CmdAnchorBase);
-            SaveAndRefreshClock();
+            SaveAndRefreshWidgets();
             return;
         }
         if (cmd >= CmdGalleryBase && cmd < CmdGalleryBase + (uint)_gallery.Manifest.Entries.Count)
@@ -679,7 +679,7 @@ public sealed class Engine : IDisposable
         }
     }
 
-    private void SaveAndRefreshClock()
+    private void SaveAndRefreshWidgets()
     {
         ConfigStore.Save(_config);
         RecreateWidgets();
@@ -698,7 +698,7 @@ public sealed class Engine : IDisposable
     public void SaveConfig() => ConfigStore.Save(_config);
 
     /// <summary>Clock appearance changed: persist and rebuild the overlay (cheap).</summary>
-    public void RefreshClock() => SaveAndRefreshClock();
+    public void RefreshWidgets() => SaveAndRefreshWidgets();
 
     /// <summary>Fit mode (or similar) changed: persist and swap renderers in place —
     /// windows and hosts are reused, so there is no flicker.</summary>

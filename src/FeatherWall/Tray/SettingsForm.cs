@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Drawing.Text;
 using System.Windows.Forms;
 using FeatherWall.Config;
+using FeatherWall.Widgets;
 
 namespace FeatherWall.Tray;
 
@@ -58,6 +59,7 @@ public sealed class SettingsForm : Form
 
         AddPage(pages, rail, "Clock", BuildClockSection());
         AddPage(pages, rail, "Date", BuildDateSection());
+        AddPage(pages, rail, "Info", BuildInfoSection());
         AddPage(pages, rail, "Wallpaper", BuildWallpaperSection());
         AddPage(pages, rail, "Behaviour", BuildBehaviorSection());
         SelectPage(0);
@@ -306,6 +308,152 @@ public sealed class SettingsForm : Form
 
     private const string SameAsTime = "(same as time)";
 
+    /// <summary>The info widget's page. Off by default and off in a fresh config, so this is
+    /// where it gets turned on — the feature is meant to need no JSON editing at all.
+    ///
+    /// The now-playing line is worth a word of warning here rather than in the docs: it shows
+    /// whatever has a media session, a browser tab included, on a desktop other people can see.</summary>
+    private Control BuildInfoSection()
+    {
+        var (card, rows) = NewSection("Info widget");
+        var info = _config.Info;
+
+        rows.AddRow("Show info widget", Check(info.Enabled, v => { info.Enabled = v; ApplyInfo(); }));
+        rows.AddRow("Now playing", Check(HasSource("nowPlaying"), v => { SetSource("nowPlaying", v); ApplyInfo(); }));
+        rows.AddRow("Battery", Check(HasSource("battery"), v => { SetSource("battery", v); ApplyInfo(); }));
+        rows.AddRow("Order", Choice(["Now playing first", "Battery first"], NowPlayingIsFirst() ? 0 : 1,
+            i => { SetOrder(nowPlayingFirst: i == 0); ApplyInfo(); }));
+        rows.AddRow("Max characters", Spinner(10, 200, info.MaxCharacters,
+            v => { info.MaxCharacters = v; ApplyInfo(); }, "chars"));
+        rows.AddRow("Drop shadow", Check(info.Shadow, v => { info.Shadow = v; ApplyInfo(); }));
+        rows.AddRow("Position", BuildAnchorPicker(() => info.Anchor, v => info.Anchor = v, ApplyInfo));
+        rows.AddRow("Margin X", Spinner(0, 2000, info.MarginX, v => { info.MarginX = v; ApplyInfo(); }, "px"));
+        rows.AddRow("Margin Y", Spinner(0, 2000, info.MarginY, v => { info.MarginY = v; ApplyInfo(); }, "px"));
+        rows.AddRow("Font size", Spinner(10, 200, (int)info.FontSize, v => { info.FontSize = v; ApplyInfo(); }, "px"));
+        rows.AddRow("Font", BuildFontPicker(() => info.FontFamily, v => info.FontFamily = v));
+        rows.AddRow("Colour", BuildInfoColorPicker());
+        rows.AddRow("Opacity", Spinner(10, 100, (int)Math.Round(InfoAlpha() / 2.55), v =>
+        {
+            SetInfoColor(InfoRgb(), (int)Math.Round(v * 2.55));
+            if (_infoColorHex is not null) _infoColorHex.Text = _config.Info.Color.ToUpperInvariant();
+            ApplyInfo();
+        }, "%"));
+
+        return card;
+    }
+
+    private bool HasSource(string name) =>
+        _config.Info.Sources.Any(s => string.Equals(s, name, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Adding appends, so turning a source back on does not silently reorder the other
+    /// one. The Order row is what moves them.</summary>
+    private void SetSource(string name, bool on)
+    {
+        if (on)
+        {
+            if (!HasSource(name)) _config.Info.Sources.Add(name);
+        }
+        else
+        {
+            _config.Info.Sources.RemoveAll(s => string.Equals(s, name, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    private bool NowPlayingIsFirst()
+    {
+        int now = _config.Info.Sources.FindIndex(s => string.Equals(s, "nowPlaying", StringComparison.OrdinalIgnoreCase));
+        int battery = _config.Info.Sources.FindIndex(s => string.Equals(s, "battery", StringComparison.OrdinalIgnoreCase));
+        if (now < 0) return false;
+        if (battery < 0) return true;
+        return now < battery;
+    }
+
+    /// <summary>Reorders without adding: a source the user switched off stays off.</summary>
+    private void SetOrder(bool nowPlayingFirst)
+    {
+        var ordered = new List<string>();
+        foreach (var name in nowPlayingFirst ? new[] { "nowPlaying", "battery" } : ["battery", "nowPlaying"])
+            if (HasSource(name)) ordered.Add(name);
+        // Anything a later version wrote is preserved rather than dropped on the floor.
+        ordered.AddRange(_config.Info.Sources.Where(s =>
+            !string.Equals(s, "nowPlaying", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(s, "battery", StringComparison.OrdinalIgnoreCase)));
+        _config.Info.Sources = ordered;
+    }
+
+    private Color InfoColor() => ClockRenderer.ParseColor(_config.Info.Color);
+    /// <summary>The colour without its alpha — the swatch and the dialog work in RGB, and the
+    /// opacity spinner owns the alpha channel separately.</summary>
+    private Color InfoRgb()
+    {
+        var c = InfoColor();
+        return Color.FromArgb(c.R, c.G, c.B);
+    }
+    private int InfoAlpha() => InfoColor().A;
+
+    private void SetInfoColor(Color rgb, int alpha) =>
+        _config.Info.Color = $"#{alpha:X2}{rgb.R:X2}{rgb.G:X2}{rgb.B:X2}";
+
+    /// <summary>Its own button rather than a parameterised BuildColorPicker: that one owns two
+    /// form fields bound to the clock, and threading a second target through them would make the
+    /// clock's picker harder to follow for no gain here.</summary>
+    private Control BuildInfoColorPicker()
+    {
+        var button = new Button
+        {
+            Width = 58,
+            Height = 26,
+            BackColor = InfoRgb(),
+            FlatStyle = FlatStyle.Flat,
+            Margin = new Padding(0, 0, 10, 0),
+        };
+        button.FlatAppearance.BorderColor = Theme.Colors.Border;
+
+        var hex = new Label
+        {
+            AutoSize = true,
+            Text = _config.Info.Color.ToUpperInvariant(),
+            ForeColor = Theme.Colors.Subtle,
+            Margin = new Padding(0, 5, 0, 0),
+            Font = new Font("Consolas", 9f),
+            BackColor = Theme.Colors.Card,
+        };
+
+        button.Click += (_, _) =>
+        {
+            using var dialog = new ColorDialog { Color = InfoRgb(), FullOpen = true };
+            if (dialog.ShowDialog(this) != DialogResult.OK) return;
+            SetInfoColor(dialog.Color, InfoAlpha());
+            button.BackColor = dialog.Color;
+            hex.Text = _config.Info.Color.ToUpperInvariant();
+            ApplyInfo();
+        };
+
+        var row = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.LeftToRight,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Theme.Colors.Card,
+            Margin = new Padding(0, 2, 0, 2),
+        };
+        row.Controls.Add(button);
+        row.Controls.Add(hex);
+        _infoColorHex = hex;
+        return row;
+    }
+
+    /// <summary>Kept so the opacity spinner can refresh the hex, which carries the alpha byte.</summary>
+    private Label? _infoColorHex;
+
+    /// <summary>The info widget has no preview surface of its own, so unlike ApplyClock this
+    /// only persists and rebuilds — what it looks like is checked on the desktop.</summary>
+    private void ApplyInfo()
+    {
+        if (_loading) return;
+        _engine.RefreshWidgets();
+    }
+
     private Control BuildWallpaperSection()
     {
         var (card, rows) = NewSection("Wallpaper");
@@ -394,7 +542,12 @@ public sealed class SettingsForm : Form
 
     // ---- pickers -----------------------------------------------------------------------
 
-    private Control BuildAnchorPicker()
+    private Control BuildAnchorPicker() =>
+        BuildAnchorPicker(() => _config.Clock.Anchor, v => _config.Clock.Anchor = v, ApplyClock);
+
+    /// <summary>Anchor grid over an arbitrary property, so the clock and the info widget can
+    /// each be positioned independently.</summary>
+    private Control BuildAnchorPicker(Func<ClockAnchor> get, Action<ClockAnchor> set, Action apply)
     {
         var grid = new TableLayoutPanel
         {
@@ -413,7 +566,7 @@ public sealed class SettingsForm : Form
                 Appearance = Appearance.Button,
                 Size = new Size(38, 30),
                 Margin = new Padding(2),
-                Checked = _config.Clock.Anchor == anchor,
+                Checked = get() == anchor,
                 Tag = anchor,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Text = AnchorGlyph(anchor),
@@ -426,8 +579,8 @@ public sealed class SettingsForm : Form
             cell.CheckedChanged += (_, _) =>
             {
                 if (_loading || !cell.Checked) return;
-                _config.Clock.Anchor = (ClockAnchor)cell.Tag!;
-                ApplyClock();
+                set((ClockAnchor)cell.Tag!);
+                apply();
             };
             grid.Controls.Add(cell);
         }
@@ -705,7 +858,7 @@ public sealed class SettingsForm : Form
     private void ApplyClock()
     {
         if (_loading) return;
-        _engine.RefreshClock();
+        _engine.RefreshWidgets();
         _preview.Invalidate();
     }
 }
