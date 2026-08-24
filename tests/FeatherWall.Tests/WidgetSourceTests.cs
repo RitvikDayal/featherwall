@@ -43,3 +43,36 @@ public class BatterySourceTests
         Assert.Equal("charged", BatterySource.Format(Status(ac: 1, flag: 1, percent: 100)));
     }
 }
+
+/// <summary>The registration list and the routing must agree. A GUID registered but claimed by
+/// nobody is a subscription paid for and dropped — the defect found in the session display
+/// state on 2026-08-22, which was registered for months and read nowhere.</summary>
+public class PowerSettingRoutingTests
+{
+    [Fact]
+    public void EveryRegisteredSettingIsClaimedBySomeConsumer()
+    {
+        foreach (var setting in PowerNotifications.RegisteredSettings)
+        {
+            bool claimed =
+                PowerNotifications.IsDisplayState(setting) ||
+                setting == PowerNotifications.AcDcPowerSource ||
+                setting == PowerNotifications.PowerSavingStatus ||
+                setting == PowerNotifications.BatteryPercentageRemaining;
+            Assert.True(claimed, $"{setting} is registered but no consumer claims it");
+        }
+    }
+
+    [Fact]
+    public void BatteryPercentageGuid_MatchesTheSdkHeader()
+    {
+        // GUID_BATTERY_PERCENTAGE_REMAINING, winnt.h. A wrong value registers successfully and
+        // then never fires, so nothing else in this suite would notice.
+        Assert.Equal(new Guid("a7ad8041-b45a-4cae-87a3-eecbb468a9e1"),
+                     PowerNotifications.BatteryPercentageRemaining);
+    }
+
+    [Fact]
+    public void BatteryPercentage_IsNotTreatedAsADisplayState() =>
+        Assert.False(PowerNotifications.IsDisplayState(PowerNotifications.BatteryPercentageRemaining));
+}

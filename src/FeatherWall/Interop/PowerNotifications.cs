@@ -32,6 +32,12 @@ public sealed class PowerNotifications : IDisposable
     /// <summary>Battery-saver on/off.</summary>
     public static readonly Guid PowerSavingStatus = new("E00958C0-C213-4ACE-AC77-FECCED2EEEA5");
 
+    /// <summary>Percent battery life remaining. Windows pushes on every change, so the battery
+    /// widget never polls. Value read from winnt.h, not from memory — a wrong GUID here still
+    /// returns a valid registration handle and simply never fires, so the widget would sit at
+    /// its startup value forever and read as a render bug.</summary>
+    public static readonly Guid BatteryPercentageRemaining = new("a7ad8041-b45a-4cae-87a3-eecbb468a9e1");
+
     /// <summary>True for the two settings that report a display on/off/dimmed state, both of which
     /// carry the same MONITOR_DISPLAY_STATE values.
     ///
@@ -41,6 +47,13 @@ public sealed class PowerNotifications : IDisposable
     /// not describe what the user is looking at.</summary>
     public static bool IsDisplayState(Guid setting) =>
         setting == ConsoleDisplayState || setting == SessionDisplayStatus;
+
+    /// <summary>Every setting this window subscribes to. Exposed so a test can assert each one
+    /// is claimed by some consumer. It proves the list and the classifiers agree, not that the
+    /// engine acts on the message — but it is what would have caught the session display state
+    /// being subscribed to and then dropped for months.</summary>
+    public static readonly Guid[] RegisteredSettings =
+        [ConsoleDisplayState, SessionDisplayStatus, AcDcPowerSource, PowerSavingStatus, BatteryPercentageRemaining];
 
     public const int DEVICE_NOTIFY_WINDOW_HANDLE = 0x00000000;
 
@@ -90,7 +103,7 @@ public sealed class PowerNotifications : IDisposable
 
     public PowerNotifications(IntPtr hwnd)
     {
-        foreach (var guid in new[] { ConsoleDisplayState, SessionDisplayStatus, AcDcPowerSource, PowerSavingStatus })
+        foreach (var guid in RegisteredSettings)
         {
             var copy = guid;
             var handle = RegisterPowerSettingNotification(hwnd, ref copy, DEVICE_NOTIFY_WINDOW_HANDLE);
