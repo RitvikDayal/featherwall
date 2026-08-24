@@ -10,8 +10,8 @@ using Vortice.Mathematics;
 namespace FeatherWall.Rendering;
 
 /// <summary>D3D11 + DirectComposition presentation for one wallpaper window, holding a
-/// small visual tree: a content surface (video/image) plus an optional overlay surface
-/// (widgets) composed above it.
+/// small visual tree: a content surface (video/image) plus any number of keyed overlay
+/// surfaces (widgets) composed above it.
 ///
 /// Why DirectComposition: on Windows 11 24H2+ "raised" desktops, Progman opts out of GDI
 /// redirection (WS_EX_NOREDIRECTIONBITMAP) and the shell composes the wallpaper WorkerW via
@@ -33,7 +33,10 @@ public sealed class CompositionHost : IDisposable
     private IDCompositionVisual _rootVisual = null!;
 
     public CompositionSurface? Content { get; private set; }
-    public CompositionSurface? Overlay { get; private set; }
+
+    /// <summary>Overlays by key, so more than one widget can be composed above the content.
+    /// A single field would mean each new widget disposed the previous one.</summary>
+    private readonly Dictionary<string, CompositionSurface> _overlays = [];
 
     /// <summary>Raised when a surface reports DXGI device removal or reset. The device belongs
     /// to the host, so a single surface cannot recover on its own — the whole tree is rebuilt
@@ -86,30 +89,48 @@ public sealed class CompositionHost : IDisposable
         Content?.Dispose();
         Content = new CompositionSurface(this, width, height, premultipliedAlpha: false, offsetX, offsetY);
         Content.DeviceLost += RaiseDeviceLost;
-        _rootVisual.AddVisual(Content.Visual, false, Overlay?.Visual);
+        _rootVisual.AddVisual(Content.Visual, false, null);
+
+        // Then lift every overlay back above it. A null reference visual does not mean
+        // "bottom-most" — it makes the flag a position in the child list — so content added
+        // that way lands in front of the widgets and hides them. Verified: the clock vanished.
+        // Naming one overlay as the reference would only order content against that one, so
+        // each is re-inserted explicitly against the new content.
+        foreach (var overlay in _overlays.Values)
+        {
+            _rootVisual.RemoveVisual(overlay.Visual);
+            _rootVisual.AddVisual(overlay.Visual, true, Content.Visual);
+        }
+
         _dcompDevice.Commit();
         return Content;
     }
 
-    /// <summary>A transparent surface composed above the content (clock and friends).</summary>
-    public CompositionSurface CreateOverlay(int width, int height, int offsetX, int offsetY)
+    public CompositionSurface? GetOverlay(string key) =>
+        _overlays.TryGetValue(key, out var surface) ? surface : null;
+
+    /// <summary>A transparent surface composed above the content (clock and friends). Keyed, so
+    /// each widget owns its own visual and creating one does not destroy another's.</summary>
+    public CompositionSurface CreateOverlay(string key, int width, int height, int offsetX, int offsetY)
     {
-        Overlay?.Dispose();
-        Overlay = new CompositionSurface(this, width, height, premultipliedAlpha: true, offsetX, offsetY);
-        Overlay.DeviceLost += RaiseDeviceLost;
-        _rootVisual.AddVisual(Overlay.Visual, true, Content?.Visual);
+        RemoveOverlay(key);
+        var surface = new CompositionSurface(this, width, height, premultipliedAlpha: true, offsetX, offsetY);
+        surface.DeviceLost += RaiseDeviceLost;
+        // Above the content. Order among the overlays themselves is unspecified and does not
+        // matter — each widget owns a separate rectangle and they do not intersect.
+        _rootVisual.AddVisual(surface.Visual, true, Content?.Visual);
+        _overlays[key] = surface;
         _dcompDevice.Commit();
-        return Overlay;
+        return surface;
     }
 
     private void RaiseDeviceLost() => DeviceLost?.Invoke();
 
-    public void RemoveOverlay()
+    public void RemoveOverlay(string key)
     {
-        if (Overlay is null) return;
-        _rootVisual.RemoveVisual(Overlay.Visual);
-        Overlay.Dispose();
-        Overlay = null;
+        if (!_overlays.Remove(key, out var surface)) return;
+        _rootVisual.RemoveVisual(surface.Visual);
+        surface.Dispose();
         _dcompDevice.Commit();
     }
 
@@ -124,8 +145,8 @@ public sealed class CompositionHost : IDisposable
     {
         Content?.Dispose();
         Content = null;
-        Overlay?.Dispose();
-        Overlay = null;
+        foreach (var surface in _overlays.Values) surface.Dispose();
+        _overlays.Clear();
         _rootVisual?.Dispose();
         _dcompTarget?.Dispose();
         _dcompDevice?.Dispose();
