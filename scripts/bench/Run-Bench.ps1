@@ -23,6 +23,11 @@
 .PARAMETER Seconds
     Sampling window per state.
 
+.PARAMETER Widgets
+    Also enable the info widget (now playing + battery). Run once without and once with to see
+    what the widgets cost. Without this the benchmark config has no "info" block at all, which
+    is the shipped default, so a plain run measures the widget as off rather than as absent.
+
 .PARAMETER Exe
     featherwall.exe to measure. Defaults to the Release build.
 
@@ -34,6 +39,7 @@ param(
     [Parameter(Mandatory)][string] $Video,
     [Parameter(Mandatory)][string] $Image,
     [int] $Seconds = 30,
+    [switch] $Widgets,
     [string] $Exe = "$PSScriptRoot\..\..\src\FeatherWall\bin\Release\net10.0-windows10.0.19041.0\featherwall.exe"
 )
 
@@ -44,6 +50,7 @@ $measure = Join-Path $PSScriptRoot 'Measure-App.ps1'
 $configPath = Join-Path $env:APPDATA 'FeatherWall\config.json'
 $backup = "$configPath.bench-backup"
 $shell = New-Object -ComObject Shell.Application
+Add-Type -AssemblyName System.Windows.Forms
 
 foreach ($p in @($Video, $Image, $Exe, $measure)) {
     if (-not (Test-Path $p)) { throw "Not found: $p" }
@@ -69,7 +76,57 @@ function Set-Wallpaper {
                          showSeconds = $false; showDate = $true; separator = $true; shadow = $true
                          color = '#F0FFFFFF'; marginX = 48; marginY = 48; twentyFourHour = $true; monitor = '*' }
     }
+    if ($Widgets) {
+        $config.info = @{ enabled = $true; monitor = '*'; anchor = 'BottomLeft'; marginX = 48; marginY = 48
+                          fontSize = 34; fontFamily = 'Segoe UI'; color = '#F0FFFFFF'; shadow = $true
+                          maxCharacters = 48; sources = @('nowPlaying', 'battery') }
+    }
     $config | ConvertTo-Json -Depth 6 | Set-Content -Path $configPath -Encoding UTF8
+}
+
+Add-Type -Namespace Bench -Name Fg -MemberDefinition @'
+[DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+[DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
+[DllImport("user32.dll")] public static extern bool IsZoomed(IntPtr h);
+[DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
+[DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
+[DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowTextW(IntPtr h, System.Text.StringBuilder s, int n);
+[DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+[StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
+'@
+
+function Find-CoveringWindow {
+    <#
+      Names the window still covering the desktop, or $null if the desktop is clear.
+
+      Sampled repeatedly rather than once, because the window that breaks a run is usually one
+      that keeps TAKING the foreground back rather than one that sits there. A full-screen video
+      in a browser is the case that prompted this: it survives MinimizeAll, re-asserts itself a
+      second later, and a single snapshot between two of its grabs reports a clear desktop.
+
+      Without this the run proceeds, FeatherWall correctly pauses because something is in the
+      way, and five minutes later every playing row is refused with no hint as to what did it.
+    #>
+    param([int] $Samples = 6, [int] $IntervalMs = 700)
+
+    $screen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+    for ($i = 0; $i -lt $Samples; $i++) {
+        if ($i -gt 0) { Start-Sleep -Milliseconds $IntervalMs }
+        $h = [Bench.Fg]::GetForegroundWindow()
+        if ($h -eq [IntPtr]::Zero -or [Bench.Fg]::IsIconic($h)) { continue }
+
+        $r = New-Object Bench.Fg+RECT
+        if (-not [Bench.Fg]::GetWindowRect($h, [ref]$r)) { continue }
+        if (($r.R - $r.L) -lt $screen.Width * 0.9 -or ($r.B - $r.T) -lt $screen.Height * 0.9) { continue }
+
+        $title = New-Object System.Text.StringBuilder 256
+        [void][Bench.Fg]::GetWindowTextW($h, $title, 256)
+        [uint32]$procId = 0
+        [void][Bench.Fg]::GetWindowThreadProcessId($h, [ref]$procId)
+        $name = (Get-Process -Id $procId -EA SilentlyContinue).ProcessName
+        return "$name — $($title.ToString())"
+    }
+    return $null
 }
 
 $script:blockerPids = @()
@@ -207,7 +264,8 @@ function Measure-State {
 
     try {
         & $Setup
-        return (& $measure -ProcessName featherwall -Seconds $Seconds -Label $Label -ExpectState $Expect)
+        $tagged = if ($Widgets) { "$Label + widgets" } else { $Label }
+        return (& $measure -ProcessName featherwall -Seconds $Seconds -Label $tagged -ExpectState $Expect)
     }
     catch {
         # Trim each line: a Windows exception carries \r that -split "`n" leaves behind, and those
@@ -215,7 +273,8 @@ function Measure-State {
         $reason = ($_.Exception.Message -split "`n" | ForEach-Object { $_.Trim() } |
                    Where-Object { $_ } | Select-Object -First 2) -join ' '
         Write-Host "  REFUSED: $reason" -ForegroundColor Yellow
-        return [pscustomobject]@{ Label = $Label; Refused = $reason; ExpectedState = $Expect }
+        $tagged = if ($Widgets) { "$Label + widgets" } else { $Label }
+        return [pscustomobject]@{ Label = $tagged; Refused = $reason; ExpectedState = $Expect }
     }
 }
 
@@ -249,8 +308,22 @@ try {
         Write-Host "No existing config; the benchmark's own will be removed afterwards." -ForegroundColor DarkGray
     }
 
+    # MinimizeAll on its own is not enough: it does not touch a full-screen window, and a
+    # terminal left in full screen therefore stays over the desktop for the whole run. Every
+    # playing row is then refused for a reason that reads like a FeatherWall fault rather than a
+    # window nobody minimised. Measured on 26200 — a full-screen Windows Terminal survived
+    # MinimizeAll and refused three of four rows. The foreground window is forced down first.
+    $fg = [Bench.Fg]::GetForegroundWindow()
+    if ($fg -ne [IntPtr]::Zero) { [void][Bench.Fg]::ShowWindow($fg, 11) }  # SW_FORCEMINIMIZE
     $shell.MinimizeAll()
     Start-Sleep -Seconds 2
+
+    $covering = Find-CoveringWindow
+    if ($covering) {
+        throw "'$covering' is still covering the desktop after minimising everything — a full-screen " +
+              "window ignores MinimizeAll and takes the foreground back. The playing rows cannot be " +
+              "measured like this. Close it or leave full screen, then run again."
+    }
     Write-Host "Windows minimised. Do not touch the machine until this finishes." -ForegroundColor Yellow
 
     # --- still image -----------------------------------------------------------------------
