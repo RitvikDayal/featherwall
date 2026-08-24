@@ -5,7 +5,7 @@ namespace FeatherWall.Widgets;
 /// <summary>Battery state as a line of text. Reads the SYSTEM_POWER_STATUS already P/Invoked
 /// for battery-saver detection — no new interop, and no timer: Windows pushes a power-setting
 /// notification on every percentage change.</summary>
-public sealed partial class BatterySource
+public sealed partial class BatterySource : IWidgetSource
 {
     private const byte NoSystemBattery = 128;
     private const byte UnknownPercent = 255;
@@ -23,4 +23,30 @@ public sealed partial class BatterySource
             ? $"{status.BatteryLifePercent}% charging"
             : $"{status.BatteryLifePercent}% on battery";
     }
+
+    private string? _value;
+
+    public string? Value => _value;
+    public event Action? Changed;
+
+    public BatterySource() => Refresh();
+
+    /// <summary>Called from the engine's WM_POWERBROADCAST handler. Re-reads only for the two
+    /// settings that can change the answer, so an unrelated power event costs one comparison.</summary>
+    public void OnPowerSettingChanged(Guid setting)
+    {
+        if (setting != PowerNotifications.BatteryPercentageRemaining &&
+            setting != PowerNotifications.AcDcPowerSource) return;
+        Refresh();
+    }
+
+    private void Refresh()
+    {
+        string? next = Kernel32.GetSystemPowerStatus(out var status) ? Format(status) : null;
+        if (next == _value) return;   // no event when the text has not moved
+        _value = next;
+        Changed?.Invoke();
+    }
+
+    public void Dispose() { }
 }
