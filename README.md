@@ -296,6 +296,14 @@ own colour and opacity, or it can inherit any of those from the time. On a multi
 with mixed scaling, the clock is sized per display, so it stays the same physical size on a 100%
 external as it is on a 150% laptop panel.
 
+The info widget is a second, separately anchored stack of lines fed by the system: what is
+playing, and the battery. It is **off by default** — turning it on is one checkbox on the Info
+page — and there is no timer behind it. Windows pushes a notification when the battery percentage
+moves and when the media session changes, and those events are the only thing that repaints it,
+so between them it costs nothing at all. Now playing reads the same session Windows itself uses,
+so it covers anything with media controls, a browser tab included; nothing playing means no line
+rather than an empty one, and a desktop with no battery never shows a battery line.
+
 Everything else: per-monitor wallpapers, Fill, Fit and Stretch modes, DPI-aware rendering, a full
 tray menu, JSON config for anything the UI does not expose, and auto-pause on fullscreen apps,
 session lock, remote desktop and battery saver. If explorer.exe restarts or the shell rebuilds the
@@ -354,9 +362,26 @@ The tray menu and settings panel cover the common cases. Everything lives in
     "marginBottom": null,
     "marginLeft": null
   },
+  "info": {
+    "enabled": false,
+    "anchor": "BottomLeft",
+    "marginX": 48,
+    "marginY": 48,
+    "fontSize": 22,
+    "fontFamily": "Segoe UI",
+    "color": "#C0FFFFFF",
+    "shadow": true,
+    "maxCharacters": 48,
+    "sources": ["nowPlaying", "battery"]
+  },
   "pause": { "onFullscreen": true, "onBatterySaver": true, "onRemoteSession": true }
 }
 ```
+
+`sources` is ordered, and the order is the display order. A name this version does not know is
+logged and skipped rather than refused, so a config written by a later one still starts. Long
+titles are truncated at `maxCharacters` rather than scrolled — scrolling means animating, and
+animating means waking up.
 
 `monitor` takes a device name such as `\\.\DISPLAY1`, or `"*"` for all of them. Logs are written to
 `%LOCALAPPDATA%\FeatherWall\featherwall.log`.

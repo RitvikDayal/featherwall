@@ -45,6 +45,7 @@ The check exists because it caught that.
 | **Video 4K60 playing** | **1** | **199.4** | **188.6** | **220.6** | **58.5** | **0.318 %** | **7.6 %** | **5.8 % (videodecode)** | playing, full window |
 | **Video 4K60, auto-paused** | **1** | **219.5** | **204.2** | **231.6** | **68.1** | **0.034 %** | **0.8 %** | **0 % (copy)** | paused, full window |
 | Settings panel open | | | | | | | | | |
+| Still image + info widget | | | | | | | | | |
 
 *Playing rows measured 2026-08-22 on build 26200, 24 cores, Intel Arc, single 2560×1600 display at
 150 %. Source `scripts/bench/results/featherwall-playing-verified.json`. Paused row measured
@@ -82,6 +83,29 @@ far has run from a background session, where the blocker cannot take the foregro
 refused rather than measured. An interactive run is *expected* to produce it, by the same mechanism
 that produced the auto-paused row — but expected is not verified, no run has yet produced it, and
 this file should not read as though one has.
+
+**The info widget's row has not been measured, and the design said it should be.** The widget was
+built to a stated cost budget — no timer, no poll, one small bitmap per change — and the way to
+check that is to run the still-image row twice, once plain and once with `-Widgets`, and see
+whether it moves. Two attempts were lost to a full-screen browser that ignores `MinimizeAll` and
+takes the foreground back between samples, so FeatherWall correctly paused and the harness
+correctly refused every playing row. The harness now names that window and stops before running
+rather than discovering it four rows later.
+
+To fill the row, from an interactive session with nothing in full screen:
+
+```powershell
+.\scriptsench\Run-Bench.ps1 -Video <the 4K clip> -Image .\docs\media\hero.jpg -Seconds 30
+.\scriptsench\Run-Bench.ps1 -Video <the 4K clip> -Image .\docs\media\hero.jpg -Seconds 30 -Widgets
+```
+
+Compare the two still-image rows. **CPU spans roughly 2x run to run on this machine**, as the note
+above records, so a difference inside that spread is not evidence of anything and should be
+reported as inconclusive rather than as a pass.
+
+What *is* verified is that the widget has no timer: every repaint is logged, and over an hour of
+running the log shows repaints only at startup, when a media session changed, and when the battery
+percentage moved — at irregular intervals of 20 to 41 seconds while charging, never on a period.
 
 The 1080p60 row has simply never been run through the harness. The 1920x1080 downscale the
 hand-measured table used is not on this machine, so filling it means regenerating that clip from
