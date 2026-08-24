@@ -16,6 +16,8 @@ namespace FeatherWall.Widgets;
 /// video, click-through by construction.</summary>
 public sealed class ClockOverlay : IDisposable
 {
+    private const string OverlayKey = "clock";
+
     private readonly CompositionHost _host;
     private readonly ClockConfig _config;
     private readonly MonitorInfo _monitor;
@@ -120,11 +122,11 @@ public sealed class ClockOverlay : IDisposable
             int offsetX = screenPos.X - _monitor.Bounds.Left;
             int offsetY = screenPos.Y - _monitor.Bounds.Top;
 
-            var overlay = _host.Overlay;
+            var overlay = _host.GetOverlay(OverlayKey);
             if (overlay is null || size.Cx != _size.Cx || size.Cy != _size.Cy)
             {
                 _size = size;
-                overlay = _host.CreateOverlay(size.Cx, size.Cy, offsetX, offsetY);
+                overlay = _host.CreateOverlay(OverlayKey, size.Cx, size.Cy, offsetX, offsetY);
             }
             else
             {
@@ -145,7 +147,7 @@ public sealed class ClockOverlay : IDisposable
             if (_disposed) return;
             _disposed = true;
             _timer.Dispose();
-            try { _host.RemoveOverlay(); } catch { /* host may already be gone */ }
+            try { _host.RemoveOverlay(OverlayKey); } catch { /* host may already be gone */ }
         }
     }
 }
