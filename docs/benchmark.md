@@ -95,8 +95,8 @@ rather than discovering it four rows later.
 To fill the row, from an interactive session with nothing in full screen:
 
 ```powershell
-.\scriptsench\Run-Bench.ps1 -Video <the 4K clip> -Image .\docs\media\hero.jpg -Seconds 30
-.\scriptsench\Run-Bench.ps1 -Video <the 4K clip> -Image .\docs\media\hero.jpg -Seconds 30 -Widgets
+.\scripts\bench\Run-Bench.ps1 -Video <the 4K clip> -Image .\docs\media\hero.jpg -Seconds 30
+.\scripts\bench\Run-Bench.ps1 -Video <the 4K clip> -Image .\docs\media\hero.jpg -Seconds 30 -Widgets
 ```
 
 Compare the two still-image rows. **CPU spans roughly 2x run to run on this machine**, as the note

@@ -1,4 +1,5 @@
 using FeatherWall.Common;
+using Windows.Foundation;
 using Windows.Media.Control;
 
 namespace FeatherWall.Widgets;
@@ -21,15 +22,21 @@ public sealed partial class NowPlayingSource : IWidgetSource
             ? $"♪ {title.Trim()}"
             : $"♪ {title.Trim()} — {artist.Trim()}";
 
-        int cap = Math.Max(4, maxCharacters);
-        return text.Length <= cap ? text : text[..(cap - 1)] + "…";
+        // The budget is honoured exactly, including the small values the settings panel does not
+        // offer but the JSON accepts. Raising it to a floor of four meant maxCharacters: 1
+        // produced four characters — a limit that quietly did not apply is worse than none.
+        if (maxCharacters <= 0) return null;
+        if (text.Length <= maxCharacters) return text;
+        return maxCharacters == 1 ? "…" : text[..(maxCharacters - 1)] + "…";
     }
 
-    private readonly int _maxCharacters;
+    private readonly Func<int> _maxCharacters;
     private readonly Action<Action> _toMainThread;
+    private TypedEventHandler<GlobalSystemMediaTransportControlsSessionManager, CurrentSessionChangedEventArgs>? _onSessionChanged;
     private GlobalSystemMediaTransportControlsSessionManager? _manager;
     private GlobalSystemMediaTransportControlsSession? _session;
     private string? _value;
+    private int _generation;
     private bool _disposed;
 
     public string? Value => _value;
@@ -37,20 +44,35 @@ public sealed partial class NowPlayingSource : IWidgetSource
 
     /// <summary><paramref name="toMainThread"/> is the engine's queue. WinRT raises these events
     /// on a pool thread, and everything downstream — the overlay, the composition host — belongs
-    /// to the main thread.</summary>
-    public NowPlayingSource(int maxCharacters, Action<Action> toMainThread)
+    /// to the main thread.
+    ///
+    /// <paramref name="maxCharacters"/> is read on each format rather than captured, so this
+    /// source outlives a settings change and the media session is not rebuilt for one.</summary>
+    public NowPlayingSource(Func<int> maxCharacters, Action<Action> toMainThread)
     {
         _maxCharacters = maxCharacters;
         _toMainThread = toMainThread;
         _ = InitialiseAsync();
     }
 
+    /// <summary>Re-reads the session. Used when the character budget changes — the value needs
+    /// re-formatting without the subscription being torn down and rebuilt.</summary>
+    public void Refresh() => _ = RefreshAsync();
+
     private async Task InitialiseAsync()
     {
         try
         {
-            _manager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
-            _manager.CurrentSessionChanged += (_, _) => _toMainThread(AttachSession);
+            var manager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
+
+            // RequestAsync can outlive this source — the engine disposes and rebuilds widgets on
+            // any display change. Subscribing after that would leave a handler on a manager
+            // nobody unsubscribes from, and queue an AttachSession onto a disposed source.
+            if (_disposed) return;
+
+            _manager = manager;
+            _onSessionChanged = (_, _) => _toMainThread(AttachSession);
+            _manager.CurrentSessionChanged += _onSessionChanged;
             _toMainThread(AttachSession);
         }
         catch (Exception ex)
@@ -85,6 +107,11 @@ public sealed partial class NowPlayingSource : IWidgetSource
 
     private async Task RefreshAsync()
     {
+        // Each event starts its own task, so two reads can be in flight at once and the older one
+        // can finish last. Without this an outdated title overwrites the current one, and
+        // comparing against _value does not catch it because the values genuinely differ.
+        int generation = Interlocked.Increment(ref _generation);
+
         string? next = null;
         try
         {
@@ -95,7 +122,7 @@ public sealed partial class NowPlayingSource : IWidgetSource
                 bool playing = info?.PlaybackStatus ==
                     GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
                 var props = await session.TryGetMediaPropertiesAsync();
-                next = Format(props?.Title, props?.Artist, playing, _maxCharacters);
+                next = Format(props?.Title, props?.Artist, playing, _maxCharacters());
             }
         }
         catch (Exception ex)
@@ -107,7 +134,7 @@ public sealed partial class NowPlayingSource : IWidgetSource
 
         _toMainThread(() =>
         {
-            if (_disposed || next == _value) return;
+            if (_disposed || generation != Volatile.Read(ref _generation) || next == _value) return;
             _value = next;
             Changed?.Invoke();
         });
@@ -116,6 +143,14 @@ public sealed partial class NowPlayingSource : IWidgetSource
     public void Dispose()
     {
         _disposed = true;
+
+        if (_manager is not null && _onSessionChanged is not null)
+        {
+            _manager.CurrentSessionChanged -= _onSessionChanged;
+            _onSessionChanged = null;
+        }
+        _manager = null;
+
         if (_session is null) return;
         _session.MediaPropertiesChanged -= OnMediaChanged;
         _session.PlaybackInfoChanged -= OnPlaybackChanged;

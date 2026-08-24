@@ -38,6 +38,14 @@ public sealed class CompositionHost : IDisposable
     /// A single field would mean each new widget disposed the previous one.</summary>
     private readonly Dictionary<string, CompositionSurface> _overlays = [];
 
+    /// <summary>Guards the overlay dictionary and every mutation of the visual tree.
+    ///
+    /// One widget needed no lock here: the clock owned the only overlay and its own lock was
+    /// enough. Two do. The clock renders on its timer thread while the info widget renders on
+    /// whichever thread its source fired on, and their separate locks protect neither this
+    /// dictionary nor the DirectComposition tree they both add and remove visuals from.</summary>
+    private readonly Lock _tree = new();
+
     /// <summary>Raised when a surface reports DXGI device removal or reset. The device belongs
     /// to the host, so a single surface cannot recover on its own — the whole tree is rebuilt
     /// by the engine's re-apply path. Surfaces forward here rather than the engine subscribing
@@ -86,67 +94,101 @@ public sealed class CompositionHost : IDisposable
     /// <summary>The main wallpaper surface (opaque). Recreatable for cover-crop layouts.</summary>
     public CompositionSurface CreateContent(int width, int height, int offsetX = 0, int offsetY = 0)
     {
-        Content?.Dispose();
-        Content = new CompositionSurface(this, width, height, premultipliedAlpha: false, offsetX, offsetY);
-        Content.DeviceLost += RaiseDeviceLost;
-        _rootVisual.AddVisual(Content.Visual, false, null);
-
-        // Then lift every overlay back above it. A null reference visual does not mean
-        // "bottom-most" — it makes the flag a position in the child list — so content added
-        // that way lands in front of the widgets and hides them. Verified: the clock vanished.
-        // Naming one overlay as the reference would only order content against that one, so
-        // each is re-inserted explicitly against the new content.
-        foreach (var overlay in _overlays.Values)
+        lock (_tree)
         {
-            _rootVisual.RemoveVisual(overlay.Visual);
-            _rootVisual.AddVisual(overlay.Visual, true, Content.Visual);
-        }
+            Content?.Dispose();
+            Content = new CompositionSurface(this, width, height, premultipliedAlpha: false, offsetX, offsetY);
+            Content.DeviceLost += RaiseDeviceLost;
+            _rootVisual.AddVisual(Content.Visual, false, null);
 
-        _dcompDevice.Commit();
-        return Content;
+            // Then lift every overlay back above it. A null reference visual does not mean
+            // "bottom-most" — it makes the flag a position in the child list — so content added
+            // that way lands in front of the widgets and hides them. Verified: the clock vanished.
+            // Naming one overlay as the reference would only order content against that one, so
+            // each is re-inserted explicitly against the new content.
+            foreach (var overlay in _overlays.Values)
+            {
+                _rootVisual.RemoveVisual(overlay.Visual);
+                _rootVisual.AddVisual(overlay.Visual, true, Content.Visual);
+            }
+
+            _dcompDevice.Commit();
+            return Content;
+        }
     }
 
-    public CompositionSurface? GetOverlay(string key) =>
-        _overlays.TryGetValue(key, out var surface) ? surface : null;
+    public CompositionSurface? GetOverlay(string key)
+    {
+        lock (_tree) return _overlays.TryGetValue(key, out var surface) ? surface : null;
+    }
 
     /// <summary>A transparent surface composed above the content (clock and friends). Keyed, so
     /// each widget owns its own visual and creating one does not destroy another's.</summary>
     public CompositionSurface CreateOverlay(string key, int width, int height, int offsetX, int offsetY)
     {
-        RemoveOverlay(key);
-        var surface = new CompositionSurface(this, width, height, premultipliedAlpha: true, offsetX, offsetY);
-        surface.DeviceLost += RaiseDeviceLost;
-        // Above the content. Order among the overlays themselves is unspecified and does not
-        // matter — each widget owns a separate rectangle and they do not intersect.
-        _rootVisual.AddVisual(surface.Visual, true, Content?.Visual);
-        _overlays[key] = surface;
-        _dcompDevice.Commit();
-        return surface;
+        lock (_tree)
+        {
+            RemoveOverlayCore(key);
+            var surface = new CompositionSurface(this, width, height, premultipliedAlpha: true, offsetX, offsetY);
+            surface.DeviceLost += RaiseDeviceLost;
+            // Above the content. Order among the overlays themselves is unspecified and does not
+            // matter — each widget owns a separate rectangle and they do not intersect.
+            _rootVisual.AddVisual(surface.Visual, true, Content?.Visual);
+            _overlays[key] = surface;
+            _dcompDevice.Commit();
+            return surface;
+        }
     }
 
     private void RaiseDeviceLost() => DeviceLost?.Invoke();
 
     public void RemoveOverlay(string key)
     {
-        if (!_overlays.Remove(key, out var surface)) return;
+        lock (_tree)
+        {
+            if (RemoveOverlayCore(key)) _dcompDevice.Commit();
+        }
+    }
+
+    /// <summary>Caller holds <see cref="_tree"/>. Split out so CreateOverlay can replace an
+    /// existing overlay without releasing the lock in between.</summary>
+    private bool RemoveOverlayCore(string key)
+    {
+        if (!_overlays.Remove(key, out var surface)) return false;
         _rootVisual.RemoveVisual(surface.Visual);
         surface.Dispose();
-        _dcompDevice.Commit();
+        return true;
     }
 
     internal (IDXGIFactory2 Dxgi, ID2D1Factory D2d, IDCompositionDevice DComp) Factories =>
         (_dxgiFactory, _d2dFactory, _dcompDevice);
 
-    internal void RemoveVisual(IDCompositionVisual visual) => _rootVisual.RemoveVisual(visual);
+    internal void RemoveVisual(IDCompositionVisual visual)
+    {
+        lock (_tree) _rootVisual.RemoveVisual(visual);
+    }
 
-    internal void Commit() => _dcompDevice.Commit();
+    internal void Commit()
+    {
+        lock (_tree) _dcompDevice.Commit();
+    }
+
+    /// <summary>Runs <paramref name="mutate"/> under the visual-tree lock. Used by
+    /// CompositionSurface.SetOffset, which changes a visual and commits.</summary>
+    internal void UnderTreeLock(Action mutate)
+    {
+        lock (_tree) mutate();
+    }
 
     public void Dispose()
     {
-        Content?.Dispose();
-        Content = null;
-        foreach (var surface in _overlays.Values) surface.Dispose();
-        _overlays.Clear();
+        lock (_tree)
+        {
+            Content?.Dispose();
+            Content = null;
+            foreach (var surface in _overlays.Values) surface.Dispose();
+            _overlays.Clear();
+        }
         _rootVisual?.Dispose();
         _dcompTarget?.Dispose();
         _dcompDevice?.Dispose();
@@ -204,12 +246,13 @@ public sealed class CompositionSurface : IDisposable
             AlphaMode = _premultiplied ? AlphaMode.Premultiplied : AlphaMode.Ignore,
         });
 
-    public void SetOffset(int x, int y)
+    public void SetOffset(int x, int y) => _host.UnderTreeLock(() =>
     {
+        // Offset and commit under one lock: a separate commit could land between another
+        // widget's visual change and its own commit.
         Visual.SetOffsetX(x);
         Visual.SetOffsetY(y);
-        _host.Commit();
-    }
+    });
 
     public void ClearBlack() => _host.Context.ClearRenderTargetView(Rtv, new Color4(0f, 0f, 0f, 1f));
 

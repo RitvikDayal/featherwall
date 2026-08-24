@@ -10,12 +10,18 @@ public sealed partial class BatterySource : IWidgetSource
     private const byte NoSystemBattery = 128;
     private const byte UnknownPercent = 255;
     private const byte OnAcPower = 1;
+    private const byte UnknownAcStatus = 255;
 
     /// <summary>Pure so the whole decision table is testable without a battery.</summary>
     public static string? Format(in SYSTEM_POWER_STATUS status)
     {
         if ((status.BatteryFlag & NoSystemBattery) != 0) return null;
         if (status.BatteryLifePercent == UnknownPercent) return null;
+
+        // ACLineStatus 255 is "Windows cannot tell". The charge is still known, so it is shown —
+        // but neither "charging" nor "on battery" is something this can honestly say, and
+        // treating unknown as not-on-AC would print the latter as though it were a reading.
+        if (status.ACLineStatus == UnknownAcStatus) return $"{status.BatteryLifePercent}%";
 
         bool onAc = status.ACLineStatus == OnAcPower;
         if (onAc && status.BatteryLifePercent >= 100) return "charged";

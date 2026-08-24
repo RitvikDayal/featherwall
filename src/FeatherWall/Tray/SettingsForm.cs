@@ -858,7 +858,7 @@ public sealed class SettingsForm : Form
     private void ApplyClock()
     {
         if (_loading) return;
-        _engine.RefreshWidgets();
+        _engine.RefreshClock();
         _preview.Invalidate();
     }
 }

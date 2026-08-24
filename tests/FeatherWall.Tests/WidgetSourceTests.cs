@@ -109,3 +109,39 @@ public class NowPlayingSourceTests
         Assert.EndsWith("…", result);
     }
 }
+
+/// <summary>Cases CodeRabbit raised on PR #12: values Windows really returns, and config values
+/// the JSON accepts even though the settings panel does not offer them.</summary>
+public class WidgetSourceEdgeTests
+{
+    private static SYSTEM_POWER_STATUS Status(byte ac, byte flag, byte percent) =>
+        new() { ACLineStatus = ac, BatteryFlag = flag, BatteryLifePercent = percent };
+
+    [Fact]
+    public void UnknownAcStatus_DoesNotClaimTheSource()
+    {
+        // ACLineStatus 255 means Windows cannot tell whether it is on mains. The charge is still
+        // known, so the percentage is shown — but "on battery" would be an invented claim.
+        Assert.Equal("87%", BatterySource.Format(Status(ac: 255, flag: 1, percent: 87)));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void TinyCharacterBudget_IsHonoured(int budget)
+    {
+        // maxCharacters below four used to be raised to four, so a budget of 1 produced four
+        // characters. The settings panel's minimum is 10, but the JSON accepts anything.
+        string? result = NowPlayingSource.Format("Kind of Blue", "Miles Davis", isPlaying: true, budget);
+        if (budget <= 0) Assert.Null(result);
+        else Assert.True(result!.Length <= budget, $"budget {budget} produced '{result}' ({result.Length})");
+    }
+
+    [Fact]
+    public void BudgetOfOne_ShowsTheEllipsisAlone()
+    {
+        Assert.Equal("…", NowPlayingSource.Format("Kind of Blue", "Miles Davis", isPlaying: true, 1));
+    }
+}
