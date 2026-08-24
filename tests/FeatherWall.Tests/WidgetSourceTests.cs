@@ -76,3 +76,36 @@ public class PowerSettingRoutingTests
     public void BatteryPercentage_IsNotTreatedAsADisplayState() =>
         Assert.False(PowerNotifications.IsDisplayState(PowerNotifications.BatteryPercentageRemaining));
 }
+
+/// <summary>What the now-playing widget shows, as a pure function of the session's properties.
+/// The WinRT plumbing that supplies them is not testable here — it needs a live media session —
+/// so this covers the half that is, and the wiring is verified by running the app.</summary>
+public class NowPlayingSourceTests
+{
+    [Fact]
+    public void NotPlaying_ShowsNothing() =>
+        Assert.Null(NowPlayingSource.Format("Kind of Blue", "Miles Davis", isPlaying: false, 48));
+
+    [Fact]
+    public void NoTitle_ShowsNothing() =>
+        Assert.Null(NowPlayingSource.Format("", "Miles Davis", isPlaying: true, 48));
+
+    [Fact]
+    public void TitleAndArtist_AreJoined() =>
+        Assert.Equal("♪ Kind of Blue — Miles Davis",
+            NowPlayingSource.Format("Kind of Blue", "Miles Davis", isPlaying: true, 48));
+
+    [Fact]
+    public void MissingArtist_ShowsTitleAlone() =>
+        Assert.Equal("♪ Kind of Blue",
+            NowPlayingSource.Format("Kind of Blue", "", isPlaying: true, 48));
+
+    [Fact]
+    public void OverlongText_IsTruncatedNotScrolled()
+    {
+        // Scrolling would mean animating, and animating means waking up.
+        string result = NowPlayingSource.Format(new string('a', 100), "b", isPlaying: true, 20)!;
+        Assert.Equal(20, result.Length);
+        Assert.EndsWith("…", result);
+    }
+}
