@@ -44,7 +44,18 @@ public sealed class InfoOverlay : IDisposable
         _sources = sources;
 
         foreach (var source in _sources) source.Changed += OnSourceChanged;
-        Render();
+        try
+        {
+            Render();
+        }
+        catch
+        {
+            // The sources outlive this overlay, so a throw here would leave a half-built object
+            // subscribed to them and repainting on every battery tick for the life of the
+            // process. The engine catches and logs; it never sees the reference to dispose.
+            Dispose();
+            throw;
+        }
     }
 
     private void OnSourceChanged()

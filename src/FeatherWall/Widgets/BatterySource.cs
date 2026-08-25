@@ -46,7 +46,9 @@ public sealed partial class BatterySource : IWidgetSource
         Refresh();
     }
 
-    private void Refresh()
+    /// <summary>Re-reads the power status. Called on resume from sleep: nothing pushes while the
+    /// machine is off, so the percentage has moved and no notification will announce it.</summary>
+    public void Refresh()
     {
         string? next = Kernel32.GetSystemPowerStatus(out var status) ? Format(status) : null;
         if (next == _value) return;   // no event when the text has not moved

@@ -271,7 +271,7 @@ function Measure-State {
 
     try {
         & $Setup
-        $tagged = if ($Widgets) { "$Label + widgets" } else { $Label }
+        $tagged = if ($Widgets) { "$Label + info widget" } else { $Label }
         return (& $measure -ProcessName featherwall -Seconds $Seconds -Label $tagged -ExpectState $Expect)
     }
     catch {
@@ -280,7 +280,7 @@ function Measure-State {
         $reason = ($_.Exception.Message -split "`n" | ForEach-Object { $_.Trim() } |
                    Where-Object { $_ } | Select-Object -First 2) -join ' '
         Write-Host "  REFUSED: $reason" -ForegroundColor Yellow
-        $tagged = if ($Widgets) { "$Label + widgets" } else { $Label }
+        $tagged = if ($Widgets) { "$Label + info widget" } else { $Label }
         return [pscustomobject]@{ Label = $tagged; Refused = $reason; ExpectedState = $Expect }
     }
 }

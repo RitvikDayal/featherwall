@@ -880,6 +880,11 @@ public sealed class Engine : IDisposable
                 case WM_POWERBROADCAST when (int)wParam == PBT_APMRESUMEAUTOMATIC:
                     Log.Info("Resumed from sleep — refreshing widgets and validating layer");
                     _engine._clock?.Refresh();
+                    // Sources first: repainting the overlay alone would redraw the values it was
+                    // holding when the machine went to sleep. No power notification arrives for
+                    // the change that happened while it was off.
+                    _engine._battery?.Refresh();
+                    _engine._nowPlaying?.Refresh();
                     _engine._info?.Refresh();
                     _engine._host.ValidateLayer();
                     return IntPtr.Zero;
