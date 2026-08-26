@@ -136,13 +136,16 @@ public class InfoConfigTests
 public class HaloConfigTests
 {
     [Fact]
-    public void Halo_DefaultsToEmber()
+    public void Halo_DefaultsToRedOrangeGreen()
     {
+        // The one place literal colours belong: this test exists to pin the shipped defaults.
+        // Green above the mid threshold is the conventional battery reading; the warm Ember ramp
+        // is still selectable as a preset.
         var h = new AppConfig().Info.Halo;
         Assert.Equal("#FF4D4D", h.LowColor);
         Assert.Equal("#FF9A3C", h.MidColor);
-        Assert.Equal("#FFD166", h.HighColor);
-        Assert.Equal("#FFF3B0", h.ChargedColor);
+        Assert.Equal("#5FD98A", h.HighColor);
+        Assert.Equal("#7CE8A4", h.ChargedColor);
     }
 
     [Fact]

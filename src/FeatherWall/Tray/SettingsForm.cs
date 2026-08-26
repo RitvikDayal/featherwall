@@ -350,8 +350,9 @@ public sealed class SettingsForm : Form
     /// Order: low, mid, high, charged, track.</summary>
     private static readonly Dictionary<string, string[]> Palettes = new()
     {
+        // First entry must match HaloConfig's defaults, or a fresh install opens on "Custom".
+        ["Signal"] = ["#FF4D4D", "#FF9A3C", "#5FD98A", "#7CE8A4", "#24FFFFFF"],
         ["Ember"] = ["#FF4D4D", "#FF9A3C", "#FFD166", "#FFF3B0", "#24FFDCB4"],
-        ["Default"] = ["#FF6B5B", "#F5C451", "#6FE39F", "#5BC8FF", "#24FFFFFF"],
         ["Monochrome"] = ["#8A8F98", "#B9BFC9", "#EDF1F7", "#FFFFFF", "#20FFFFFF"],
     };
 

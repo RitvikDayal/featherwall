@@ -186,3 +186,63 @@ public class BatteryReadingTests
         Assert.Equal(87, r.Percent);
     }
 }
+
+/// <summary>The structured now-playing reading. The record needs title, artist and playing state
+/// separately — Format joins them into one string, which is the wrong shape for a widget that
+/// draws them in different sizes and weights.
+///
+/// TrackId is what the album-art cache keys on: it must change when the track does and hold still
+/// across a progress tick, or the art is either stale or refetched constantly.</summary>
+public class NowPlayingReadingTests
+{
+    [Fact]
+    public void NotPlaying_ReadsAsNothing()
+    {
+        var r = NowPlayingSource.Read("Kind of Blue", "Miles Davis", isPlaying: false);
+        Assert.False(r.IsPlaying);
+        Assert.Null(r.Title);
+    }
+
+    [Fact]
+    public void Playing_KeepsTitleAndArtistApart()
+    {
+        var r = NowPlayingSource.Read("Kind of Blue", "Miles Davis", isPlaying: true);
+        Assert.True(r.IsPlaying);
+        Assert.Equal("Kind of Blue", r.Title);
+        Assert.Equal("Miles Davis", r.Artist);
+    }
+
+    [Fact]
+    public void BlankArtist_BecomesNullRatherThanEmpty()
+    {
+        // The renderer decides whether to draw a second line by null-checking, not by measuring
+        // an empty string that would still take a line's height.
+        Assert.Null(NowPlayingSource.Read("Kind of Blue", "   ", isPlaying: true).Artist);
+    }
+
+    [Fact]
+    public void TrackId_ChangesWithTheTrack()
+    {
+        var a = NowPlayingSource.Read("Blue in Green", "Miles Davis", isPlaying: true);
+        var b = NowPlayingSource.Read("So What", "Miles Davis", isPlaying: true);
+        Assert.NotEqual(a.TrackId, b.TrackId);
+    }
+
+    [Fact]
+    public void TrackId_HoldsStillForTheSameTrack()
+    {
+        // Re-read on a playback tick must not invalidate the art cache.
+        var a = NowPlayingSource.Read("Blue in Green", "Miles Davis", isPlaying: true);
+        var b = NowPlayingSource.Read("Blue in Green", "Miles Davis", isPlaying: true);
+        Assert.Equal(a.TrackId, b.TrackId);
+    }
+
+    [Fact]
+    public void PauseDoesNotChangeTheTrackId()
+    {
+        // Pausing dims the record; it must not throw the artwork away and refetch it.
+        var playing = NowPlayingSource.Read("Blue in Green", "Miles Davis", isPlaying: true);
+        var paused = NowPlayingSource.Read("Blue in Green", "Miles Davis", isPlaying: false);
+        Assert.Equal(playing.TrackId, paused.TrackId);
+    }
+}
