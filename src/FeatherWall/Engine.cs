@@ -33,6 +33,7 @@ public sealed class Engine : IDisposable
     private TrayIcon? _tray;
     private ClockOverlay? _clock;
     private InfoOverlay? _info;
+    private HaloOverlay? _halo;
     private BatterySource? _battery;
     private NowPlayingSource? _nowPlaying;
     private PlaybackMonitor? _playback;
@@ -170,7 +171,7 @@ public sealed class Engine : IDisposable
         {
             _config.Assign(monitorDevice, path);
             ConfigStore.Save(_config);
-            if (_clock is null && _info is null) RecreateWidgets();
+            if (_clock is null && _info is null && _halo is null) RecreateWidgets();
         }
     }
 
@@ -219,6 +220,7 @@ public sealed class Engine : IDisposable
             // Dimmed still shows the wallpaper, so only a true off suspends the clock.
             _clock?.SetSuspended(off);
             _info?.SetSuspended(off);
+            _halo?.SetSuspended(off);
         }
         else if (setting == PowerNotifications.PowerSavingStatus || setting == PowerNotifications.AcDcPowerSource)
         {
@@ -284,6 +286,8 @@ public sealed class Engine : IDisposable
             _clock = null;
             _info?.Dispose();
             _info = null;
+            _halo?.Dispose();
+            _halo = null;
             foreach (var window in _windows.Values) window.Dispose();
             _windows.Clear();
             VideoRenderer.ReclaimMediaPipeline(); // disposed players hold their MF threads until collected
@@ -318,6 +322,8 @@ public sealed class Engine : IDisposable
     {
         _info?.Dispose();
         _info = null;
+        _halo?.Dispose();
+        _halo = null;
         Log.Info($"Info widget: enabled={_config.Info.Enabled}, sources=[{string.Join(", ", _config.Info.Sources)}]");
         if (!_config.Info.Enabled)
         {
@@ -343,8 +349,14 @@ public sealed class Engine : IDisposable
             }
             // ResolveSources first: it is what creates _battery, and the overlay needs it.
             var sources = ResolveSources();
-            _info = new InfoOverlay(window.EnsureHost(), _config.Info, target, sources, _battery,
-                MonitorTracker.DpiScale(target, monitors));
+            double dpi = MonitorTracker.DpiScale(target, monitors);
+            _info = new InfoOverlay(window.EnsureHost(), _config.Info, target, sources, _battery, dpi);
+
+            // Detached: the halo gets its own overlay instead of being drawn into the info
+            // bitmap. Requires the battery source to exist — no battery in Sources, no ring,
+            // the same rule attached mode follows.
+            if (_config.Info.Halo is { Enabled: true, Detached: true } && _battery is not null)
+                _halo = new HaloOverlay(window.EnsureHost(), _config.Info, target, _battery, dpi);
             // The character budget may have just changed, and the surviving source is still
             // holding text formatted to the old one.
             _nowPlaying?.Refresh();
@@ -817,7 +829,7 @@ public sealed class Engine : IDisposable
         sb.AppendLine($"Progman: 0x{layer.Progman:X}  WorkerW: 0x{layer.WorkerW:X}  DefView: 0x{layer.DefView:X}");
         foreach (var monitor in MonitorTracker.Enumerate())
             sb.AppendLine($"Monitor {monitor.Device}: {monitor.Bounds}{(monitor.Primary ? " (primary)" : "")}");
-        sb.AppendLine($"Attached surfaces: {_windows.Count}   Clock: {(_clock is null ? "off" : "on")}   Info: {(_info is null ? "off" : "on")}");
+        sb.AppendLine($"Attached surfaces: {_windows.Count}   Clock: {(_clock is null ? "off" : "on")}   Info: {(_info is null ? "off" : "on")}   Halo: {(_halo is null ? "attached/off" : "detached")}");
         sb.AppendLine($"Config: {ConfigStore.ConfigPath}");
         sb.AppendLine($"Log: {Path.Combine(Log.Directory, "featherwall.log")}");
         return sb.ToString();
@@ -888,6 +900,7 @@ public sealed class Engine : IDisposable
                     _engine._battery?.Refresh();
                     _engine._nowPlaying?.Refresh();
                     _engine._info?.Refresh();
+                    _engine._halo?.Refresh();
                     _engine._host.ValidateLayer();
                     return IntPtr.Zero;
                 case WM_POWERBROADCAST when (int)wParam == PBT_POWERSETTINGCHANGE:
@@ -906,6 +919,8 @@ public sealed class Engine : IDisposable
         _clock = null;
         _info?.Dispose();
         _info = null;
+        _halo?.Dispose();
+        _halo = null;
         DisposeSources();
         foreach (var window in _windows.Values) window.Dispose();
         _windows.Clear();
