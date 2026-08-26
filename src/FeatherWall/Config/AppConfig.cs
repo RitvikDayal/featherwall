@@ -107,6 +107,22 @@ public sealed class InfoConfig
     public List<string> Sources { get; set; } = ["nowPlaying", "battery"];
 
     public HaloConfig Halo { get; set; } = new();
+    public DiscConfig Disc { get; set; } = new();
+}
+
+/// <summary>The now-playing record: album art on the label, turning while the music plays.
+///
+/// Rotate is the only thing in FeatherWall that starts a timer. Setting it false gives the whole
+/// design — art, progress, the lot — as a still image, and creates no timer at all.</summary>
+public sealed class DiscConfig
+{
+    public bool Enabled { get; set; } = true;
+    public int Size { get; set; } = 112;
+    public bool Rotate { get; set; } = true;
+    public bool ShowProgress { get; set; } = true;
+
+    /// <summary>Used for the progress ring, and for the label when a track has no artwork.</summary>
+    public string AccentColor { get; set; } = "#8FB4FF";
 }
 
 public enum HaloPlacement { Left, Right, Above, Below }

@@ -170,3 +170,47 @@ public class HaloPresetTests
         Assert.Equal(signal, actual);
     }
 }
+
+/// <summary>The record's sizing and defaults. Rotate is the one switch that decides whether this
+/// feature owns a timer at all, so it gets pinned.</summary>
+public class DiscConfigTests
+{
+    [Fact]
+    public void Disc_DefaultsToTurningAtAHundredAndTwelve()
+    {
+        var d = new AppConfig().Info.Disc;
+        Assert.True(d.Enabled);
+        Assert.True(d.Rotate);
+        Assert.Equal(112, d.Size);
+    }
+
+    [Fact]
+    public void NothingPlaying_MeasuresEmpty()
+    {
+        var reading = NowPlayingSource.Read(null, null, isPlaying: false);
+        Assert.Equal(Size.Empty, DiscRenderer.Measure(new DiscConfig(), reading));
+    }
+
+    [Fact]
+    public void Paused_StillMeasures()
+    {
+        // A paused record stays on screen, dimmed and still. It does not vanish — the title is
+        // still what you were listening to.
+        var reading = NowPlayingSource.Read("Blue in Green", "Miles Davis", isPlaying: false) with { Title = "Blue in Green" };
+        Assert.NotEqual(Size.Empty, DiscRenderer.Measure(new DiscConfig(), reading));
+    }
+
+    [Fact]
+    public void Disabled_MeasuresEmpty()
+    {
+        var reading = NowPlayingSource.Read("Blue in Green", "Miles Davis", isPlaying: true);
+        Assert.Equal(Size.Empty, DiscRenderer.Measure(new DiscConfig { Enabled = false }, reading));
+    }
+
+    [Fact]
+    public void Playing_MeasuresSquareAtConfiguredSize()
+    {
+        var reading = NowPlayingSource.Read("Blue in Green", "Miles Davis", isPlaying: true);
+        Assert.Equal(new Size(90, 90), DiscRenderer.Measure(new DiscConfig { Size = 90 }, reading));
+    }
+}
