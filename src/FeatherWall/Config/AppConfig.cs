@@ -123,6 +123,15 @@ public sealed class DiscConfig
 
     /// <summary>Used for the progress ring, and for the label when a track has no artwork.</summary>
     public string AccentColor { get; set; } = "#8FB4FF";
+
+    // Typography follows the clock's hierarchy rather than the info widget's uniform text: a
+    // near-white title, and a smaller dimmed artist set in spaced capitals underneath. That is
+    // the same relationship the clock has between the time and the date.
+    public float TitleFontSize { get; set; } = 19f;
+    public float ArtistFontSize { get; set; } = 14f;
+    public bool ArtistUppercase { get; set; } = true;
+    public float ArtistLetterSpacing { get; set; } = 1.4f;
+    public float ArtistOpacity { get; set; } = 0.62f;
 }
 
 public enum HaloPlacement { Left, Right, Above, Below }
