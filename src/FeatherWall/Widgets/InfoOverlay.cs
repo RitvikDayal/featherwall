@@ -25,6 +25,14 @@ public sealed class InfoOverlay : IDisposable
     private readonly double _dpiScale;
     private readonly Color _color;
     private readonly IReadOnlyList<IWidgetSource> _sources;
+
+    /// <summary>Null when "battery" is not among the configured sources. The halo follows the
+    /// source: drawing a ring for something the user removed from the list would be wrong.
+    ///
+    /// Passed separately rather than found among the sources, because IWidgetSource is a string
+    /// and an event — widening it for the one implementation that has a structured reading would
+    /// leave every future source carrying a battery-shaped hole.</summary>
+    private readonly BatterySource? _battery;
     private readonly Lock _sync = new();
 
     private SIZE _size;
@@ -34,7 +42,8 @@ public sealed class InfoOverlay : IDisposable
     /// <summary><paramref name="sources"/> is already ordered and resolved — the overlay renders
     /// whatever it is handed, in the order it is handed.</summary>
     public InfoOverlay(CompositionHost host, InfoConfig config, MonitorInfo monitor,
-                       IReadOnlyList<IWidgetSource> sources, double dpiScale = 1.0)
+                       IReadOnlyList<IWidgetSource> sources, BatterySource? battery = null,
+                       double dpiScale = 1.0)
     {
         _host = host;
         _config = config;
@@ -42,6 +51,7 @@ public sealed class InfoOverlay : IDisposable
         _dpiScale = dpiScale > 0 ? dpiScale : 1.0;
         _color = ClockRenderer.ParseColor(config.Color);
         _sources = sources;
+        _battery = battery;
 
         foreach (var source in _sources) source.Changed += OnSourceChanged;
         try
@@ -95,14 +105,22 @@ public sealed class InfoOverlay : IDisposable
             var values = new string?[_sources.Count];
             for (int i = 0; i < _sources.Count; i++) values[i] = _sources[i].Value;
 
-            var metrics = InfoRenderer.Measure(_config, values, (float)_dpiScale);
+            var reading = _battery?.Current ?? default;
+            // Detached mode draws the halo in its own overlay, so this one must not draw it too.
+            var haloSize = _config.Halo.Detached
+                ? Size.Empty
+                : BatteryHaloRenderer.Measure(_config.Halo, reading, (float)_dpiScale);
+
+            var metrics = InfoRenderer.Measure(_config, values, (float)_dpiScale, haloSize);
             // Every one of these lines is a source event. If they ever appear at a regular
             // interval, a timer has crept in and the feature has failed its cost budget.
-            Log.Info($"Info repaint: [{string.Join(" | ", metrics.Lines)}]");
-            if (metrics.Lines.Count == 0)
+            Log.Info($"Info repaint: [{string.Join(" | ", metrics.Lines)}]{(haloSize.IsEmpty ? "" : " +halo")}");
+
+            // Total rather than Lines: a halo with the text switched off is still something to draw.
+            if (metrics.Total.IsEmpty)
             {
-                // Nothing to say: no battery and nothing playing. Drop the visual rather than
-                // composing an empty rectangle over the wallpaper forever.
+                // Nothing to say at all. Drop the visual rather than composing an empty rectangle
+                // over the wallpaper forever.
                 _size = default;
                 try { _host.RemoveOverlay(OverlayKey); } catch { /* host may already be gone */ }
                 return;
@@ -134,7 +152,11 @@ public sealed class InfoOverlay : IDisposable
 
             using var bmp = new Bitmap(_size.Cx, _size.Cy, PixelFormat.Format32bppPArgb);
             using (var g = Graphics.FromImage(bmp))
+            {
                 InfoRenderer.Paint(g, _config, metrics, _color);
+                if (!metrics.HaloBox.IsEmpty)
+                    BatteryHaloRenderer.Paint(g, metrics.HaloBox, _config.Halo, reading);
+            }
             overlay.PresentBitmap(bmp);
         }
     }

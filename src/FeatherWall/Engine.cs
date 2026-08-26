@@ -341,7 +341,9 @@ public sealed class Engine : IDisposable
                 window.EnsureHost();
                 _windows[target.Device] = window;
             }
-            _info = new InfoOverlay(window.EnsureHost(), _config.Info, target, ResolveSources(),
+            // ResolveSources first: it is what creates _battery, and the overlay needs it.
+            var sources = ResolveSources();
+            _info = new InfoOverlay(window.EnsureHost(), _config.Info, target, sources, _battery,
                 MonitorTracker.DpiScale(target, monitors));
             // The character budget may have just changed, and the surviving source is still
             // holding text formatted to the old one.
