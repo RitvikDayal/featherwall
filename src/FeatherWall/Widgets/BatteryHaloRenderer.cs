@@ -97,9 +97,9 @@ public static class BatteryHaloRenderer
         }
 
         if (reading.State == BatteryState.Charging && phase != 0f)
-            PaintComet(g, cx, cy, radius, stroke, phase);
+            PaintComet(g, cx, cy, radius, stroke, glowRadius - radius, phase);
 
-        PaintCentre(g, cx, cy, side, reading.State, reading.Percent);
+        PaintCentre(g, cx, cy, side, colour, reading.State, reading.Percent);
     }
 
     /// <summary>A soft falloff behind the ring. GDI+ has no blur, and a PathGradientBrush is
@@ -120,7 +120,8 @@ public static class BatteryHaloRenderer
 
     /// <summary>Nine fading segments trailing a bright head, running round the rim. This is the
     /// only moving part of the widget and it exists only while charging — a state that ends.</summary>
-    private static void PaintComet(Graphics g, float cx, float cy, float radius, float stroke, float phase)
+    private static void PaintComet(Graphics g, float cx, float cy, float radius, float stroke,
+                                   float roomToEdge, float phase)
     {
         const int Segments = 9;
         float headDeg = -90f + (phase % 1f) * 360f;
@@ -138,17 +139,19 @@ public static class BatteryHaloRenderer
             g.DrawArc(pen, rect, headDeg - i * 4.2f - 3.4f, 3.4f);
         }
 
-        // The head glow sits ON the ring, so its radius has to stay inside whatever room is left
-        // between the ring and the surface edge, or it clips into a square corner of its own.
+        // The head glow sits ON the ring, so it can only use the room left between the ring and
+        // the surface edge. Clamping to a multiple of the stroke was not enough — the stroke is
+        // not what bounds it, the remaining distance is.
         double rad = headDeg * Math.PI / 180.0;
-        float headRadius = Math.Max(Math.Min(radius * 0.33f, stroke * 2.2f), 2f);
+        float headRadius = Math.Max(Math.Min(radius * 0.33f, roomToEdge), 1f);
         PaintGlow(g, cx + (float)Math.Cos(rad) * radius, cy + (float)Math.Sin(rad) * radius,
                   headRadius, Color.White, 0.8f);
     }
 
     /// <summary>The percentage set large with a small per-cent sign beside it, or a tick when the
     /// battery is full — where the ring is already closed and "100" adds nothing.</summary>
-    private static void PaintCentre(Graphics g, float cx, float cy, float side, BatteryState state, int percent)
+    private static void PaintCentre(Graphics g, float cx, float cy, float side, Color colour,
+                                    BatteryState state, int percent)
     {
         var ink = Color.FromArgb(242, 246, 255);
 
@@ -159,6 +162,7 @@ public static class BatteryHaloRenderer
             return;
         }
 
+        bool charging = state == BatteryState.Charging;
         string number = percent.ToString(System.Globalization.CultureInfo.InvariantCulture);
         using var numberFont = new Font("Segoe UI", side * NumberRatio, FontStyle.Bold, GraphicsUnit.Pixel);
         using var percentFont = new Font("Segoe UI", side * PercentRatio, FontStyle.Bold, GraphicsUnit.Pixel);
@@ -166,15 +170,39 @@ public static class BatteryHaloRenderer
         var numberSize = g.MeasureString(number, numberFont, PointF.Empty, Tight);
         var percentSize = g.MeasureString("%", percentFont, PointF.Empty, Tight);
 
-        // Centre the pair, not just the digits, so "8%" and "100%" both sit on the middle.
+        // The bolt is the charging indicator, and it was lost when the halo was redrawn to the
+        // mockup — whose charging cue is the comet. But the comet only exists when a caller
+        // supplies a phase, and the attached path never does, so charging had no indicator at all.
+        float boltWidth = charging ? side * 0.15f : 0f;
+        float boltGap = charging ? side * 0.03f : 0f;
+
+        // Centre the whole group, not just the digits, so "8%" and "100%" both sit on the middle.
         float kern = side * 0.022f;
-        float totalWidth = numberSize.Width + kern + percentSize.Width;
+        float totalWidth = boltWidth + boltGap + numberSize.Width + kern + percentSize.Width;
         float left = cx - totalWidth / 2f;
 
-        DrawShadowed(g, number, numberFont, ink, left, cy - numberSize.Height / 2f);
+        if (charging) PaintBolt(g, left + boltWidth / 2f, cy, side, colour);
+
+        float textLeft = left + boltWidth + boltGap;
+        DrawShadowed(g, number, numberFont, ink, textLeft, cy - numberSize.Height / 2f);
         DrawShadowed(g, "%", percentFont, Color.FromArgb(185, 240, 246, 255),
-                     left + numberSize.Width + kern,
+                     textLeft + numberSize.Width + kern,
                      cy + numberSize.Height / 2f - percentSize.Height);
+    }
+
+    private static void PaintBolt(Graphics g, float cx, float cy, float side, Color colour)
+    {
+        float u = side / 34f;
+        PointF[] bolt =
+        [
+            new(cx + 1.3f * u, cy - 5.4f * u), new(cx - 2.2f * u, cy + 0.6f * u),
+            new(cx - 0.2f * u, cy + 0.6f * u), new(cx - 1.3f * u, cy + 5.4f * u),
+            new(cx + 2.4f * u, cy - 0.6f * u), new(cx + 0.3f * u, cy - 0.6f * u),
+        ];
+        using (var shadow = new SolidBrush(Color.FromArgb(140, 0, 0, 0)))
+            g.FillPolygon(shadow, Array.ConvertAll(bolt, pt => new PointF(pt.X + 1.2f, pt.Y + 1.2f)));
+        using var brush = new SolidBrush(colour);
+        g.FillPolygon(brush, bolt);
     }
 
     private static void DrawCentred(Graphics g, string text, Font font, Color colour, float cx, float cy)

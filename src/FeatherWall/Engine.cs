@@ -35,6 +35,10 @@ public sealed class Engine : IDisposable
     private InfoOverlay? _info;
     private HaloOverlay? _halo;
     private NowPlayingOverlay? _record;
+
+    /// <summary>Which monitor the record lives on. Pause events arrive per monitor, and without
+    /// this a second display going behind a window would stop a record on the first.</summary>
+    private string? _recordDevice;
     private BatterySource? _battery;
     private NowPlayingSource? _nowPlaying;
     private PlaybackMonitor? _playback;
@@ -292,6 +296,7 @@ public sealed class Engine : IDisposable
             _halo = null;
             _record?.Dispose();
             _record = null;
+            _recordDevice = null;
             foreach (var window in _windows.Values) window.Dispose();
             _windows.Clear();
             VideoRenderer.ReclaimMediaPipeline(); // disposed players hold their MF threads until collected
@@ -330,6 +335,7 @@ public sealed class Engine : IDisposable
         _halo = null;
         _record?.Dispose();
         _record = null;
+        _recordDevice = null;
         Log.Info($"Info widget: enabled={_config.Info.Enabled}, sources=[{string.Join(", ", _config.Info.Sources)}]");
         if (!_config.Info.Enabled)
         {
@@ -369,6 +375,7 @@ public sealed class Engine : IDisposable
             if (_config.Info.Disc.Enabled && _nowPlaying is not null)
             {
                 _record = new NowPlayingOverlay(window.EnsureHost(), _config.Info, target, _nowPlaying, dpi);
+                _recordDevice = target.Device;
                 Log.Info($"Record: created (rotate={_config.Info.Disc.Rotate}, size={_config.Info.Disc.Size})");
             }
             else
@@ -461,7 +468,7 @@ public sealed class Engine : IDisposable
             if (reason == PauseReason.None)
             {
                 window.Renderer.Resume();
-                _record?.SetCovered(false);
+                if (IsRecordMonitor(monitorDevice)) _record?.SetCovered(false);
                 Log.Info($"Resumed {monitorDevice}");
             }
             else
@@ -469,11 +476,15 @@ public sealed class Engine : IDisposable
                 window.Renderer.Pause();
                 // The record stops for exactly the reasons the wallpaper does. Turning behind a
                 // maximised window is the clearest possible waste of a frame clock.
-                _record?.SetCovered(true);
+                if (IsRecordMonitor(monitorDevice)) _record?.SetCovered(true);
                 Log.Info($"Paused {monitorDevice}: {reason}");
             }
         });
     }
+
+    private bool IsRecordMonitor(string monitorDevice) =>
+        _recordDevice is not null &&
+        string.Equals(_recordDevice, monitorDevice, StringComparison.OrdinalIgnoreCase);
 
     // ---- main-thread marshaling -------------------------------------------------------------
 
@@ -946,6 +957,7 @@ public sealed class Engine : IDisposable
         _halo = null;
         _record?.Dispose();
         _record = null;
+        _recordDevice = null;
         DisposeSources();
         foreach (var window in _windows.Values) window.Dispose();
         _windows.Clear();
