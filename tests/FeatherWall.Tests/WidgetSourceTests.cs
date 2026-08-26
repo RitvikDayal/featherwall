@@ -196,11 +196,14 @@ public class BatteryReadingTests
 public class NowPlayingReadingTests
 {
     [Fact]
-    public void NotPlaying_ReadsAsNothing()
+    public void NotPlaying_KeepsTheTitleAndSaysItIsPaused()
     {
+        // The record stays on screen dimmed when you pause, still showing what you were
+        // listening to. An earlier version nulled the title here, which emptied the widget at the
+        // exact moment you look at it to see what stopped.
         var r = NowPlayingSource.Read("Kind of Blue", "Miles Davis", isPlaying: false);
         Assert.False(r.IsPlaying);
-        Assert.Null(r.Title);
+        Assert.Equal("Kind of Blue", r.Title);
     }
 
     [Fact]

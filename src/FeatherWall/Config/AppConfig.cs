@@ -121,6 +121,16 @@ public sealed class DiscConfig
     public bool Rotate { get; set; } = true;
     public bool ShowProgress { get; set; } = true;
 
+    /// <summary>Its own anchor, independent of the info text and the halo — the record is its own
+    /// block, not a line in a list.</summary>
+    public ClockAnchor Anchor { get; set; } = ClockAnchor.BottomLeft;
+    public int MarginX { get; set; } = 48;
+    public int MarginY { get; set; } = 48;
+    public int? MarginLeft { get; set; }
+    public int? MarginRight { get; set; }
+    public int? MarginTop { get; set; }
+    public int? MarginBottom { get; set; }
+
     /// <summary>Used for the progress ring, and for the label when a track has no artwork.</summary>
     public string AccentColor { get; set; } = "#8FB4FF";
 

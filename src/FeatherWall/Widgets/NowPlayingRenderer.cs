@@ -38,7 +38,8 @@ public static class NowPlayingRenderer
     public static NowPlayingMetrics Measure(DiscConfig config, NowPlayingReading reading, float scale = 1f)
     {
         var disc = DiscRenderer.Measure(config, reading);
-        if (disc.IsEmpty && string.IsNullOrWhiteSpace(reading.Title))
+        bool anything = !disc.IsEmpty || !string.IsNullOrWhiteSpace(reading.Title);
+        if (!anything)
             return new NowPlayingMetrics(Size.Empty, Rectangle.Empty, Rectangle.Empty, Rectangle.Empty);
 
         if (!disc.IsEmpty)

@@ -34,6 +34,7 @@ public sealed class Engine : IDisposable
     private ClockOverlay? _clock;
     private InfoOverlay? _info;
     private HaloOverlay? _halo;
+    private NowPlayingOverlay? _record;
     private BatterySource? _battery;
     private NowPlayingSource? _nowPlaying;
     private PlaybackMonitor? _playback;
@@ -171,7 +172,7 @@ public sealed class Engine : IDisposable
         {
             _config.Assign(monitorDevice, path);
             ConfigStore.Save(_config);
-            if (_clock is null && _info is null && _halo is null) RecreateWidgets();
+            if (_clock is null && _info is null && _halo is null && _record is null) RecreateWidgets();
         }
     }
 
@@ -221,6 +222,7 @@ public sealed class Engine : IDisposable
             _clock?.SetSuspended(off);
             _info?.SetSuspended(off);
             _halo?.SetSuspended(off);
+            _record?.SetSuspended(off);
         }
         else if (setting == PowerNotifications.PowerSavingStatus || setting == PowerNotifications.AcDcPowerSource)
         {
@@ -288,6 +290,8 @@ public sealed class Engine : IDisposable
             _info = null;
             _halo?.Dispose();
             _halo = null;
+            _record?.Dispose();
+            _record = null;
             foreach (var window in _windows.Values) window.Dispose();
             _windows.Clear();
             VideoRenderer.ReclaimMediaPipeline(); // disposed players hold their MF threads until collected
@@ -324,6 +328,8 @@ public sealed class Engine : IDisposable
         _info = null;
         _halo?.Dispose();
         _halo = null;
+        _record?.Dispose();
+        _record = null;
         Log.Info($"Info widget: enabled={_config.Info.Enabled}, sources=[{string.Join(", ", _config.Info.Sources)}]");
         if (!_config.Info.Enabled)
         {
@@ -357,6 +363,18 @@ public sealed class Engine : IDisposable
             // the same rule attached mode follows.
             if (_config.Info.Halo is { Enabled: true, Detached: true } && _battery is not null)
                 _halo = new HaloOverlay(window.EnsureHost(), _config.Info, target, _battery, dpi);
+
+            // The record replaces the now-playing text line entirely; it is its own block with its
+            // own anchor, not an item in the list.
+            if (_config.Info.Disc.Enabled && _nowPlaying is not null)
+            {
+                _record = new NowPlayingOverlay(window.EnsureHost(), _config.Info, target, _nowPlaying, dpi);
+                Log.Info($"Record: created (rotate={_config.Info.Disc.Rotate}, size={_config.Info.Disc.Size})");
+            }
+            else
+            {
+                Log.Info($"Record: not created (disc.enabled={_config.Info.Disc.Enabled}, nowPlaying source={_nowPlaying is not null})");
+            }
             // The character budget may have just changed, and the surviving source is still
             // holding text formatted to the old one.
             _nowPlaying?.Refresh();
@@ -443,11 +461,15 @@ public sealed class Engine : IDisposable
             if (reason == PauseReason.None)
             {
                 window.Renderer.Resume();
+                _record?.SetCovered(false);
                 Log.Info($"Resumed {monitorDevice}");
             }
             else
             {
                 window.Renderer.Pause();
+                // The record stops for exactly the reasons the wallpaper does. Turning behind a
+                // maximised window is the clearest possible waste of a frame clock.
+                _record?.SetCovered(true);
                 Log.Info($"Paused {monitorDevice}: {reason}");
             }
         });
@@ -829,7 +851,7 @@ public sealed class Engine : IDisposable
         sb.AppendLine($"Progman: 0x{layer.Progman:X}  WorkerW: 0x{layer.WorkerW:X}  DefView: 0x{layer.DefView:X}");
         foreach (var monitor in MonitorTracker.Enumerate())
             sb.AppendLine($"Monitor {monitor.Device}: {monitor.Bounds}{(monitor.Primary ? " (primary)" : "")}");
-        sb.AppendLine($"Attached surfaces: {_windows.Count}   Clock: {(_clock is null ? "off" : "on")}   Info: {(_info is null ? "off" : "on")}   Halo: {(_halo is null ? "attached/off" : "detached")}");
+        sb.AppendLine($"Attached surfaces: {_windows.Count}   Clock: {(_clock is null ? "off" : "on")}   Info: {(_info is null ? "off" : "on")}   Halo: {(_halo is null ? "attached/off" : "detached")}   Record: {(_record is null ? "off" : "on")}");
         sb.AppendLine($"Config: {ConfigStore.ConfigPath}");
         sb.AppendLine($"Log: {Path.Combine(Log.Directory, "featherwall.log")}");
         return sb.ToString();
@@ -901,6 +923,7 @@ public sealed class Engine : IDisposable
                     _engine._nowPlaying?.Refresh();
                     _engine._info?.Refresh();
                     _engine._halo?.Refresh();
+                    _engine._record?.Refresh();
                     _engine._host.ValidateLayer();
                     return IntPtr.Zero;
                 case WM_POWERBROADCAST when (int)wParam == PBT_POWERSETTINGCHANGE:
@@ -921,6 +944,8 @@ public sealed class Engine : IDisposable
         _info = null;
         _halo?.Dispose();
         _halo = null;
+        _record?.Dispose();
+        _record = null;
         DisposeSources();
         foreach (var window in _windows.Values) window.Dispose();
         _windows.Clear();

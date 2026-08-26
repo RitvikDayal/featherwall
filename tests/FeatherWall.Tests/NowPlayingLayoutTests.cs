@@ -82,3 +82,34 @@ public class NowPlayingLayoutTests
         Assert.True(spaced.ArtistBox.Width > tight.ArtistBox.Width);
     }
 }
+
+/// <summary>Cases found by running it: local media often carries no metadata at all.</summary>
+public class NowPlayingEdgeTests
+{
+    [Fact]
+    public void PlayingWithNoTitle_StillShowsTheRecord()
+    {
+        // A local file with no tags reports playing with an empty title. Something IS playing, so
+        // the record appears — with artwork or a flat disc — and simply has no words beside it.
+        var reading = NowPlayingSource.Read(null, null, isPlaying: true);
+        var m = NowPlayingRenderer.Measure(new DiscConfig { Size = 100 }, reading);
+        Assert.False(m.DiscBox.IsEmpty);
+        Assert.Equal(Rectangle.Empty, m.TitleBox);
+    }
+
+    [Fact]
+    public void NothingAtAll_ShowsNothing()
+    {
+        var reading = NowPlayingSource.Read(null, null, isPlaying: false);
+        Assert.Equal(Size.Empty, NowPlayingRenderer.Measure(new DiscConfig(), reading).Total);
+    }
+
+    [Fact]
+    public void Paused_KeepsTheWholeBlockOnScreen()
+    {
+        var reading = NowPlayingSource.Read("Blue in Green", "Miles Davis", isPlaying: false);
+        var m = NowPlayingRenderer.Measure(new DiscConfig { Size = 100 }, reading);
+        Assert.False(m.DiscBox.IsEmpty);
+        Assert.False(m.TitleBox.IsEmpty);
+    }
+}
