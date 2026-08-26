@@ -79,31 +79,21 @@ public static class BatteryHaloRenderer
             g.DrawArc(arcPen, ring, -90f, sweep);
         }
 
-        PaintGlyph(g, cx, cy, side, colour, reading.State);
+        PaintGlyph(g, cx, cy, side, stroke, colour, reading.State, reading.Percent);
     }
 
-    /// <summary>Bolt while charging, tick when full, nothing otherwise. On battery the arc already
-    /// says it, and a glyph there would be decoration competing with the thing that carries the
-    /// meaning.
+    /// <summary>The centre carries the charge: the percentage, with a bolt beside it while
+    /// charging. Charged shows a tick instead — the ring is already full and "100" adds nothing.
     ///
-    /// The geometry is written for a 34 px ring and scaled, so size stays one config value rather
-    /// than a set of hand-tuned constants per size.</summary>
-    private static void PaintGlyph(Graphics g, float cx, float cy, float side, Color colour, BatteryState state)
+    /// Geometry is written against a unit derived from the ring size, so one config value scales
+    /// the whole thing rather than a set of hand-tuned constants per size.</summary>
+    private static void PaintGlyph(Graphics g, float cx, float cy, float side, float stroke,
+                                   Color colour, BatteryState state, int percent)
     {
         float u = side / 34f;
         using var brush = new SolidBrush(colour);
 
-        if (state == BatteryState.Charging)
-        {
-            PointF[] bolt =
-            [
-                new(cx + 2.2f * u, cy - 7.5f * u), new(cx - 3.6f * u, cy + 1f * u),
-                new(cx - 0.3f * u, cy + 1f * u),   new(cx - 2.2f * u, cy + 7.5f * u),
-                new(cx + 3.8f * u, cy - 1f * u),   new(cx + 0.5f * u, cy - 1f * u),
-            ];
-            g.FillPolygon(brush, bolt);
-        }
-        else if (state == BatteryState.Charged)
+        if (state == BatteryState.Charged)
         {
             using var pen = new Pen(colour, 2.1f * u)
             {
@@ -117,6 +107,62 @@ public static class BatteryHaloRenderer
                 new PointF(cx - 1.3f * u, cy + 3.8f * u),
                 new PointF(cx + 5.0f * u, cy - 3.6f * u),
             ]);
+            return;
         }
+
+        bool charging = state == BatteryState.Charging;
+        string number = percent.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        // How much horizontal room there is inside the ring, measured rather than guessed. Taking
+        // 88% of the inner diameter keeps the glyphs off the curve, where a straight line of text
+        // runs out of height before it runs out of width.
+        float innerRadius = side / 2f - stroke * 1.9f;
+        float available = Math.Max(innerRadius * 2f * 0.88f, 1f);
+
+        float boltW = charging ? 4.6f * u : 0f;
+        float gap = charging ? 1.6f * u : 0f;
+
+        // Fit by measuring and shrinking, not by a per-digit-count guess. "100 charging" at 34 px
+        // rendered as "10c" under a fixed size — a number clipped by its own ring is worse than a
+        // smaller number.
+        float fontSize = side * 0.31f;
+        Font font = new(FontFamily.GenericSansSerif, fontSize, FontStyle.Regular, GraphicsUnit.Pixel);
+        SizeF textSize = g.MeasureString(number, font);
+        if (textSize.Width + boltW + gap > available)
+        {
+            float scale = Math.Max((available - boltW - gap) / Math.Max(textSize.Width, 0.01f), 0.35f);
+            font.Dispose();
+            font = new Font(FontFamily.GenericSansSerif, Math.Max(fontSize * scale, 6f),
+                            FontStyle.Regular, GraphicsUnit.Pixel);
+            textSize = g.MeasureString(number, font);
+        }
+
+        using (font)
+        {
+            float totalW = textSize.Width + boltW + gap;
+            float left = cx - totalW / 2f;
+            PaintNumberAndBolt(g, brush, font, number, left, cy, u, boltW, gap, textSize, charging);
+        }
+    }
+
+    /// <summary>Bolt then number, laid out left to right from an already-centred origin.</summary>
+    private static void PaintNumberAndBolt(Graphics g, Brush brush, Font font, string number,
+                                           float left, float cy, float u,
+                                           float boltW, float gap, SizeF textSize, bool charging)
+    {
+
+        if (charging)
+        {
+            float bx = left + boltW / 2f;
+            PointF[] bolt =
+            [
+                new(bx + 1.4f * u, cy - 5.2f * u), new(bx - 2.4f * u, cy + 0.7f * u),
+                new(bx - 0.2f * u, cy + 0.7f * u), new(bx - 1.4f * u, cy + 5.2f * u),
+                new(bx + 2.6f * u, cy - 0.7f * u), new(bx + 0.4f * u, cy - 0.7f * u),
+            ];
+            g.FillPolygon(brush, bolt);
+        }
+
+        g.DrawString(number, font, brush, left + boltW + gap, cy - textSize.Height / 2f);
     }
 }

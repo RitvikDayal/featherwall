@@ -120,7 +120,9 @@ public enum HaloPlacement { Left, Right, Above, Below }
 public sealed class HaloConfig
 {
     public bool Enabled { get; set; } = true;
-    public int Size { get; set; } = 34;
+    /// <summary>Bigger than it was: the percentage is drawn inside the ring now, and a number in
+    /// a 34 px circle is not legible.</summary>
+    public int Size { get; set; } = 44;
 
     /// <summary>False: drawn beside the info lines and moving with them. True: its own overlay,
     /// its own anchor and its own margins, and Placement is ignored.</summary>
@@ -139,14 +141,16 @@ public sealed class HaloConfig
     /// rather than something you have to fake by setting all four the same.</summary>
     public bool ColorByLevel { get; set; } = true;
 
-    // Ember. Thresholds are inclusive upper bounds.
+    // Red at the bottom, orange in the middle, green when healthy — the conventional battery
+    // reading. Thresholds are inclusive upper bounds. The warm Ember ramp is still available as a
+    // preset; it is not the default, because a gold "high" says less than a green one.
     public string LowColor { get; set; } = "#FF4D4D";
     public int LowThreshold { get; set; } = 20;
     public string MidColor { get; set; } = "#FF9A3C";
     public int MidThreshold { get; set; } = 50;
-    public string HighColor { get; set; } = "#FFD166";
-    public string ChargedColor { get; set; } = "#FFF3B0";
-    public string TrackColor { get; set; } = "#24FFDCB4";
+    public string HighColor { get; set; } = "#5FD98A";
+    public string ChargedColor { get; set; } = "#7CE8A4";
+    public string TrackColor { get; set; } = "#24FFFFFF";
 }
 
 public sealed class AppConfig

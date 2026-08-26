@@ -111,6 +111,13 @@ public sealed class InfoOverlay : IDisposable
                 ? Size.Empty
                 : BatteryHaloRenderer.Measure(_config.Halo, reading, (float)_dpiScale);
 
+            // The halo now prints the percentage inside the ring, so the battery's text line
+            // repeats it — "97" in a circle beside "97% charging". Whenever a halo is drawn at
+            // all, attached or detached, it owns the battery and the words step aside.
+            if (_battery is not null && _config.Halo.Enabled && reading.State != BatteryState.None)
+                for (int i = 0; i < _sources.Count; i++)
+                    if (ReferenceEquals(_sources[i], _battery)) values[i] = null;
+
             var metrics = InfoRenderer.Measure(_config, values, (float)_dpiScale, haloSize);
             // Every one of these lines is a source event. If they ever appear at a regular
             // interval, a timer has crept in and the feature has failed its cost budget.

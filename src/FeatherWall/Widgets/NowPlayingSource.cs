@@ -7,8 +7,31 @@ namespace FeatherWall.Widgets;
 /// <summary>Whatever the system says is playing — any app with a media session, including a
 /// browser tab. Reads the WinRT session manager already available through the referenced SDK
 /// projection, so there is no new package and no network call.</summary>
+/// <summary>What is playing, kept in parts. The record draws the title and the artist at different
+/// sizes and weights, so a single joined string is the wrong shape for it.
+///
+/// TrackId is what the album-art cache keys on. It must change when the track changes and hold
+/// still across a progress or playback tick, or the art is either stale or refetched constantly.</summary>
+public readonly record struct NowPlayingReading(string? Title, string? Artist, bool IsPlaying, string TrackId);
+
 public sealed partial class NowPlayingSource : IWidgetSource
 {
+    /// <summary>Pure, so the parts and the cache key are testable without a live session.
+    ///
+    /// Deliberately does not include IsPlaying in TrackId: pausing dims the record, and throwing
+    /// the artwork away and refetching it on every pause would be a visible stutter for nothing.</summary>
+    public static NowPlayingReading Read(string? title, string? artist, bool isPlaying)
+    {
+        string? cleanTitle = string.IsNullOrWhiteSpace(title) ? null : title.Trim();
+        string? cleanArtist = string.IsNullOrWhiteSpace(artist) ? null : artist.Trim();
+
+        return new NowPlayingReading(
+            isPlaying ? cleanTitle : null,
+            isPlaying ? cleanArtist : null,
+            isPlaying,
+            $"{cleanTitle}␟{cleanArtist}");
+    }
+
     /// <summary>Pure, so the display rules are tested without a live session.
     ///
     /// A paused track is not "now playing" and shows nothing: the line is meant to say what you
