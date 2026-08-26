@@ -296,6 +296,13 @@ own colour and opacity, or it can inherit any of those from the time. On a multi
 with mixed scaling, the clock is sized per display, so it stays the same physical size on a 100%
 external as it is on a 150% laptop panel.
 
+The battery halo is a ring beside the battery line: its arc is the charge level and its colour
+steps with it — red low, orange middling, gold high, and a distinct colour when charged, with a
+bolt in the centre while charging and a tick when full. Three palette presets and five colour
+pickers, adjustable thresholds and size. It sits left, right, above or below the text, or detaches
+entirely and takes its own anchor anywhere on screen. It does not animate: the arc already is the
+level, and a frame clock would be the first thing to make idle cost non-zero.
+
 The info widget is a second, separately anchored stack of lines fed by the system: what is
 playing, and the battery. It is **off by default** — turning it on is one checkbox on the Info
 page — and there is no timer behind it. Windows pushes a notification when the battery percentage
@@ -372,7 +379,21 @@ The tray menu and settings panel cover the common cases. Everything lives in
     "color": "#C0FFFFFF",
     "shadow": true,
     "maxCharacters": 48,
-    "sources": ["nowPlaying", "battery"]
+    "sources": ["nowPlaying", "battery"],
+
+    "halo": {
+      "enabled": true,
+      "size": 34,
+      "detached": false,
+      "placement": "Left",
+      "anchor": "TopRight",
+      "colorByLevel": true,
+      "lowColor": "#FF4D4D",  "lowThreshold": 20,
+      "midColor": "#FF9A3C",  "midThreshold": 50,
+      "highColor": "#FFD166",
+      "chargedColor": "#FFF3B0",
+      "trackColor": "#24FFDCB4"
+    }
   },
   "pause": { "onFullscreen": true, "onBatterySaver": true, "onRemoteSession": true }
 }
