@@ -296,13 +296,27 @@ own colour and opacity, or it can inherit any of those from the time. On a multi
 with mixed scaling, the clock is sized per display, so it stays the same physical size on a 100%
 external as it is on a 150% laptop panel.
 
-The info widget is a second, separately anchored stack of lines fed by the system: what is
-playing, and the battery. It is **off by default** — turning it on is one checkbox on the Info
-page — and there is no timer behind it. Windows pushes a notification when the battery percentage
-moves and when the media session changes, and those events are the only thing that repaints it,
-so between them it costs nothing at all. Now playing reads the same session Windows itself uses,
-so it covers anything with media controls, a browser tab included; nothing playing means no line
-rather than an empty one, and a desktop with no battery never shows a battery line.
+The info widget is a second, separately anchored block fed by the system, **off by default** —
+turning it on is one checkbox on the Info page.
+
+The **battery halo** is a ring with the charge inside it: the arc is the level, the colour steps
+with it — red low, orange middling, green when healthy — and a bolt sits beside the number while
+charging, replaced by a tick when it is full. Three palette presets and five colour pickers,
+adjustable thresholds and size. It sits beside the text or detaches entirely and takes its own
+anchor anywhere on screen.
+
+The **now-playing record** shows what you are listening to as a vinyl record, with the *real album
+artwork* on its label — read from the same Windows media session everything else here uses, so
+there is still no network call. It turns at 33⅓ rpm while something plays, with the track's
+progress on the rim. Nothing playing means no record; a track with no artwork gets a flat disc in
+the accent colour rather than a broken box; pausing dims it rather than emptying it.
+
+**The record is the one thing in FeatherWall that runs on a frame clock**, and it is deliberately
+hard to leave running: it turns only while something is actually playing *and* the desktop is
+uncovered *and* the display is on. Any of those going false stops it dead — not throttled, stopped.
+Turning off "Spin while playing" creates no timer at all, and you keep the record, the artwork and
+the progress ring as a still image. Everything else in the app still repaints only when Windows
+pushes it an event: a battery percentage moving, a track changing.
 
 Everything else: per-monitor wallpapers, Fill, Fit and Stretch modes, DPI-aware rendering, a full
 tray menu, JSON config for anything the UI does not expose, and auto-pause on fullscreen apps,
@@ -372,7 +386,35 @@ The tray menu and settings panel cover the common cases. Everything lives in
     "color": "#C0FFFFFF",
     "shadow": true,
     "maxCharacters": 48,
-    "sources": ["nowPlaying", "battery"]
+    "sources": ["nowPlaying", "battery"],
+
+    "halo": {
+      "enabled": true,
+      "size": 44,
+      "detached": false,
+      "placement": "Left",
+      "anchor": "TopRight",
+      "colorByLevel": true,
+      "lowColor": "#FF4D4D",  "lowThreshold": 20,
+      "midColor": "#FF9A3C",  "midThreshold": 50,
+      "highColor": "#5FD98A",
+      "chargedColor": "#7CE8A4",
+      "trackColor": "#24FFFFFF"
+    },
+
+    "disc": {
+      "enabled": true,
+      "size": 112,
+      "rotate": true,
+      "showProgress": true,
+      "accentColor": "#8FB4FF",
+      "anchor": "BottomLeft",
+      "titleFontSize": 19,
+      "artistFontSize": 14,
+      "artistUppercase": true,
+      "artistLetterSpacing": 1.4,
+      "artistOpacity": 0.62
+    }
   },
   "pause": { "onFullscreen": true, "onBatterySaver": true, "onRemoteSession": true }
 }

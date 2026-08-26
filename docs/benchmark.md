@@ -84,10 +84,15 @@ refused rather than measured. An interactive run is *expected* to produce it, by
 that produced the auto-paused row — but expected is not verified, no run has yet produced it, and
 this file should not read as though one has.
 
-**The info widget's row has not been measured, and the design said it should be.** The widget was
-built to a stated cost budget — no timer, no poll, one small bitmap per change — and the way to
-check that is to run the still-image row twice, once plain and once with `-Widgets`, and see
-whether it moves. Two attempts were lost to a full-screen browser that ignores `MinimizeAll` and
+**The widget rows have not been measured, and the design said they should be.** The battery halo
+was built to a stated cost budget — no timer, no poll, one small bitmap per change — and the
+now-playing record then added the app's first frame clock on top of it. The way to check both is
+to run the still-image row twice, once plain and once with `-Widgets`, and see whether it moves.
+
+**"No timer anywhere" is no longer true of FeatherWall as a whole, and this file used to say it
+was.** The record turns at 15 fps while music plays and the desktop is visible, and stops
+completely otherwise. That cost has never been measured, which is exactly why the row below
+matters more now than it did when the claim was safe. Two attempts were lost to a full-screen browser that ignores `MinimizeAll` and
 takes the foreground back between samples, so FeatherWall correctly paused and the harness
 correctly refused every playing row. The harness now names that window and stops before running
 rather than discovering it four rows later.
@@ -103,9 +108,14 @@ Compare the two still-image rows. **CPU spans roughly 2x run to run on this mach
 above records, so a difference inside that spread is not evidence of anything and should be
 reported as inconclusive rather than as a pass.
 
-What *is* verified is that the widget has no timer: every repaint is logged, and over an hour of
-running the log shows repaints only at startup, when a media session changed, and when the battery
-percentage moved — at irregular intervals of 20 to 41 seconds while charging, never on a period.
+What *is* verified is which parts have a timer and which do not. Every repaint is logged. Over an
+hour of running, the battery and info widgets repainted only at startup, when a media session
+changed, and when the battery percentage moved — at irregular intervals of 20 to 41 seconds while
+charging, never on a period.
+
+The record is the exception, and it logs its own frame clock starting and stopping (`record
+turning` / `record still`), so the gating can be read off the log rather than taken on trust. What
+has **not** been measured is what those frames cost.
 
 The 1080p60 row has simply never been run through the harness. The 1920x1080 downscale the
 hand-measured table used is not on this machine, so filling it means regenerating that clip from
