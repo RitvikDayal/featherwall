@@ -1,6 +1,8 @@
+using System.Drawing;
 using FeatherWall.Common;
 using Windows.Foundation;
 using Windows.Media.Control;
+using Windows.Storage.Streams;
 
 namespace FeatherWall.Widgets;
 
@@ -61,6 +63,17 @@ public sealed partial class NowPlayingSource : IWidgetSource
     private string? _value;
     private int _generation;
     private bool _disposed;
+
+    private NowPlayingReading _current;
+    private Bitmap? _art;
+    private string? _artTrackId;
+
+    /// <summary>What is playing, in parts, for the record to draw.</summary>
+    public NowPlayingReading Current => _current;
+
+    /// <summary>The current track's artwork, or null when it has none or the decode failed.
+    /// Owned here and disposed when the track changes — the renderer only borrows it.</summary>
+    public Bitmap? Art => _art;
 
     /// <summary>Serialises the end of InitialiseAsync against Dispose. RequestAsync resumes on a
     /// pool thread, so checking _disposed and then subscribing is two steps a main-thread Dispose
@@ -144,6 +157,8 @@ public sealed partial class NowPlayingSource : IWidgetSource
         int generation = Interlocked.Increment(ref _generation);
 
         string? next = null;
+        NowPlayingReading reading = default;
+        Bitmap? fetchedArt = null;
         try
         {
             var session = _session;
@@ -154,6 +169,12 @@ public sealed partial class NowPlayingSource : IWidgetSource
                     GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
                 var props = await session.TryGetMediaPropertiesAsync();
                 next = Format(props?.Title, props?.Artist, playing, _maxCharacters());
+                reading = Read(props?.Title, props?.Artist, playing);
+
+                // Fetched once per track, off the render path. The cache key deliberately ignores
+                // playing state, so pausing does not throw the artwork away and refetch it.
+                if (reading.TrackId != _artTrackId)
+                    fetchedArt = await LoadArtAsync(props?.Thumbnail);
             }
         }
         catch (Exception ex)
@@ -165,10 +186,59 @@ public sealed partial class NowPlayingSource : IWidgetSource
 
         _toMainThread(() =>
         {
-            if (_disposed || generation != Volatile.Read(ref _generation) || next == _value) return;
+            if (_disposed || generation != Volatile.Read(ref _generation))
+            {
+                fetchedArt?.Dispose();       // a superseded read must not leak its bitmap
+                return;
+            }
+
+            bool trackChanged = reading.TrackId != _artTrackId;
+            if (trackChanged)
+            {
+                _art?.Dispose();
+                _art = fetchedArt;
+                _artTrackId = reading.TrackId;
+            }
+            else
+            {
+                fetchedArt?.Dispose();
+            }
+
+            // Compare the reading as well as the text: the record redraws when the artwork or the
+            // playing state moves, neither of which necessarily changes a single character.
+            if (!trackChanged && next == _value && reading == _current) return;
             _value = next;
+            _current = reading;
             Changed?.Invoke();
         });
+    }
+
+    /// <summary>Decodes the session's thumbnail into a bitmap we own.
+    ///
+    /// The bytes come from whatever media player happens to be running, so a malformed or
+    /// unexpected stream must fall back to no artwork rather than propagate — a bad thumbnail from
+    /// someone else's app should not take the wallpaper down.</summary>
+    private static async Task<Bitmap?> LoadArtAsync(IRandomAccessStreamReference? thumbnail)
+    {
+        if (thumbnail is null) return null;
+        try
+        {
+            using var stream = await thumbnail.OpenReadAsync();
+            using var net = stream.AsStreamForRead();
+            using var buffered = new MemoryStream();
+            await net.CopyToAsync(buffered);
+            buffered.Position = 0;
+
+            // Copied out of the source bitmap: Image.FromStream keeps the stream alive for the
+            // lifetime of the image, and this one is disposed on the way out of the method.
+            using var decoded = Image.FromStream(buffered);
+            return new Bitmap(decoded);
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"Album art unavailable: {ex.Message}");
+            return null;
+        }
     }
 
     public void Dispose()
@@ -184,6 +254,10 @@ public sealed partial class NowPlayingSource : IWidgetSource
             }
             _manager = null;
         }
+
+        _art?.Dispose();
+        _art = null;
+        _artTrackId = null;
 
         if (_session is null) return;
         _session.MediaPropertiesChanged -= OnMediaChanged;
