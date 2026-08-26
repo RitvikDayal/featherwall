@@ -130,3 +130,62 @@ public class InfoConfigTests
         Assert.Equal(30, back.Info.MaxCharacters);
     }
 }
+
+/// <summary>The halo's defaults. Ember, and on — unlike the widget it attaches to, which is off
+/// by default. That exception is deliberate and recorded in the design.</summary>
+public class HaloConfigTests
+{
+    [Fact]
+    public void Halo_DefaultsToEmber()
+    {
+        var h = new AppConfig().Info.Halo;
+        Assert.Equal("#FF4D4D", h.LowColor);
+        Assert.Equal("#FF9A3C", h.MidColor);
+        Assert.Equal("#FFD166", h.HighColor);
+        Assert.Equal("#FFF3B0", h.ChargedColor);
+    }
+
+    [Fact]
+    public void Halo_DefaultsToAttachedOnTheLeft()
+    {
+        var h = new AppConfig().Info.Halo;
+        Assert.False(h.Detached);
+        Assert.Equal(HaloPlacement.Left, h.Placement);
+    }
+
+    [Fact]
+    public void Halo_DefaultThresholdsAre20And50()
+    {
+        var h = new AppConfig().Info.Halo;
+        Assert.Equal(20, h.LowThreshold);
+        Assert.Equal(50, h.MidThreshold);
+    }
+
+    [Fact]
+    public void ConfigWrittenBeforeTheHaloExisted_LoadsWithEmberDefaults()
+    {
+        const string old = """
+        { "wallpapers": [], "info": { "enabled": true } }
+        """;
+        var loaded = JsonSerializer.Deserialize(old, ConfigJsonContext.Default.AppConfig)!;
+        Assert.NotNull(loaded.Info.Halo);
+        Assert.True(loaded.Info.Halo.Enabled);
+        Assert.Equal("#FF4D4D", loaded.Info.Halo.LowColor);
+    }
+
+    [Fact]
+    public void HaloConfig_SurvivesARoundTrip()
+    {
+        var config = new AppConfig();
+        config.Info.Halo.Detached = true;
+        config.Info.Halo.Anchor = ClockAnchor.BottomRight;
+        config.Info.Halo.Size = 52;
+
+        var json = JsonSerializer.Serialize(config, ConfigJsonContext.Default.AppConfig);
+        var back = JsonSerializer.Deserialize(json, ConfigJsonContext.Default.AppConfig)!;
+
+        Assert.True(back.Info.Halo.Detached);
+        Assert.Equal(ClockAnchor.BottomRight, back.Info.Halo.Anchor);
+        Assert.Equal(52, back.Info.Halo.Size);
+    }
+}
