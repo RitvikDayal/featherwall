@@ -78,9 +78,11 @@ public static class BatteryHaloRenderer
         float cx = ring.X + ring.Width / 2f, cy = ring.Y + ring.Height / 2f;
         float radius = ring.Width / 2f;
 
-        // Lighter than the mockup's: a canvas radial gradient falls off faster than a
-        // PathGradientBrush, so matching the numbers produced a visible bloom on pale wallpaper.
-        PaintGlow(g, cx, cy, radius * 1.75f, colour, reading.State == BatteryState.Charging ? 0.17f : 0.11f);
+        // The glow must reach zero INSIDE the surface. At 1.75x the ring it ran past the
+        // bitmap's edges, GDI+ clipped it, and the leftover partial alpha drew a visible coloured
+        // square behind the widget. Half the box is the largest circle that fits.
+        float glowRadius = side / 2f;
+        PaintGlow(g, cx, cy, glowRadius, colour, reading.State == BatteryState.Charging ? 0.17f : 0.11f);
 
         using (var track = new Pen(ClockRenderer.ParseColor(config.TrackColor), stroke))
             g.DrawEllipse(track, ring);
@@ -136,9 +138,12 @@ public static class BatteryHaloRenderer
             g.DrawArc(pen, rect, headDeg - i * 4.2f - 3.4f, 3.4f);
         }
 
+        // The head glow sits ON the ring, so its radius has to stay inside whatever room is left
+        // between the ring and the surface edge, or it clips into a square corner of its own.
         double rad = headDeg * Math.PI / 180.0;
+        float headRadius = Math.Max(Math.Min(radius * 0.33f, stroke * 2.2f), 2f);
         PaintGlow(g, cx + (float)Math.Cos(rad) * radius, cy + (float)Math.Sin(rad) * radius,
-                  Math.Max(radius * 0.33f, 3f), Color.White, 0.8f);
+                  headRadius, Color.White, 0.8f);
     }
 
     /// <summary>The percentage set large with a small per-cent sign beside it, or a tick when the

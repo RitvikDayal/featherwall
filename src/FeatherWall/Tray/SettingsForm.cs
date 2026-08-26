@@ -61,6 +61,7 @@ public sealed class SettingsForm : Form
         AddPage(pages, rail, "Date", BuildDateSection());
         AddPage(pages, rail, "Info", BuildInfoSection());
         AddPage(pages, rail, "Battery", BuildHaloSection());
+        AddPage(pages, rail, "Music", BuildDiscSection());
         AddPage(pages, rail, "Wallpaper", BuildWallpaperSection());
         AddPage(pages, rail, "Behaviour", BuildBehaviorSection());
         SelectPage(0);
@@ -522,6 +523,39 @@ public sealed class SettingsForm : Form
     {
         if (_paletteCombo is null) return;
         _paletteCombo.SelectedIndex = PaletteIndexFor(_config.Info.Halo);
+    }
+
+    // ---- now-playing record --------------------------------------------------------------
+
+    /// <summary>The record's page. Rotate is the only switch in FeatherWall that decides whether a
+    /// timer exists at all, so it says so on the label rather than hiding behind "animate".</summary>
+    private Control BuildDiscSection()
+    {
+        var (card, rows) = NewSection("Now playing");
+        var disc = _config.Info.Disc;
+
+        rows.AddRow("Show record", Check(disc.Enabled, v => { disc.Enabled = v; ApplyInfo(); }));
+        rows.AddRow("Size", Spinner(40, 400, disc.Size, v => { disc.Size = v; ApplyInfo(); }, "px"));
+        rows.AddRow("Spin while playing", Check(disc.Rotate, v => { disc.Rotate = v; ApplyInfo(); }));
+        rows.AddRow("Show progress ring", Check(disc.ShowProgress, v => { disc.ShowProgress = v; ApplyInfo(); }));
+        rows.AddRow("Accent colour", BuildHaloColorPicker(() => disc.AccentColor, v => disc.AccentColor = v));
+
+        rows.AddRow("Title size", Spinner(8, 96, (int)disc.TitleFontSize,
+            v => { disc.TitleFontSize = v; ApplyInfo(); }, "px"));
+        rows.AddRow("Artist size", Spinner(6, 72, (int)disc.ArtistFontSize,
+            v => { disc.ArtistFontSize = v; ApplyInfo(); }, "px"));
+        rows.AddRow("Artist in capitals", Check(disc.ArtistUppercase,
+            v => { disc.ArtistUppercase = v; ApplyInfo(); }));
+        rows.AddRow("Artist spacing", Spinner(0, 12, (int)Math.Round(disc.ArtistLetterSpacing),
+            v => { disc.ArtistLetterSpacing = v; ApplyInfo(); }, "px"));
+        rows.AddRow("Artist opacity", Spinner(10, 100, (int)Math.Round(disc.ArtistOpacity * 100),
+            v => { disc.ArtistOpacity = v / 100f; ApplyInfo(); }, "%"));
+
+        rows.AddRow("Position", BuildAnchorPicker(() => disc.Anchor, v => disc.Anchor = v, ApplyInfo));
+        rows.AddRow("Margin X", Spinner(0, 2000, disc.MarginX, v => { disc.MarginX = v; ApplyInfo(); }, "px"));
+        rows.AddRow("Margin Y", Spinner(0, 2000, disc.MarginY, v => { disc.MarginY = v; ApplyInfo(); }, "px"));
+
+        return card;
     }
 
     private bool HasSource(string name) =>
