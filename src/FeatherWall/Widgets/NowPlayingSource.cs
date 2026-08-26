@@ -14,7 +14,8 @@ namespace FeatherWall.Widgets;
 ///
 /// TrackId is what the album-art cache keys on. It must change when the track changes and hold
 /// still across a progress or playback tick, or the art is either stale or refetched constantly.</summary>
-public readonly record struct NowPlayingReading(string? Title, string? Artist, bool IsPlaying, string TrackId);
+public readonly record struct NowPlayingReading(
+    string? Title, string? Artist, bool IsPlaying, string TrackId, double Progress = 0d);
 
 public sealed partial class NowPlayingSource : IWidgetSource
 {
@@ -22,15 +23,25 @@ public sealed partial class NowPlayingSource : IWidgetSource
     ///
     /// Deliberately does not include IsPlaying in TrackId: pausing dims the record, and throwing
     /// the artwork away and refetching it on every pause would be a visible stutter for nothing.</summary>
-    public static NowPlayingReading Read(string? title, string? artist, bool isPlaying)
+    public static NowPlayingReading Read(string? title, string? artist, bool isPlaying,
+                                        TimeSpan position = default, TimeSpan duration = default)
     {
+        // Zero when the session gives no usable duration — a live stream, or a player that does
+        // not report one. The ring then shows its track and no arc, rather than a wrong arc.
+        double progress = duration > TimeSpan.Zero
+            ? Math.Clamp(position.TotalSeconds / duration.TotalSeconds, 0d, 1d)
+            : 0d;
+
         string? cleanTitle = string.IsNullOrWhiteSpace(title) ? null : title.Trim();
         string? cleanArtist = string.IsNullOrWhiteSpace(artist) ? null : artist.Trim();
 
         // Title and artist survive a pause. The record stays on screen dimmed, and it is still
         // showing what you were listening to — dropping the text on pause would empty the widget
         // at the exact moment you look at it to see what stopped.
-        return new NowPlayingReading(cleanTitle, cleanArtist, isPlaying, $"{cleanTitle}␟{cleanArtist}");
+        // Progress is deliberately outside TrackId: it moves constantly, and keying the artwork
+        // cache on it would refetch the album art every second.
+        return new NowPlayingReading(cleanTitle, cleanArtist, isPlaying,
+                                     $"{cleanTitle}␟{cleanArtist}", progress);
     }
 
     /// <summary>Pure, so the display rules are tested without a live session.
@@ -133,6 +144,7 @@ public sealed partial class NowPlayingSource : IWidgetSource
         {
             _session.MediaPropertiesChanged -= OnMediaChanged;
             _session.PlaybackInfoChanged -= OnPlaybackChanged;
+            _session.TimelinePropertiesChanged -= OnTimelineChanged;
         }
 
         _session = _manager?.GetCurrentSession();
@@ -140,6 +152,7 @@ public sealed partial class NowPlayingSource : IWidgetSource
         {
             _session.MediaPropertiesChanged += OnMediaChanged;
             _session.PlaybackInfoChanged += OnPlaybackChanged;
+            _session.TimelinePropertiesChanged += OnTimelineChanged;
         }
 
         _ = RefreshAsync();
@@ -147,6 +160,7 @@ public sealed partial class NowPlayingSource : IWidgetSource
 
     private void OnMediaChanged(GlobalSystemMediaTransportControlsSession s, MediaPropertiesChangedEventArgs e) => _ = RefreshAsync();
     private void OnPlaybackChanged(GlobalSystemMediaTransportControlsSession s, PlaybackInfoChangedEventArgs e) => _ = RefreshAsync();
+    private void OnTimelineChanged(GlobalSystemMediaTransportControlsSession s, TimelinePropertiesChangedEventArgs e) => _ = RefreshAsync();
 
     private async Task RefreshAsync()
     {
@@ -167,8 +181,11 @@ public sealed partial class NowPlayingSource : IWidgetSource
                 bool playing = info?.PlaybackStatus ==
                     GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
                 var props = await session.TryGetMediaPropertiesAsync();
+                var timeline = session.GetTimelineProperties();
                 next = Format(props?.Title, props?.Artist, playing, _maxCharacters());
-                reading = Read(props?.Title, props?.Artist, playing);
+                reading = Read(props?.Title, props?.Artist, playing,
+                               timeline is null ? default : timeline.Position - timeline.StartTime,
+                               timeline is null ? default : timeline.EndTime - timeline.StartTime);
 
                 // Fetched once per track, off the render path. The cache key deliberately ignores
                 // playing state, so pausing does not throw the artwork away and refetch it.
@@ -263,6 +280,7 @@ public sealed partial class NowPlayingSource : IWidgetSource
         if (_session is null) return;
         _session.MediaPropertiesChanged -= OnMediaChanged;
         _session.PlaybackInfoChanged -= OnPlaybackChanged;
+        _session.TimelinePropertiesChanged -= OnTimelineChanged;
         _session = null;
     }
 }

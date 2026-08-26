@@ -208,7 +208,8 @@ public sealed class NowPlayingOverlay : IDisposable
 
             using var bmp = new Bitmap(_size.Cx, _size.Cy, PixelFormat.Format32bppPArgb);
             using (var g = Graphics.FromImage(bmp))
-                NowPlayingRenderer.Paint(g, metrics, _config.Disc, reading, _face, _turns, 0f, (float)_dpiScale);
+                NowPlayingRenderer.Paint(g, metrics, _config.Disc, reading, _face, _turns,
+                                         (float)reading.Progress, (float)_dpiScale);
             overlay.PresentBitmap(bmp);
         }
     }

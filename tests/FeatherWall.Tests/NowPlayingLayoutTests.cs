@@ -113,3 +113,48 @@ public class NowPlayingEdgeTests
         Assert.False(m.TitleBox.IsEmpty);
     }
 }
+
+/// <summary>Track progress. The ring showed nothing at all before this — the overlay passed a
+/// hard-coded zero, so the progress feature existed only in the renderer.</summary>
+public class NowPlayingProgressTests
+{
+    [Fact]
+    public void HalfwayThrough_ReadsAsAHalf()
+    {
+        var r = NowPlayingSource.Read("t", "a", true, TimeSpan.FromSeconds(90), TimeSpan.FromSeconds(180));
+        Assert.Equal(0.5, r.Progress, 3);
+    }
+
+    [Fact]
+    public void NoDuration_ReadsAsZero()
+    {
+        // A live stream, or a player that reports no length. The ring shows its track and no arc,
+        // rather than an arc that means nothing.
+        var r = NowPlayingSource.Read("t", "a", true, TimeSpan.FromSeconds(90), TimeSpan.Zero);
+        Assert.Equal(0d, r.Progress);
+    }
+
+    [Fact]
+    public void PositionPastTheEnd_IsClamped()
+    {
+        var r = NowPlayingSource.Read("t", "a", true, TimeSpan.FromSeconds(400), TimeSpan.FromSeconds(180));
+        Assert.Equal(1d, r.Progress);
+    }
+
+    [Fact]
+    public void NegativePosition_IsClamped()
+    {
+        var r = NowPlayingSource.Read("t", "a", true, TimeSpan.FromSeconds(-5), TimeSpan.FromSeconds(180));
+        Assert.Equal(0d, r.Progress);
+    }
+
+    [Fact]
+    public void Progress_IsNotPartOfTheArtworkCacheKey()
+    {
+        // Keying the cache on progress would refetch the album art every second.
+        var a = NowPlayingSource.Read("t", "a", true, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(180));
+        var b = NowPlayingSource.Read("t", "a", true, TimeSpan.FromSeconds(120), TimeSpan.FromSeconds(180));
+        Assert.Equal(a.TrackId, b.TrackId);
+        Assert.NotEqual(a.Progress, b.Progress);
+    }
+}
