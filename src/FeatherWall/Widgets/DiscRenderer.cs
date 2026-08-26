@@ -23,7 +23,11 @@ public static class DiscRenderer
     /// listening to.</summary>
     public static Size Measure(DiscConfig config, NowPlayingReading reading)
     {
-        if (!config.Enabled || string.IsNullOrWhiteSpace(reading.Title)) return Size.Empty;
+        // A session that is playing counts even with no title. Local files frequently carry no
+        // metadata at all, and "something is playing" is still worth showing — the record appears
+        // with its artwork or a flat disc, and simply has no words beside it.
+        if (!config.Enabled) return Size.Empty;
+        if (!reading.IsPlaying && string.IsNullOrWhiteSpace(reading.Title)) return Size.Empty;
         int side = Math.Max(config.Size, MinSize);
         return new Size(side, side);
     }

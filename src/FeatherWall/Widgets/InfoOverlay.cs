@@ -118,6 +118,12 @@ public sealed class InfoOverlay : IDisposable
                 for (int i = 0; i < _sources.Count; i++)
                     if (ReferenceEquals(_sources[i], _battery)) values[i] = null;
 
+            // Same rule for now-playing: when the record is drawing it, the text line would be a
+            // second, worse copy of the same information.
+            if (_config.Disc.Enabled)
+                for (int i = 0; i < _sources.Count; i++)
+                    if (_sources[i] is NowPlayingSource) values[i] = null;
+
             var metrics = InfoRenderer.Measure(_config, values, (float)_dpiScale, haloSize);
             // Every one of these lines is a source event. If they ever appear at a regular
             // interval, a timer has crept in and the feature has failed its cost budget.

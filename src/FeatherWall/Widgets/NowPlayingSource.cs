@@ -27,11 +27,10 @@ public sealed partial class NowPlayingSource : IWidgetSource
         string? cleanTitle = string.IsNullOrWhiteSpace(title) ? null : title.Trim();
         string? cleanArtist = string.IsNullOrWhiteSpace(artist) ? null : artist.Trim();
 
-        return new NowPlayingReading(
-            isPlaying ? cleanTitle : null,
-            isPlaying ? cleanArtist : null,
-            isPlaying,
-            $"{cleanTitle}␟{cleanArtist}");
+        // Title and artist survive a pause. The record stays on screen dimmed, and it is still
+        // showing what you were listening to — dropping the text on pause would empty the widget
+        // at the exact moment you look at it to see what stopped.
+        return new NowPlayingReading(cleanTitle, cleanArtist, isPlaying, $"{cleanTitle}␟{cleanArtist}");
     }
 
     /// <summary>Pure, so the display rules are tested without a live session.
@@ -181,7 +180,9 @@ public sealed partial class NowPlayingSource : IWidgetSource
         {
             // A session can vanish between the null check and the read. Show nothing rather
             // than leaving the last track on the wallpaper.
-            Log.Warn($"Now-playing read failed: {ex.Message}");
+            // The type matters: these arrive from another process's session and the message is
+            // very often empty, which on its own says nothing at all.
+            Log.Warn($"Now-playing read failed: {ex.GetType().Name} {ex.Message}");
         }
 
         _toMainThread(() =>
