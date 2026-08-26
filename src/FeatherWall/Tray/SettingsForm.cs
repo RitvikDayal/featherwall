@@ -60,6 +60,7 @@ public sealed class SettingsForm : Form
         AddPage(pages, rail, "Clock", BuildClockSection());
         AddPage(pages, rail, "Date", BuildDateSection());
         AddPage(pages, rail, "Info", BuildInfoSection());
+        AddPage(pages, rail, "Battery", BuildHaloSection());
         AddPage(pages, rail, "Wallpaper", BuildWallpaperSection());
         AddPage(pages, rail, "Behaviour", BuildBehaviorSection());
         SelectPage(0);
@@ -340,6 +341,186 @@ public sealed class SettingsForm : Form
         }, "%"));
 
         return card;
+    }
+
+    // ---- battery halo -------------------------------------------------------------------
+
+    /// <summary>Palette presets. Values, not code paths — selecting one fills the pickers in and
+    /// they stay editable afterwards, because a preset is a starting point rather than a lock.
+    /// Order: low, mid, high, charged, track.</summary>
+    private static readonly Dictionary<string, string[]> Palettes = new()
+    {
+        ["Ember"] = ["#FF4D4D", "#FF9A3C", "#FFD166", "#FFF3B0", "#24FFDCB4"],
+        ["Default"] = ["#FF6B5B", "#F5C451", "#6FE39F", "#5BC8FF", "#24FFFFFF"],
+        ["Monochrome"] = ["#8A8F98", "#B9BFC9", "#EDF1F7", "#FFFFFF", "#20FFFFFF"],
+    };
+
+    private readonly List<Control> _haloAttachedOnly = [];
+    private readonly List<Control> _haloDetachedOnly = [];
+    private readonly List<Action> _haloSwatchRefresh = [];
+    private ComboBox? _paletteCombo;
+
+    /// <summary>The halo gets its own page rather than a group on the Info page: that page already
+    /// carries twelve rows and this adds fourteen, which is past the point where a settings page
+    /// stops being readable. Same reason the clock and the date are separate pages.</summary>
+    private Control BuildHaloSection()
+    {
+        var (card, rows) = NewSection("Battery halo");
+        var halo = _config.Info.Halo;
+
+        rows.AddRow("Show halo", Check(halo.Enabled, v => { halo.Enabled = v; ApplyInfo(); }));
+        rows.AddRow("Size", Spinner(12, 200, halo.Size, v => { halo.Size = v; ApplyInfo(); }, "px"));
+
+        _paletteCombo = Choice([.. Palettes.Keys, "Custom"], PaletteIndexFor(halo), i =>
+        {
+            var names = Palettes.Keys.ToArray();
+            if (i >= names.Length) return;          // "Custom" is a readout, not an action
+            var preset = Palettes[names[i]];
+            halo.LowColor = preset[0];
+            halo.MidColor = preset[1];
+            halo.HighColor = preset[2];
+            halo.ChargedColor = preset[3];
+            halo.TrackColor = preset[4];
+            foreach (var refresh in _haloSwatchRefresh) refresh();
+            ApplyInfo();
+        });
+        rows.AddRow("Palette", _paletteCombo);
+
+        rows.AddRow("Low colour", BuildHaloColorPicker(() => halo.LowColor, v => halo.LowColor = v));
+        rows.AddRow("Mid colour", BuildHaloColorPicker(() => halo.MidColor, v => halo.MidColor = v));
+        rows.AddRow("High colour", BuildHaloColorPicker(() => halo.HighColor, v => halo.HighColor = v));
+        rows.AddRow("Charged colour", BuildHaloColorPicker(() => halo.ChargedColor, v => halo.ChargedColor = v));
+        rows.AddRow("Track colour", BuildHaloColorPicker(() => halo.TrackColor, v => halo.TrackColor = v));
+
+        rows.AddRow("Colour by level", Check(halo.ColorByLevel, v => { halo.ColorByLevel = v; ApplyInfo(); }));
+        rows.AddRow("Low below", Spinner(1, 99, halo.LowThreshold, v => { halo.LowThreshold = v; ApplyInfo(); }, "%"));
+        rows.AddRow("Mid below", Spinner(1, 99, halo.MidThreshold, v => { halo.MidThreshold = v; ApplyInfo(); }, "%"));
+
+        rows.AddRow("Detach from text", Check(halo.Detached, v =>
+        {
+            halo.Detached = v;
+            UpdateHaloPlacementControls();
+            ApplyInfo();
+        }));
+
+        var placement = Choice(["Left", "Right", "Above", "Below"], (int)halo.Placement,
+            i => { halo.Placement = (HaloPlacement)i; ApplyInfo(); });
+        _haloAttachedOnly.Add(placement);
+        rows.AddRow("Beside text", placement);
+
+        var anchor = BuildAnchorPicker(() => halo.Anchor, v => halo.Anchor = v, ApplyInfo);
+        var marginX = Spinner(0, 2000, halo.MarginX, v => { halo.MarginX = v; ApplyInfo(); }, "px");
+        var marginY = Spinner(0, 2000, halo.MarginY, v => { halo.MarginY = v; ApplyInfo(); }, "px");
+        _haloDetachedOnly.AddRange([anchor, marginX, marginY]);
+        rows.AddRow("Position", anchor);
+        rows.AddRow("Margin X", marginX);
+        rows.AddRow("Margin Y", marginY);
+
+        UpdateHaloPlacementControls();
+        return card;
+    }
+
+    /// <summary>Only the controls that apply are live. An enabled Placement picker in detached mode
+    /// would silently ignore every click, which is worse than one that is visibly off.</summary>
+    private void UpdateHaloPlacementControls()
+    {
+        bool detached = _config.Info.Halo.Detached;
+        foreach (var c in _haloAttachedOnly) SetLive(c, !detached);
+        foreach (var c in _haloDetachedOnly) SetLive(c, detached);
+    }
+
+    /// <summary>Disabling a container stops its children responding, and dims the ones that honour
+    /// ForeColor — the spinners and the combo.
+    ///
+    /// The anchor grid is the exception and it is not fixed here: a RadioButton with
+    /// Appearance.Button and FlatStyle.Flat is painted by WinForms with the system disabled colour
+    /// regardless of what ForeColor says, so it stays looking live while ignoring every click.
+    /// Inert but ambiguous. Fixing it properly means owner-drawing the grid, which is more change
+    /// than a greyed-out arrow is worth.</summary>
+    private static void SetLive(Control control, bool live)
+    {
+        control.Enabled = live;
+        foreach (Control child in control.Controls)
+            child.ForeColor = live ? Theme.Colors.Text : Theme.Colors.Subtle;
+    }
+
+    /// <summary>Which preset the current colours match, or "Custom". Editing any picker moves the
+    /// dropdown here without touching the colours.</summary>
+    private int PaletteIndexFor(HaloConfig halo)
+    {
+        string[] current = [halo.LowColor, halo.MidColor, halo.HighColor, halo.ChargedColor, halo.TrackColor];
+        int index = 0;
+        foreach (var preset in Palettes.Values)
+        {
+            if (preset.SequenceEqual(current, StringComparer.OrdinalIgnoreCase)) return index;
+            index++;
+        }
+        return Palettes.Count;   // Custom
+    }
+
+    private Control BuildHaloColorPicker(Func<string> get, Action<string> set)
+    {
+        var row = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.LeftToRight,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Theme.Colors.Card,
+            Margin = new Padding(0, 2, 0, 2),
+        };
+
+        var button = new Button { Width = 58, Height = 26, FlatStyle = FlatStyle.Flat, Margin = new Padding(0, 0, 10, 0) };
+        button.FlatAppearance.BorderColor = Theme.Colors.Border;
+
+        var hex = new Label
+        {
+            AutoSize = true,
+            ForeColor = Theme.Colors.Subtle,
+            Margin = new Padding(0, 5, 0, 0),
+            Font = new Font("Consolas", 9f),
+            BackColor = Theme.Colors.Card,
+        };
+
+        void Refresh()
+        {
+            var current = ClockRenderer.ParseColor(get());
+            button.BackColor = Color.FromArgb(current.R, current.G, current.B);
+            hex.Text = get().ToUpperInvariant();
+        }
+
+        Refresh();
+        _haloSwatchRefresh.Add(Refresh);
+
+        button.Click += (_, _) =>
+        {
+            var existing = ClockRenderer.ParseColor(get());
+            using var dialog = new ColorDialog
+            {
+                Color = Color.FromArgb(existing.R, existing.G, existing.B),
+                FullOpen = true,
+            };
+            if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+            // Alpha carries over from the value being replaced. The track colour is deliberately
+            // translucent and a colour dialog has no way to express that, so picking a new hue
+            // must not quietly make it opaque.
+            set($"#{existing.A:X2}{dialog.Color.R:X2}{dialog.Color.G:X2}{dialog.Color.B:X2}");
+            Refresh();
+            SyncPaletteCombo();
+            ApplyInfo();
+        };
+
+        row.Controls.Add(button);
+        row.Controls.Add(hex);
+        return row;
+    }
+
+    /// <summary>Moves the dropdown to whichever preset now matches, or to Custom. Called after a
+    /// picker edit, never as part of applying a preset — that would fight the selection.</summary>
+    private void SyncPaletteCombo()
+    {
+        if (_paletteCombo is null) return;
+        _paletteCombo.SelectedIndex = PaletteIndexFor(_config.Info.Halo);
     }
 
     private bool HasSource(string name) =>
