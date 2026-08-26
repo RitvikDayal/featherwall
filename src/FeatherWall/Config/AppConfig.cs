@@ -105,6 +105,48 @@ public sealed class InfoConfig
     /// <summary>Ordered; the order is the display order. An unknown name is logged and skipped
     /// rather than throwing, so a config written by a later version still starts this one.</summary>
     public List<string> Sources { get; set; } = ["nowPlaying", "battery"];
+
+    public HaloConfig Halo { get; set; } = new();
+}
+
+public enum HaloPlacement { Left, Right, Above, Below }
+
+/// <summary>The battery halo: a ring whose arc is the charge level and whose colour steps with it.
+///
+/// On by default, which bends the rule that an upgrade must never silently add something to
+/// someone's wallpaper. Deliberate and narrow: the info widget this attaches to shipped in the
+/// same release and has no installed base to surprise, so the population that rule protects is
+/// empty. Had the widget shipped a release earlier this would default to false.</summary>
+public sealed class HaloConfig
+{
+    public bool Enabled { get; set; } = true;
+    public int Size { get; set; } = 34;
+
+    /// <summary>False: drawn beside the info lines and moving with them. True: its own overlay,
+    /// its own anchor and its own margins, and Placement is ignored.</summary>
+    public bool Detached { get; set; } = false;
+    public HaloPlacement Placement { get; set; } = HaloPlacement.Left;
+
+    public ClockAnchor Anchor { get; set; } = ClockAnchor.TopRight;
+    public int MarginX { get; set; } = 48;
+    public int MarginY { get; set; } = 48;
+    public int? MarginLeft { get; set; }
+    public int? MarginRight { get; set; }
+    public int? MarginTop { get; set; }
+    public int? MarginBottom { get; set; }
+
+    /// <summary>False uses HighColor at every level, so one fixed colour is a supported choice
+    /// rather than something you have to fake by setting all four the same.</summary>
+    public bool ColorByLevel { get; set; } = true;
+
+    // Ember. Thresholds are inclusive upper bounds.
+    public string LowColor { get; set; } = "#FF4D4D";
+    public int LowThreshold { get; set; } = 20;
+    public string MidColor { get; set; } = "#FF9A3C";
+    public int MidThreshold { get; set; } = 50;
+    public string HighColor { get; set; } = "#FFD166";
+    public string ChargedColor { get; set; } = "#FFF3B0";
+    public string TrackColor { get; set; } = "#24FFDCB4";
 }
 
 public sealed class AppConfig
