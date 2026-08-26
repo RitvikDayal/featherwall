@@ -145,3 +145,44 @@ public class WidgetSourceEdgeTests
         Assert.Equal("…", NowPlayingSource.Format("Kind of Blue", "Miles Davis", isPlaying: true, 1));
     }
 }
+
+/// <summary>The structured reading behind the text. Format is a rendering of this, so the halo's
+/// ring and the widget's words cannot end up describing different states.</summary>
+public class BatteryReadingTests
+{
+    private static SYSTEM_POWER_STATUS Status(byte ac, byte flag, byte percent) =>
+        new() { ACLineStatus = ac, BatteryFlag = flag, BatteryLifePercent = percent };
+
+    [Fact]
+    public void NoBattery_ReadsAsNone() =>
+        Assert.Equal(BatteryState.None, BatterySource.Read(Status(1, 128, 255)).State);
+
+    [Fact]
+    public void UnknownPercent_ReadsAsNone() =>
+        Assert.Equal(BatteryState.None, BatterySource.Read(Status(0, 1, 255)).State);
+
+    [Fact]
+    public void OnAcBelowFull_ReadsAsCharging()
+    {
+        var r = BatterySource.Read(Status(1, 8, 87));
+        Assert.Equal(BatteryState.Charging, r.State);
+        Assert.Equal(87, r.Percent);
+    }
+
+    [Fact]
+    public void OnAcAtFull_ReadsAsCharged() =>
+        Assert.Equal(BatteryState.Charged, BatterySource.Read(Status(1, 1, 100)).State);
+
+    [Fact]
+    public void OffAc_ReadsAsOnBattery() =>
+        Assert.Equal(BatteryState.OnBattery, BatterySource.Read(Status(0, 1, 42)).State);
+
+    [Fact]
+    public void UnknownAcStatus_ReadsAsUnknownSource()
+    {
+        // ACLineStatus 255 means Windows cannot tell. The level is still known.
+        var r = BatterySource.Read(Status(255, 1, 87));
+        Assert.Equal(BatteryState.UnknownSource, r.State);
+        Assert.Equal(87, r.Percent);
+    }
+}
