@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FeatherWall — live wallpapers for Windows</title>
-<meta name="description" content="An open-source live wallpaper engine for Windows 10 and 11. Video and image wallpapers with a clock widget, in a single process. 7.5 MB, MIT licensed, no account and no telemetry.">
+<meta name="description" content="An open-source live wallpaper engine for Windows 10 and 11. Video and image wallpapers with clock, battery and now-playing widgets, in a single process. MIT licensed, no account and no telemetry.">
 <meta property="og:title" content="FeatherWall">
-<meta property="og:description" content="Live wallpapers for Windows that don't eat your laptop. One process, 7.5 MB, MIT.">
+<meta property="og:description" content="Live wallpapers for Windows that don't eat your laptop. One process, 7.2 MB, MIT.">
 <meta property="og:image" content="https://raw.githubusercontent.com/RitvikDayal/featherwall/main/docs/social-preview.jpg">
 <meta property="og:url" content="https://ritvikdayal.github.io/featherwall/">
 <meta name="twitter:card" content="summary_large_image">
@@ -479,7 +479,7 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
   <div class="shell">
     <div class="mh-left">
       <a class="mark" href="#top">FeatherWall</a>
-      <span class="mh-spec">v0.1.0 &nbsp;/&nbsp; MIT &nbsp;/&nbsp; Windows 10 &amp; 11</span>
+      <span class="mh-spec">v0.2.0 &nbsp;/&nbsp; MIT &nbsp;/&nbsp; Windows 10 &amp; 11</span>
     </div>
     <div class="mh-right">
       <a href="https://github.com/RitvikDayal/featherwall">Source</a>
@@ -535,8 +535,8 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
           <div>
             <h2>Live wallpapers for Windows that don't eat your laptop.</h2>
             <div class="cta">
-              <a class="btn btn-solid" href="https://github.com/RitvikDayal/featherwall/releases/latest/download/featherwall-v0.1.0-win-x64.zip">
-                Download for Windows <span class="sz">ZIP 7.5 MB</span>
+              <a class="btn btn-solid" href="https://github.com/RitvikDayal/featherwall/releases/latest/download/featherwall-v0.2.0-win-x64.zip">
+                Download for Windows <span class="sz">ZIP 7.2 MB</span>
               </a>
               <a class="btn btn-light" href="https://github.com/RitvikDayal/featherwall">Read the source</a>
             </div>
@@ -545,7 +545,7 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
         </div>
 
         <div class="hero-foot">
-          <span>Open source <b>live wallpaper engine</b> &nbsp;/&nbsp; <b>v0.1.0</b> &nbsp;/&nbsp; <b>7.5 MB</b> &nbsp;/&nbsp; <b>MIT</b> &nbsp;/&nbsp; <b>100% C#</b></span>
+          <span>Open source <b>live wallpaper engine</b> &nbsp;/&nbsp; <b>v0.2.0</b> &nbsp;/&nbsp; <b>7.2 MB</b> &nbsp;/&nbsp; <b>MIT</b> &nbsp;/&nbsp; <b>100% C#</b></span>
           <span class="hint">Scroll to lay it flat &darr;</span>
         </div>
       </div>
@@ -560,8 +560,8 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
   <div class="figures">
     <div class="shell">
       <div class="fig"><b data-to="1">0</b><span>Process, not five</span></div>
-      <div class="fig hot"><b data-to="151">0</b><span>MB for a still wallpaper</span></div>
-      <div class="fig"><b data-to="0.03" data-dec="2">0</b><span>Percent CPU at rest</span></div>
+      <div class="fig hot"><b data-to="110">0</b><span>MB for a still wallpaper</span></div>
+      <div class="fig"><b data-to="0.008" data-dec="3">0</b><span>Percent CPU at rest</span></div>
       <div class="fig"><b data-to="0">0</b><span>Accounts or trackers</span></div>
     </div>
   </div>
@@ -604,12 +604,12 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
       <span class="meta idx">02</span><span class="meta">Measured</span>
       <h2>What it actually costs</h2>
     </div>
-    <p class="intro">25 one-second samples on a running instance, with the pause state checked before and after each window so a silently paused wallpaper could never be recorded as a cheap one. <strong>Pick a state and watch what moves.</strong></p>
+    <p class="intro">Produced by <span class="mono-inline">scripts/bench/Run-Bench.ps1</span>, which reads FeatherWall's own log and <strong>refuses to report a row</strong> whose pause state changed inside the sampling window &mdash; because measuring a silently paused wallpaper is the easiest way to publish a flattering lie. <strong>Pick a state and watch what moves.</strong></p>
 
     <div class="tm-switch" role="tablist" aria-label="Wallpaper state">
       <button class="tm-tab" role="tab" data-state="still">Still image</button>
-      <button class="tm-tab is-on" role="tab" aria-selected="true" data-state="p1080">1080p60 video</button>
-      <button class="tm-tab" role="tab" data-state="p4k">4K60 video</button>
+      <button class="tm-tab" role="tab" data-state="p1080">1080p60 video</button>
+      <button class="tm-tab is-on" role="tab" aria-selected="true" data-state="p4k">4K60 video</button>
       <button class="tm-tab" role="tab" data-state="paused">Auto-paused</button>
     </div>
 
@@ -620,38 +620,43 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
       <div class="tm-grid" role="table">
         <div class="tm-h">Name</div><div class="tm-h r">CPU</div><div class="tm-h r">Memory</div><div class="tm-h r">GPU</div><div class="tm-h">GPU engine</div>
         <div class="tm-proc"><i class="tm-ico" aria-hidden="true"></i>featherwall.exe</div>
-        <div class="tm-n r" id="tm-cpu">0.79%</div>
-        <div class="tm-n r" id="tm-mem">212 MB</div>
-        <div class="tm-n r" id="tm-gpu">29.4%</div>
-        <div class="tm-e" id="tm-eng">GPU 0 &ndash; Video Processing</div>
+        <div class="tm-n r" id="tm-cpu">0.32%</div>
+        <div class="tm-n r" id="tm-mem">199 MB</div>
+        <div class="tm-n r" id="tm-gpu">5.8%</div>
+        <div class="tm-e" id="tm-eng">GPU 0 &ndash; Video Decode</div>
       </div>
 
       <div class="tm-sub">
         <div class="tm-sub-h">GPU engines &middot; this process</div>
-        <div class="tm-eng-row"><span>Video processing</span><span class="tm-bar"><i id="b-proc"></i></span><b id="v-proc">29.4%</b></div>
-        <div class="tm-eng-row"><span>Video decode</span><span class="tm-bar"><i id="b-dec"></i></span><b id="v-dec">6.8%</b></div>
-        <div class="tm-eng-row"><span>3D</span><span class="tm-bar"><i id="b-3d"></i></span><b id="v-3d">7.5%</b></div>
-        <div class="tm-eng-row"><span>Graphics memory</span><span class="tm-bar"><i id="b-mem"></i></span><b id="v-gmem">122 MB</b></div>
+        <div class="tm-eng-row"><span>Video processing</span><span class="tm-bar"><i id="b-proc"></i></span><b id="v-proc">0%</b></div>
+        <div class="tm-eng-row"><span>Video decode</span><span class="tm-bar"><i id="b-dec"></i></span><b id="v-dec">5.8%</b></div>
+        <div class="tm-eng-row"><span>3D</span><span class="tm-bar"><i id="b-3d"></i></span><b id="v-3d">0%</b></div>
+        <div class="tm-eng-row"><span>Graphics memory</span><span class="tm-bar"><i id="b-mem"></i></span><b id="v-gmem">221 MB</b></div>
       </div>
 
       <div class="tm-sub tm-adapters">
         <div class="tm-sub-h">Adapters</div>
-        <div class="tm-eng-row"><span>GPU 0 &middot; Intel Arc, integrated</span><span class="tm-bar"><i id="b-igpu"></i></span><b id="v-igpu">29.4%</b></div>
+        <div class="tm-eng-row"><span>GPU 0 &middot; Intel Arc, integrated</span><span class="tm-bar"><i id="b-igpu"></i></span><b id="v-igpu">5.8%</b></div>
         <div class="tm-eng-row"><span>GPU 1 &middot; NVIDIA RTX 5090 Laptop</span><span class="tm-bar"><i style="width:0"></i></span><b>0%</b></div>
       </div>
     </div>
 
     <p class="foot-note"><strong>All of this lands on the integrated GPU.</strong> <span class="mono-inline">nvidia-smi</span> lists no FeatherWall process on the RTX 5090, which stayed at 0% throughout. The compositor lives on whichever adapter drives your display, so the wallpaper never competes with a game on the discrete card.</p>
-    <p class="foot-note">Two things the numbers do not say on their own. GPU percentages are <em>per engine</em> and do not sum, which is why the table shows the busiest one, the same as Task Manager. And graphics memory is a separate allocation from the working set: dedicated VRAM reads 0 MB because integrated graphics borrow system RAM, so a 4K60 wallpaper really costs about 480 MB of system memory rather than 248 MB. Paused is the largest memory row because buffers are retained so resuming is instant, while CPU and both video engines drop to nothing.</p>
+    <p class="foot-note">Two things the numbers do not say on their own. GPU percentages are <em>per engine</em> and do not sum, which is why the table shows the busiest one, the same as Task Manager. And graphics memory is a separate allocation from the working set, so the honest total for a wallpaper is the working set plus both graphics figures. Paused is the largest memory row because buffers are retained so resuming is instant, while CPU and the video engines drop to nothing.</p>
+
+    <p class="foot-note"><strong>Two corrections this page owes you.</strong> It used to say dedicated VRAM reads 0&nbsp;MB &ldquo;because integrated graphics borrow system RAM&rdquo;. That is wrong: this machine's integrated Arc reports 2048&nbsp;MB of adapter RAM and Windows attributes <strong>232&nbsp;MB of dedicated usage</strong> to FeatherWall on it. The old explanation made the footprint look smaller than it is. It also published <strong>0.004%</strong> CPU for the paused state; the harness measures <strong>0.034%</strong>. Both numbers here now come from the script rather than from reading Task Manager, and the correction goes against us on the paused row.</p>
+
+    <p class="foot-note"><strong>1080p60 has never been measured</strong>, so its tab shows dashes rather than a number. An empty cell means nobody has run it &mdash; not zero, and not unknown-but-probably-fine. CPU also moves roughly twofold between runs of the same clip on the same machine, so treat any single figure as one sample.</p>
   </section>
 
   <!-- 03 -->
   <section class="shell rev" id="widget">
     <div class="rule-head">
-      <span class="meta idx">03</span><span class="meta">The widget</span>
-      <h2>Any font you own</h2>
+      <span class="meta idx">03</span><span class="meta">The widgets</span>
+      <h2>A clock, a charge, a record</h2>
     </div>
-    <p class="intro">Nine positions, any installed typeface, adjustable size, colour and opacity. The settings panel previews it with the same renderer that paints your desktop, so what you pick is what lands.</p>
+    <p class="intro">The clock takes any typeface you own, at any of nine positions, with adjustable size, colour and opacity &mdash; previewed in the settings panel by the same renderer that paints your desktop. Alongside it: a <strong>battery halo</strong> whose ring is the charge and whose colour steps with it, and a <strong>record</strong> that shows what you are listening to, with the real album artwork on its label, turning while the music plays.</p>
+    <p class="intro">The record is the only part that runs on a frame clock, and it stops the moment anything covers the desktop, the display sleeps, or the music does. Turning off &ldquo;spin while playing&rdquo; removes the timer entirely and leaves the artwork and the progress ring as a still image. Everything else repaints only when Windows pushes an event &mdash; a battery percentage moving, a track changing.</p>
     <div class="gallery">
       <figure>
         <img src="media/clock-bahnschrift.jpg" alt="Clock set in Bahnschrift Light over the Hubble Ultra Deep Field" loading="lazy">
@@ -680,14 +685,14 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
       <div class="route pick">
         <h3>Download <em>Fastest</em></h3>
         <p>Unzip anywhere and run <span class="mono-inline">FeatherWall.exe</span>. It lives in the tray.</p>
-        <a class="btn btn-solid" href="https://github.com/RitvikDayal/featherwall/releases/latest/download/featherwall-v0.1.0-win-x64.zip" style="width:100%">Get the ZIP <span class="sz">7.5 MB</span></a>
+        <a class="btn btn-solid" href="https://github.com/RitvikDayal/featherwall/releases/latest/download/featherwall-v0.2.0-win-x64.zip" style="width:100%">Get the ZIP <span class="sz">7.2 MB</span></a>
         <p class="hash">SHA-256<br>300f59a28269fc2fc034ad86ee64d6fd320cd17f8c2e7a31c789bcc28844dfd7</p>
       </div>
 
       <div class="route">
         <h3>Verify <em>Then</em></h3>
         <p>Check what you downloaded before you run it. PowerShell, no extra tools.</p>
-        <div class="code" tabindex="0" role="group" aria-label="PowerShell command to check the archive hash"><button class="copy" data-copy="Get-FileHash .\featherwall-v0.1.0-win-x64.zip -Algorithm SHA256" aria-label="Copy the hash-check command">Copy</button><span class="tok">Get-FileHash</span> .\featherwall-v0.1.0-win-x64.zip `
+        <div class="code" tabindex="0" role="group" aria-label="PowerShell command to check the archive hash"><button class="copy" data-copy="Get-FileHash .\featherwall-v0.2.0-win-x64.zip -Algorithm SHA256" aria-label="Copy the hash-check command">Copy</button><span class="tok">Get-FileHash</span> .\featherwall-v0.2.0-win-x64.zip `
   <span class="tok">-Algorithm</span> SHA256</div>
         <p class="hash">Should match the hash on the left, character for character.</p>
       </div>
@@ -745,7 +750,7 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
       <span class="meta">06 / Get it</span>
       <h2>Put something alive behind your work.</h2>
       <div class="cta">
-        <a class="btn btn-solid" href="https://github.com/RitvikDayal/featherwall/releases/latest/download/featherwall-v0.1.0-win-x64.zip">Download for Windows <span class="sz">ZIP 7.5 MB</span></a>
+        <a class="btn btn-solid" href="https://github.com/RitvikDayal/featherwall/releases/latest/download/featherwall-v0.2.0-win-x64.zip">Download for Windows <span class="sz">ZIP 7.2 MB</span></a>
         <a class="btn btn-light" href="https://github.com/RitvikDayal/featherwall">Star it on GitHub</a>
       </div>
     </div>
@@ -846,10 +851,15 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
   /* the Task Manager view. Every figure here was measured, not modelled:
      25 one-second samples per state with the pause state verified either side. */
   var STATES = {
-    still:  {cpu:'0.06%',  mem:'156 MB', gpu:'0.1%',  eng:'GPU 0 – 3D',                proc:0,    dec:0,    d3:0.1,  gmem:44,  gmemLabel:'44 MB'},
-    p1080:  {cpu:'0.79%',  mem:'212 MB', gpu:'29.4%', eng:'GPU 0 – Video Processing', proc:29.4, dec:6.8,  d3:7.5,  gmem:122, gmemLabel:'122 MB'},
-    p4k:    {cpu:'0.84%',  mem:'248 MB', gpu:'41.8%', eng:'GPU 0 – Video Processing', proc:41.8, dec:17.9, d3:7.6,  gmem:234, gmemLabel:'234 MB'},
-    paused: {cpu:'0.004%', mem:'309 MB', gpu:'0.1%',  eng:'GPU 0 – 3D',                proc:0,    dec:0,    d3:0.1,  gmem:269, gmemLabel:'269 MB'}
+    /* Every figure here comes from scripts/bench/Run-Bench.ps1, which refuses to report a row
+       whose pause state changed inside the sampling window. The earlier set was read off Task
+       Manager by hand and the harness contradicted it — paused CPU in particular was published as
+       0.004% and actually measures 0.034%. 1080p60 has never been run and says so rather than
+       carrying a number that looks measured. */
+    still:  {cpu:'0.008%', mem:'110 MB', gpu:'0%',   eng:'GPU 0 – idle after first paint', proc:0,   dec:0,   d3:0,   gmem:49,  gmemLabel:'49 MB'},
+    p1080:  {cpu:'—',      mem:'—',      gpu:'—',    eng:'not measured',                   proc:0,   dec:0,   d3:0,   gmem:0,   gmemLabel:'—'},
+    p4k:    {cpu:'0.32%',  mem:'199 MB', gpu:'5.8%', eng:'GPU 0 – Video Decode',           proc:0,   dec:5.8, d3:0,   gmem:221, gmemLabel:'221 MB'},
+    paused: {cpu:'0.034%', mem:'220 MB', gpu:'0%',   eng:'GPU 0 – idle',                   proc:0,   dec:0,   d3:0,   gmem:232, gmemLabel:'232 MB'}
   };
   var GMEM_MAX = 300;   /* bar scale, so graphics memory is comparable across states */
 
@@ -868,7 +878,9 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
     document.getElementById('b-dec').style.width  = d.dec + '%';
     document.getElementById('b-3d').style.width   = d.d3 + '%';
     document.getElementById('b-mem').style.width  = Math.min(100, d.gmem / GMEM_MAX * 100) + '%';
-    document.getElementById('b-igpu').style.width = parseFloat(d.gpu) + '%';
+    /* The unmeasured row shows an em dash, and parseFloat of that is NaN — which would set an
+       invalid width rather than an empty bar. */
+    document.getElementById('b-igpu').style.width = (parseFloat(d.gpu) || 0) + '%';
   }
   document.querySelectorAll('.tm-tab').forEach(function(tab){
     tab.addEventListener('click', function(){
@@ -877,7 +889,9 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
       showState(tab.dataset.state);
     });
   });
-  showState('p1080');
+  /* 4K60 is the heaviest state that has actually been measured. Defaulting to 1080p60 now shows
+     dashes, which reads as broken rather than as honest. */
+  showState('p4k');
 
   /* copy buttons on the install commands */
   document.querySelectorAll('.copy').forEach(function(btn){

@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
 PackageIdentifier: RitvikDayal.FeatherWall
-PackageVersion: 0.1.0
+PackageVersion: 0.2.0
 PackageLocale: en-US
 Publisher: Ritvik Dayal
 PublisherUrl: https://github.com/RitvikDayal
@@ -31,7 +31,7 @@ Tags:
   - customization
   - windows
   - dotnet
-ReleaseNotesUrl: https://github.com/RitvikDayal/featherwall/releases/tag/v0.1.0
+ReleaseNotesUrl: https://github.com/RitvikDayal/featherwall/releases/tag/v0.2.0
 Documentations:
   - DocumentLabel: Architecture
     DocumentUrl: https://github.com/RitvikDayal/featherwall/blob/main/docs/architecture.md

@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
 PackageIdentifier: RitvikDayal.FeatherWall
-PackageVersion: 0.1.0
+PackageVersion: 0.2.0
 MinimumOSVersion: 10.0.17763.0
 InstallerType: zip
 NestedInstallerType: portable
@@ -8,13 +8,16 @@ NestedInstallerFiles:
   - RelativeFilePath: featherwall.exe
     PortableCommandAlias: featherwall
 UpgradeBehavior: install
-ReleaseDate: 2026-08-15
+ReleaseDate: 2026-08-29
 Dependencies:
   PackageDependencies:
     - PackageIdentifier: Microsoft.DotNet.DesktopRuntime.10
 Installers:
   - Architecture: x64
-    InstallerUrl: https://github.com/RitvikDayal/featherwall/releases/download/v0.1.0/featherwall-v0.1.0-win-x64.zip
-    InstallerSha256: 300F59A28269FC2FC034AD86EE64D6FD320CD17F8C2E7A31C789BCC28844DFD7
+    InstallerUrl: https://github.com/RitvikDayal/featherwall/releases/download/v0.2.0/featherwall-v0.2.0-win-x64.zip
+    # Filled in after the tag is pushed: the release workflow builds the zip and writes the hash
+    # to featherwall-v0.2.0-win-x64.zip.sha256 alongside it. It cannot be known before that, and a
+    # stale hash here would make winget reject the package rather than install the wrong one.
+    InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000
 ManifestType: installer
 ManifestVersion: 1.6.0
