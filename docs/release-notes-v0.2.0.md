@@ -64,14 +64,33 @@ Building it corrected two published claims, and both corrections go against us:
 
 The website carried both of those until this release and now carries the corrections.
 
+### What the widgets cost, measured
+
+Two runs back to back in one session, because this machine's CPU figure moves two- to threefold
+between runs and comparing across sessions would mean nothing.
+
+| Still image | Without widgets | With widgets |
+|---|---|---|
+| CPU, whole machine | 0.026 % | **0.135 %** |
+| CPU, one core | 0.6 % | **3.3 %** |
+| Working set | 110.7 MB | 127.8 MB |
+
+**It moved about fivefold, and that is the record's frame clock.** Five times is well outside the
+run-to-run spread, so it is a real signal. In absolute terms it is small — 0.135 % of a 24-core
+machine is roughly a thirtieth of one core — but the still image is the state where FeatherWall
+used to do *nothing at all* after first paint, so it is worth saying out loud rather than burying
+in a ratio. `disc.rotate: false` creates no timer and gives the number back.
+
+On a 4K60 video wallpaper the same widgets cost proportionally far less (0.721 % → 0.988 %) because
+the decoder already dominates, and the GPU figure does not move.
+
+The record was confirmed turning during the sampling window from FeatherWall's own log, so this
+measures the timer running rather than a static widget.
+
 ### What is still not measured
 
-**The still-image row with the widgets enabled has never been run**, and the record adds a frame
-clock on top of an unproven baseline. `docs/benchmark.md` carries that row as a blank cell with the
-two commands to fill it. An empty cell there means nobody has measured it — not zero.
-
-Also blank: the 1080p60 row, the settings-panel row, and every competitor comparison row. The
-website's 1080p60 tab shows dashes for the same reason.
+The 1080p60 row, the settings-panel row, and every competitor comparison row. The website's 1080p60
+tab shows dashes for the same reason. An empty cell means nobody has run it — not zero.
 
 ## Upgrading
 

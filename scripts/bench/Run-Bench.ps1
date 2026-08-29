@@ -77,9 +77,18 @@ function Set-Wallpaper {
                          color = '#F0FFFFFF'; marginX = 48; marginY = 48; twentyFourHour = $true; monitor = '*' }
     }
     if ($Widgets) {
-        $config.info = @{ enabled = $true; monitor = '*'; anchor = 'BottomLeft'; marginX = 48; marginY = 48
-                          fontSize = 34; fontFamily = 'Segoe UI'; color = '#F0FFFFFF'; shadow = $true
-                          maxCharacters = 48; sources = @('nowPlaying', 'battery') }
+        # Written out in full rather than leaning on the C# defaults, so a run is reproducible even
+        # if those defaults move. This is the heaviest honest configuration: halo on, record on,
+        # and the record spinning if anything is playing.
+        $config.info = @{
+            enabled = $true; monitor = '*'; anchor = 'BottomLeft'; marginX = 48; marginY = 48
+            fontSize = 34; fontFamily = 'Segoe UI'; color = '#F0FFFFFF'; shadow = $true
+            maxCharacters = 48; sources = @('nowPlaying', 'battery')
+            halo = @{ enabled = $true; size = 44; detached = $false; placement = 'Left'
+                      colorByLevel = $true; lowThreshold = 20; midThreshold = 50 }
+            disc = @{ enabled = $true; size = 112; rotate = $true; showProgress = $true
+                      anchor = 'BottomRight'; marginX = 48; marginY = 48 }
+        }
     }
     $config | ConvertTo-Json -Depth 6 | Set-Content -Path $configPath -Encoding UTF8
 }
@@ -91,6 +100,7 @@ Add-Type -Namespace Bench -Name Fg -MemberDefinition @'
 [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
 [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
 [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowTextW(IntPtr h, System.Text.StringBuilder s, int n);
+[DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetClassNameW(IntPtr h, System.Text.StringBuilder s, int n);
 [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
 [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
 '@
@@ -109,11 +119,24 @@ function Find-CoveringWindow {
     #>
     param([int] $Samples = 6, [int] $IntervalMs = 700)
 
+    # The shell's own windows and FeatherWall's are not "covering" anything. Progman in particular
+    # IS the desktop: with everything minimised it becomes the foreground window and it is
+    # full-screen by definition, so without this the check fires on a perfectly clear desktop and
+    # refuses every run. Same list PauseDecision.cs uses, for the same reason.
+    $shellClasses = @(
+        'Progman', 'WorkerW', 'Shell_TrayWnd', 'SHELLDLL_DefView', 'SysListView32',
+        'FeatherWallSurface', 'FeatherWallClock', 'FeatherWallMessage'
+    )
+
     $screen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
     for ($i = 0; $i -lt $Samples; $i++) {
         if ($i -gt 0) { Start-Sleep -Milliseconds $IntervalMs }
         $h = [Bench.Fg]::GetForegroundWindow()
         if ($h -eq [IntPtr]::Zero -or [Bench.Fg]::IsIconic($h)) { continue }
+
+        $cls = New-Object System.Text.StringBuilder 256
+        [void][Bench.Fg]::GetClassNameW($h, $cls, 256)
+        if ($shellClasses -contains $cls.ToString()) { continue }
 
         $r = New-Object Bench.Fg+RECT
         if (-not [Bench.Fg]::GetWindowRect($h, [ref]$r)) { continue }
