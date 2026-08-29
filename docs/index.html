@@ -646,7 +646,9 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
 
     <p class="foot-note"><strong>Two corrections this page owes you.</strong> It used to say dedicated VRAM reads 0&nbsp;MB &ldquo;because integrated graphics borrow system RAM&rdquo;. That is wrong: this machine's integrated Arc reports 2048&nbsp;MB of adapter RAM and Windows attributes <strong>232&nbsp;MB of dedicated usage</strong> to FeatherWall on it. The old explanation made the footprint look smaller than it is. It also published <strong>0.004%</strong> CPU for the paused state; the harness measures <strong>0.034%</strong>. Both numbers here now come from the script rather than from reading Task Manager, and the correction goes against us on the paused row.</p>
 
-    <p class="foot-note"><strong>1080p60 has never been measured</strong>, so its tab shows dashes rather than a number. An empty cell means nobody has run it &mdash; not zero, and not unknown-but-probably-fine. CPU also moves roughly twofold between runs of the same clip on the same machine, so treat any single figure as one sample.</p>
+    <p class="foot-note"><strong>1080p60 has never been measured</strong>, so its tab shows dashes rather than a number. An empty cell means nobody has run it &mdash; not zero, and not unknown-but-probably-fine. CPU also moves two- to threefold between runs of the same clip on the same machine, so treat any single figure as one sample.</p>
+
+    <p class="foot-note"><strong>What the widgets cost.</strong> Measured across two runs in one session. On a <em>still image</em> the widgets take CPU from <strong>0.026%</strong> to <strong>0.135%</strong> of the machine &mdash; about a thirtieth of one core, but roughly five times the baseline, because a still wallpaper previously did nothing at all after first paint. That is the record's frame clock, and switching off &ldquo;spin while playing&rdquo; gives it back. On a 4K60 video the same widgets move CPU from <strong>0.721%</strong> to <strong>0.988%</strong> and the GPU not at all, because the decoder already dominates.</p>
   </section>
 
   <!-- 03 -->

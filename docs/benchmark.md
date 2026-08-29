@@ -45,7 +45,9 @@ The check exists because it caught that.
 | **Video 4K60 playing** | **1** | **199.4** | **188.6** | **220.6** | **58.5** | **0.318 %** | **7.6 %** | **5.8 % (videodecode)** | playing, full window |
 | **Video 4K60, auto-paused** | **1** | **219.5** | **204.2** | **231.6** | **68.1** | **0.034 %** | **0.8 %** | **0 % (copy)** | paused, full window |
 | Settings panel open | | | | | | | | | |
-| Still image + info widget | | | | | | | | | |
+| **Still image + widgets** | **1** | **93.0** | **127.8** | **31.5** | **2.2** | **0.135 %** | **3.3 %** | **0.1 % (copy)** | playing, full window |
+| **Video 4K60 + widgets** | **1** | **208.5** | **209.9** | **220.6** | **63.5** | **0.988 %** | **23.7 %** | **6.6 % (videodecode)** | playing, full window |
+| **Video 4K60 paused + widgets** | **1** | **210.0** | **212.6** | **220.6** | **63.5** | **0.052 %** | **1.2 %** | **0 % (3d)** | paused, full window |
 
 *Playing rows measured 2026-08-22 on build 26200, 24 cores, Intel Arc, single 2560×1600 display at
 150 %. Source `scripts/bench/results/featherwall-playing-verified.json`. Paused row measured
@@ -84,29 +86,56 @@ refused rather than measured. An interactive run is *expected* to produce it, by
 that produced the auto-paused row — but expected is not verified, no run has yet produced it, and
 this file should not read as though one has.
 
-**The widget rows have not been measured, and the design said they should be.** The battery halo
-was built to a stated cost budget — no timer, no poll, one small bitmap per change — and the
-now-playing record then added the app's first frame clock on top of it. The way to check both is
-to run the still-image row twice, once plain and once with `-Widgets`, and see whether it moves.
+## What the widgets cost — measured 2026-08-29
+
+Two runs, back to back in one session, on the same machine and the same media. Comparing across
+sessions would be meaningless: this machine's CPU figure moves two- to threefold run to run.
+
+| Still image | Without widgets | With widgets | Change |
+|---|---|---|---|
+| CPU, whole machine | 0.026 % | **0.135 %** | **x5.2** |
+| CPU, one core | 0.6 % | **3.3 %** | **x5.5** |
+| Working set | 110.7 MB | 127.8 MB | +17 MB |
+
+| 4K60 playing | Without widgets | With widgets | Change |
+|---|---|---|---|
+| CPU, whole machine | 0.721 % | **0.988 %** | x1.37 |
+| CPU, one core | 17.3 % | **23.7 %** | x1.37 |
+| Busiest GPU engine | 6.4 % decode | 6.6 % decode | unchanged |
+
+**The still-image row moved, and a lot in relative terms.** Five times is far outside the two- to
+threefold spread this machine shows between runs, so it is a real signal rather than noise.
+
+That is the record's frame clock, and it is the trade the design accepted knowingly. The still
+image is the state where FeatherWall previously did *nothing at all* after first paint, so any
+number above zero is an infinite proportional increase and a small absolute one: **0.135 % of a
+24-core machine is about a thirtieth of one core.** Set `disc.rotate` to false and no timer is
+created — the record, its artwork and the progress ring stay as a still image.
+
+On a video wallpaper the same widgets cost proportionally far less, because the decoder already
+dominates, and the GPU figure does not move at all.
+
+**Sources:** `scripts/bench/results/featherwall-baseline-verified.json` and
+`featherwall-widgets-verified.json`. The record was confirmed turning during the sampling window
+from FeatherWall's own log, so this measures the timer running rather than a static widget.
 
 **"No timer anywhere" is no longer true of FeatherWall as a whole, and this file used to say it
 was.** The record turns at 15 fps while music plays and the desktop is visible, and stops
-completely otherwise. That cost has never been measured, which is exactly why the row below
-matters more now than it did when the claim was safe. Two attempts were lost to a full-screen browser that ignores `MinimizeAll` and
+completely otherwise. Two attempts were lost to a full-screen browser that ignores `MinimizeAll` and
 takes the foreground back between samples, so FeatherWall correctly paused and the harness
 correctly refused every playing row. The harness now names that window and stops before running
 rather than discovering it four rows later.
 
-To fill the row, from an interactive session with nothing in full screen:
+To reproduce, from a session with nothing in full screen:
 
 ```powershell
 .\scripts\bench\Run-Bench.ps1 -Video <the 4K clip> -Image .\docs\media\hero.jpg -Seconds 30
 .\scripts\bench\Run-Bench.ps1 -Video <the 4K clip> -Image .\docs\media\hero.jpg -Seconds 30 -Widgets
 ```
 
-Compare the two still-image rows. **CPU spans roughly 2x run to run on this machine**, as the note
-above records, so a difference inside that spread is not evidence of anything and should be
-reported as inconclusive rather than as a pass.
+Compare the two still-image rows, and only ever from a single session. **CPU spans roughly two- to
+threefold run to run on this machine**, so a difference inside that spread is not evidence of
+anything.
 
 What *is* verified is which parts have a timer and which do not. Every repaint is logged. Over an
 hour of running, the battery and info widgets repainted only at startup, when a media session
