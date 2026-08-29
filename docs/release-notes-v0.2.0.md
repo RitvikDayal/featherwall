@@ -24,17 +24,19 @@ browser tab included.
 **Clock.** Independent date styling — its own font, size as a percentage of the time, colour and
 opacity, or inherit each from the time. Per-edge margins for both.
 
-## FeatherWall now has a timer, and it did not before
+## The record animates, which is new
 
-The record turns, and that is the app's first frame clock. v0.1.0 and every widget before this one
-repainted **only** when Windows pushed an event.
+The record is the first **continuous** frame clock in FeatherWall. To be precise about what changed:
+the clock widget has re-armed a 1 Hz timer since v0.1.0 to tick over the minute, so the app has
+never been entirely timer-free. What is new is something redrawing many times a second.
 
-It is deliberately hard to leave running. It exists only while something is actually playing **and**
+It is deliberately hard to leave running. It runs only while something is actually playing **and**
 the desktop is uncovered **and** the display is on. Any of those going false stops it dead — not
-throttled, stopped. Turning off *Spin while playing* creates no timer at all and leaves the record,
-the artwork and the progress ring as a still image.
+throttled, stopped. Turning off *Spin while playing* leaves the timer permanently disarmed, so
+nothing fires and the record, its artwork and the progress ring stay as a still image.
 
-Everything else still repaints on events only: a battery percentage moving, a track changing.
+The battery and now-playing *sources* repaint on events only: a battery percentage moving, a track
+changing.
 
 ## Rendering and reliability
 
@@ -42,8 +44,10 @@ Everything else still repaints on events only: a battery percentage moving, a tr
   same physical size on a 100 % external monitor as on a 150 % laptop panel.
 - **Device-loss recovery.** A driver update or TDR rebuilds the whole layer instead of leaving a
   dead surface, with a bounded guard against a rebuild loop.
-- **Pushed power and display signals** replace polled idle detection. The wallpaper stops rendering
-  into a screen that is off because Windows says so, not because a timer noticed.
+- **Pushed power and display signals** replace polling *for display state*. The wallpaper stops
+  rendering into a screen that is off because Windows says so, not because a timer noticed. Pause
+  decisions that depend on the foreground window — fullscreen apps, coverage — are still polled
+  twice a second, because Windows offers no push for those.
 - **CodeQL** runs on the C# code on every push.
 
 ## Measurement, and two corrections
@@ -79,7 +83,7 @@ between runs and comparing across sessions would mean nothing.
 run-to-run spread, so it is a real signal. In absolute terms it is small — 0.135 % of a 24-core
 machine is roughly a thirtieth of one core — but the still image is the state where FeatherWall
 used to do *nothing at all* after first paint, so it is worth saying out loud rather than burying
-in a ratio. `disc.rotate: false` creates no timer and gives the number back.
+in a ratio. `disc.rotate: false` leaves the timer disarmed and gives the number back.
 
 On a 4K60 video wallpaper the same widgets cost proportionally far less (0.721 % → 0.988 %) because
 the decoder already dominates, and the GPU figure does not move.
@@ -94,9 +98,13 @@ tab shows dashes for the same reason. An empty cell means nobody has run it — 
 
 ## Upgrading
 
-A v0.1.0 config loads unchanged. Everything new is off or absent until you turn it on, with one
-documented exception: if you enable the info widget, the battery halo comes with it rather than
-needing a second switch.
+A v0.1.0 config loads unchanged, and the desktop renders exactly as before until you switch the
+info widget on.
+
+When you do, the halo and the record are already enabled inside it, so they appear with it rather
+than needing two more switches. Both have their own toggles — *Show halo* on the Battery page and
+*Show record* on the Music page — and removing `battery` or `nowPlaying` from `info.sources` drops
+the corresponding widget too.
 
 ## Known limitations
 
