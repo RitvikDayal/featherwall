@@ -236,7 +236,7 @@ Windows 10 1809 or newer. Grab the release, or build it yourself.
 
 ### Download
 
-Take `featherwall-v0.1.0-win-x64.zip` from the
+Take `featherwall-v0.2.0-win-x64.zip` from the
 [latest release](https://github.com/RitvikDayal/featherwall/releases/latest). It unzips to a
 single `featherwall.exe`, so there is no installer and nothing to uninstall. Run it and you are
 done.
@@ -248,7 +248,7 @@ release to 7 MB instead of shipping a copy of .NET with it.
 Verify the download if you like:
 
 ```powershell
-Get-FileHash .\featherwall-v0.1.0-win-x64.zip -Algorithm SHA256
+Get-FileHash .\featherwall-v0.2.0-win-x64.zip -Algorithm SHA256
 # 300f59a28269fc2fc034ad86ee64d6fd320cd17f8c2e7a31c789bcc28844dfd7
 ```
 
