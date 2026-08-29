@@ -119,9 +119,10 @@ dominates, and the GPU figure does not move at all.
 `featherwall-widgets-verified.json`. The record was confirmed turning during the sampling window
 from FeatherWall's own log, so this measures the timer running rather than a static widget.
 
-**"No timer anywhere" is no longer true of FeatherWall as a whole, and this file used to say it
-was.** The record turns at 15 fps while music plays and the desktop is visible, and stops
-completely otherwise. Two attempts were lost to a full-screen browser that ignores `MinimizeAll` and
+**"No timer anywhere" was never quite true, and this file used to say it was.** The clock widget
+has re-armed a 1 Hz timer since v0.1.0. What that claim actually meant, and still means, is that the
+*battery and now-playing sources* repaint only on pushed events. The record is the new exception and
+the only continuous one: 15 fps while music plays and the desktop is visible, nothing otherwise. Two attempts were lost to a full-screen browser that ignores `MinimizeAll` and
 takes the foreground back between samples, so FeatherWall correctly paused and the harness
 correctly refused every playing row. The harness now names that window and stops before running
 rather than discovering it four rows later.

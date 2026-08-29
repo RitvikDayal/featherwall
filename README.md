@@ -314,9 +314,10 @@ the accent colour rather than a broken box; pausing dims it rather than emptying
 **The record is the one thing in FeatherWall that runs on a frame clock**, and it is deliberately
 hard to leave running: it turns only while something is actually playing *and* the desktop is
 uncovered *and* the display is on. Any of those going false stops it dead — not throttled, stopped.
-Turning off "Spin while playing" creates no timer at all, and you keep the record, the artwork and
-the progress ring as a still image. Everything else in the app still repaints only when Windows
-pushes it an event: a battery percentage moving, a track changing.
+Turning off "Spin while playing" leaves its timer permanently disarmed, and you keep the record,
+the artwork and the progress ring as a still image. The battery and now-playing sources repaint
+only when Windows pushes an event — a battery percentage moving, a track changing — and the clock
+ticks once a second, as it has since v0.1.0.
 
 Everything else: per-monitor wallpapers, Fill, Fit and Stretch modes, DPI-aware rendering, a full
 tray menu, JSON config for anything the UI does not expose, and auto-pause on fullscreen apps,
