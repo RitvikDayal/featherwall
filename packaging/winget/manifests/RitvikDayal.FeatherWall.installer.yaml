@@ -15,14 +15,8 @@ Dependencies:
 Installers:
   - Architecture: x64
     InstallerUrl: https://github.com/RitvikDayal/featherwall/releases/download/v0.2.0/featherwall-v0.2.0-win-x64.zip
-    # PLACEHOLDER — must be replaced before this manifest is submitted to winget-pkgs.
-    #
-    # The release workflow builds featherwall-v0.2.0-win-x64.zip on tag push and writes its hash to
-    # featherwall-v0.2.0-win-x64.zip.sha256 beside it. Take the value from that published sidecar
-    # rather than from a local build: a local zip can differ byte for byte from the one GitHub
-    # serves, and the whole point of the hash is that it matches what a user actually downloads.
-    #
-    # Left as zeros deliberately. A stale v0.1.0 hash would look plausible and be wrong.
-    InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000
+    # Taken from the published featherwall-v0.2.0-win-x64.zip.sha256 sidecar, then verified by
+    # downloading the release asset and hashing it — the sidecar and the artifact agree.
+    InstallerSha256: F7382A373E1D4FB50BFABAD482982E9A9D32F17992E7F2921265141E465EABEA
 ManifestType: installer
 ManifestVersion: 1.6.0
