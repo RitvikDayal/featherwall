@@ -392,6 +392,14 @@ section{padding:clamp(3.4rem,8vw,6.4rem) 0;scroll-margin-top:56px}
 .gallery figure{margin:0;background:var(--paper);display:flex;flex-direction:column}
 .gallery img{width:100%;aspect-ratio:16/10;object-fit:cover}
 .gallery figcaption{padding:.7rem .85rem;font:500 .64rem/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--slate)}
+.showcase{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);margin-bottom:1px}
+@media(min-width:820px){.showcase{grid-template-columns:5fr 7fr}}
+.showcase figure{margin:0;background:var(--paper);display:flex;flex-direction:column}
+.showcase video,.showcase img{width:100%;height:auto;display:block}
+.showcase figcaption{padding:.7rem .85rem;font:500 .64rem/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--slate)}
+.showcase .fig-body{padding:0 .95rem 1rem;font-size:.83rem;line-height:1.55;color:var(--slate);max-width:56ch}
+.showcase .fig-body.dim{font-size:.76rem;opacity:.72;margin-top:-.35rem}
+.showcase figure:last-child figcaption{border-bottom:1px solid var(--rule-soft)}
 
 /* 04 install */
 .routes{display:grid;gap:0;border-top:1px solid var(--rule)}
@@ -659,6 +667,18 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
     </div>
     <p class="intro">The clock takes any typeface you own, at any of nine positions, with adjustable size, colour and opacity &mdash; previewed in the settings panel by the same renderer that paints your desktop. Alongside it: a <strong>battery halo</strong> whose ring is the charge and whose colour steps with it, and a <strong>record</strong> that shows what you are listening to, with the real album artwork on its label, turning while the music plays.</p>
     <p class="intro">The record is the only part that runs on a frame clock, and it stops the moment anything covers the desktop, the display sleeps, or the music does. Turning off &ldquo;spin while playing&rdquo; leaves its timer permanently disarmed and the artwork and progress ring as a still image. Everything else repaints only when Windows pushes an event &mdash; a battery percentage moving, a track changing.</p>
+    <div class="showcase">
+      <figure>
+        <video src="media/record-spin.mp4" poster="media/record-poster.jpg" width="740" height="500" autoplay loop muted playsinline preload="metadata" aria-label="The now-playing record turning on the desktop, with real album artwork on its label"></video>
+        <figcaption>Record / one revolution, 33&#8531; rpm</figcaption>
+      </figure>
+      <figure>
+        <img src="media/halo-states.jpg" alt="The battery halo at 8% on battery in red, 34% and 76% charging in orange and green with a bolt, and a green tick when charged" loading="lazy" width="920" height="190">
+        <figcaption>Halo / four charge states</figcaption>
+        <p class="fig-body">The arc is the charge and the colour steps with it &mdash; red below 20%, orange below 50%, green above. A bolt sits beside the number while charging and a tick replaces it at full. Both thresholds, all five colours and the size are yours to set, and the halo either sits beside the text or detaches and takes its own corner.</p>
+        <p class="fig-body dim">Those four states are drawn by the same renderer that paints your desktop and composited side by side, because a laptop can only be in one charge state at a time. Everything else on this page is a single live capture.</p>
+      </figure>
+    </div>
     <div class="gallery">
       <figure>
         <img src="media/clock-bahnschrift.jpg" alt="Clock set in Bahnschrift Light over the Hubble Ultra Deep Field" loading="lazy">
@@ -671,6 +691,18 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
       <figure>
         <img src="media/settings-clock.png" alt="The FeatherWall settings panel showing a live clock preview" loading="lazy">
         <figcaption>Settings / live preview</figcaption>
+      </figure>
+      <figure>
+        <img src="media/settings-battery.png" alt="The Battery page of the settings panel: size, palette, five colour pickers, thresholds and a position grid" loading="lazy">
+        <figcaption>Settings / battery halo</figcaption>
+      </figure>
+      <figure>
+        <img src="media/settings-music.png" alt="The Music page of the settings panel: size, spin and progress toggles, accent colour and typography" loading="lazy">
+        <figcaption>Settings / now playing</figcaption>
+      </figure>
+      <figure>
+        <img src="media/settings-wallpaper.png" alt="The Wallpaper page of the settings panel, showing the built-in gallery and fit options" loading="lazy">
+        <figcaption>Settings / wallpaper</figcaption>
       </figure>
     </div>
   </section>

@@ -4,8 +4,8 @@
 
 ### Live wallpapers for Windows that don't eat your laptop.
 
-Any video or image on your desktop, plus a clock widget that looks designed rather than
-bolted on. One process, no browser engine, no launcher, no account.
+Any video or image on your desktop, plus widgets that read your machine and look designed
+rather than bolted on. One process, no browser engine, no launcher, no account.
 
 [![CI](https://github.com/RitvikDayal/featherwall/actions/workflows/ci.yml/badge.svg)](https://github.com/RitvikDayal/featherwall/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -14,15 +14,17 @@ bolted on. One process, no browser engine, no launcher, no account.
 
 </div>
 
-![FeatherWall running a still wallpaper with the clock widget](docs/media/hero.jpg)
+![FeatherWall on a live wallpaper with the clock, the battery halo and the now-playing record](docs/media/widgets-hero.jpg)
 
 ---
 
 ## Look at it
 
 Every screenshot here is a real capture from a 2560x1600 display at 150% scaling. Nothing is
-mocked up or retouched. The wallpapers are the ones shipped in FeatherWall's own gallery, so you
-can reproduce any of them in about four clicks.
+mocked up or retouched, with one labelled exception: the battery halo strip below is four states
+drawn by the real renderer and composited side by side, because a laptop can only be in one charge
+state at a time. The wallpapers are the ones shipped in FeatherWall's own gallery, so you can
+reproduce any of them in about four clicks.
 
 ### Video, playing live on the desktop
 
@@ -34,6 +36,30 @@ clock ticking over it, while the desktop stays fully usable underneath.
 ![A 4K animated film playing as a live wallpaper](docs/media/live-video.jpg)
 
 <sub><i>Big Buck Bunny</i>, (c) copyright 2008 Blender Foundation, <a href="https://peach.blender.org">peach.blender.org</a>, <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>.</sub>
+
+### Widgets that read your machine
+
+New in v0.2.0. Both are fed by the operating system — no network call, no account, no
+companion app — and both are off until you turn the info widget on.
+
+**The now-playing record.** The real album artwork from the Windows media session, on a vinyl
+disc that turns at 33⅓ rpm while something plays, with the track's progress on the rim. It reads
+any app with media controls, a browser tab included.
+
+<div align="center">
+
+![The now-playing record turning, with real album artwork on the label](docs/media/record-spin.gif)
+
+</div>
+
+<sub>One revolution, captured off the desktop at 15 fps. The disc stops dead when playback stops, when the desktop is covered, or when the display sleeps.</sub>
+
+**The battery halo.** The arc is the charge, the colour steps with it, and a bolt sits beside the
+number while charging — replaced by a tick at full.
+
+![The battery halo at 8% on battery, 34% and 76% charging, and charged](docs/media/halo-states.jpg)
+
+<sub>Four states, drawn by the renderer that paints your desktop, over one of the shipped wallpapers. Composited into a strip because a laptop can only be in one charge state at a time.</sub>
 
 ### The clock takes any font you own
 
@@ -60,6 +86,10 @@ dark setting too.
 | Clock | Wallpaper | Behaviour |
 |---|---|---|
 | ![Clock settings](docs/media/settings-clock.png) | ![Wallpaper settings](docs/media/settings-wallpaper.png) | ![Behaviour settings](docs/media/settings-behaviour.png) |
+
+| Battery | Music |
+|---|---|
+| ![Battery halo settings](docs/media/settings-battery.png) | ![Now-playing record settings](docs/media/settings-music.png) |
 
 ### Everything from the tray
 
