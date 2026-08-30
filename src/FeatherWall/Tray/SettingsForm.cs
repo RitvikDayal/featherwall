@@ -395,8 +395,9 @@ public sealed class SettingsForm : Form
         rows.AddRow("Track colour", BuildHaloColorPicker(() => halo.TrackColor, v => halo.TrackColor = v));
 
         rows.AddRow("Colour by level", Check(halo.ColorByLevel, v => { halo.ColorByLevel = v; ApplyInfo(); }));
-        rows.AddRow("Low below", Spinner(1, 99, halo.LowThreshold, v => { halo.LowThreshold = v; ApplyInfo(); }, "%"));
-        rows.AddRow("Mid below", Spinner(1, 99, halo.MidThreshold, v => { halo.MidThreshold = v; ApplyInfo(); }, "%"));
+        // "up to", not "below": ColorFor tests percent <= threshold, so 20 is still the low band.
+        rows.AddRow("Low up to", Spinner(1, 99, halo.LowThreshold, v => { halo.LowThreshold = v; ApplyInfo(); }, "%"));
+        rows.AddRow("Mid up to", Spinner(1, 99, halo.MidThreshold, v => { halo.MidThreshold = v; ApplyInfo(); }, "%"));
 
         rows.AddRow("Detach from text", Check(halo.Detached, v =>
         {
