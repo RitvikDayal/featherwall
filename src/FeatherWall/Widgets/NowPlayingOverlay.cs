@@ -43,6 +43,13 @@ public sealed class NowPlayingOverlay : IDisposable
     private SIZE _size;
     private Bitmap? _face;
     private string? _faceTrackId;
+
+    /// <summary>Whether the cached face was built with artwork.
+    ///
+    /// Artwork is fetched asynchronously, so it routinely lands *after* the first paint of the
+    /// track it belongs to. Keying staleness on the track alone meant that face was kept — same
+    /// track, so not stale — and the record showed the flat fallback for the rest of that song.</summary>
+    private bool _faceHasArt;
     private float _turns;
     private bool _disposed;
     private bool _suspended;   // display off
@@ -224,12 +231,20 @@ public sealed class NowPlayingOverlay : IDisposable
             return;
         }
 
-        bool stale = _face is null || _faceTrackId != reading.TrackId || _face.Width != side;
+        // Artwork arriving for a track already on screen counts as stale. It does not go the
+        // other way: art never disappears mid-track, so a face that has art is not rebuilt just
+        // because a later read returned none.
+        bool stale = _face is null
+                     || _faceTrackId != reading.TrackId
+                     || _face.Width != side
+                     || (!_faceHasArt && _source.Art is not null);
         if (!stale) return;
 
+        var art = _source.Art;
         DisposeFace();
-        _face = DiscRenderer.RenderFace(side, _source.Art, ClockRenderer.ParseColor(_config.Disc.AccentColor));
+        _face = DiscRenderer.RenderFace(side, art, ClockRenderer.ParseColor(_config.Disc.AccentColor));
         _faceTrackId = reading.TrackId;
+        _faceHasArt = art is not null;
     }
 
     private void DisposeFace()
@@ -237,6 +252,7 @@ public sealed class NowPlayingOverlay : IDisposable
         _face?.Dispose();
         _face = null;
         _faceTrackId = null;
+        _faceHasArt = false;
     }
 
     public void Dispose()
