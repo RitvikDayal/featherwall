@@ -73,6 +73,6 @@ Pausing is just `MediaPlayer.Pause()` — because rendering is event-driven, a p
 
 ## Testing strategy
 
-Pure logic is unit-tested (126 tests): fit-rect math, clock anchor/format/boundary-timer math, per-monitor DPI scaling, the date-styling fallback chain, the pause decision table, the GPU device-loss recovery budget, config round-trip and precedence, gallery manifest invariants (hosts, licenses, checksum shape, unique ids), virtual-screen coordinate mapping.
+Pure logic is unit-tested (242 tests): fit-rect math, clock anchor/format/boundary-timer math, per-monitor DPI scaling, the date-styling fallback chain, the pause decision table, the GPU device-loss recovery budget, config round-trip and precedence, gallery manifest invariants (hosts, licenses, checksum shape, unique ids), virtual-screen coordinate mapping.
 
 The interop layer cannot be unit-tested and is verified by running it. Topology detection and per-monitor DPI come out of `--diag`; rendering behind the icons on the raised topology is screenshot-verified; pause/resume transitions and wallpaper restoration on exit are exercised by hand. **What has not been verified on hardware is tracked honestly in [`recovery-matrix.md`](recovery-matrix.md)**, where an unrun row stays empty rather than being filled in from reading the code.

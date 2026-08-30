@@ -514,7 +514,7 @@ or the [help wanted](https://github.com/RitvikDayal/featherwall/labels/help%20wa
 have hardware this project does not.
 
 [CONTRIBUTING.md](CONTRIBUTING.md) has the ground rules. The short version: `dotnet test` should be
-green before you open a pull request, which takes under a second for the 126 tests currently in the
+green before you open a pull request, which takes under a second for the 242 tests currently in the
 suite, and anything touching interop or rendering needs to say which desktop topology you tested
 it on. Please also read the [Code of Conduct](CODE_OF_CONDUCT.md).
 
