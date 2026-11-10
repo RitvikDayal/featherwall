@@ -33,8 +33,14 @@ internal static class Program
         using var singleInstance = new Mutex(initiallyOwned: true, "FeatherWall.SingleInstance", out bool isFirst);
         if (!isFirst)
         {
-            User32.MessageBoxW(IntPtr.Zero, "FeatherWall is already running — look for the feather icon in the tray.",
-                "FeatherWall", 0x40);
+            // Launching it again, from the Start menu or with --settings, opens the running copy's
+            // settings, as a double-click on its tray icon does.
+            var running = User32.FindWindowW("FeatherWallMessage", null);
+            if (running != IntPtr.Zero)
+                User32.PostMessageW(running, Tray.TrayIcon.CallbackMessage, IntPtr.Zero, (IntPtr)Win32Constants.WM_LBUTTONDBLCLK);
+            else
+                User32.MessageBoxW(IntPtr.Zero, "FeatherWall is already running — look for the feather icon in the tray.",
+                    "FeatherWall", 0x40);
             return 0;
         }
 

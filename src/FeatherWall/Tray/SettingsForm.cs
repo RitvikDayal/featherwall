@@ -27,6 +27,10 @@ public sealed class SettingsForm : Form
     private readonly AppConfig _config;
     private readonly ClockPreview _preview;
     private bool _loading = true;
+    private readonly BackdropHolder _backdrop = new();
+    /// <summary>The DPI the layout sizes in this file are written for; WinForms rescales them when the
+    /// window moves monitors, but a control built afterwards has to be scaled by hand.</summary>
+    private int _layoutDpi;
 
     /// <summary>The accent the themes use, read once and refreshed when the Style page changes it,
     /// so the once-a-second preview does not ask the engine every tick.</summary>
@@ -59,6 +63,7 @@ public sealed class SettingsForm : Form
         _config = engine.Config;
         (_accent, _accentSource) = engine.CurrentAccent();
         engine.AccentChanged += OnAccentChanged;
+        engine.WidgetsChanged += OnWidgetsChanged;
         _preview = new ClockPreview(_config.Clock, CurrentStyle);
 
         Text = "FeatherWall";
@@ -67,6 +72,7 @@ public sealed class SettingsForm : Form
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         AutoScaleMode = AutoScaleMode.Dpi;
+        _layoutDpi = DeviceDpi;
         Font = new Font("Segoe UI", 9.5f);
         ShowInTaskbar = true;
         BackColor = Theme.Colors.Window;
@@ -224,10 +230,10 @@ public sealed class SettingsForm : Form
             BackColor = Theme.Colors.Card,
             Margin = new Padding(0, 0, 0, 10),
         };
-        Image? backdrop = LoadBackdrop();
+        _backdrop.Replace(LoadBackdrop());
         foreach (var theme in Enum.GetValues<WidgetTheme>())
         {
-            var tile = new ThemeTile(theme, (t, size) => ThemePreview.Render(t, size, _accent, backdrop, _config))
+            var tile = new ThemeTile(theme, (t, size) => ThemePreview.Render(t, size, _accent, _backdrop.Current, _config))
             {
                 Size = new Size(200, 138),
                 Margin = new Padding(0, 0, 10, 10),
@@ -320,12 +326,14 @@ public sealed class SettingsForm : Form
     private void RebuildGroupPosition(WidgetTheme theme)
     {
         if (_groupPositionHost is null) return;
-        _groupPositionHost.Controls.Clear();
+        ControlTree.ClearAndDispose(_groupPositionHost);
         if (!WidgetsConfig.IsGroup(theme)) return;
         var picker = BuildAnchorPicker(
             () => _config.Widgets.Position ?? GroupThemes.For(theme).DefaultPosition,
             v => _config.Widgets.Position = v,
             () => { if (!_loading) _engine.RefreshWidgets(); });
+        if (IsHandleCreated && DeviceDpi != _layoutDpi)
+            picker.Scale(new SizeF((float)DeviceDpi / _layoutDpi, (float)DeviceDpi / _layoutDpi));
         _groupPositionHost.Controls.Add(picker);
     }
 
@@ -404,14 +412,35 @@ public sealed class SettingsForm : Form
         ResizeToActivePage();
     }
 
+    /// <summary>A new accent means a new wallpaper frame, so the tiles get the new backdrop too.</summary>
     private void OnAccentChanged()
     {
-        if (!IsDisposed) RefreshStyle();
+        if (IsDisposed) return;
+        _backdrop.Replace(LoadBackdrop());
+        foreach (var tile in _tiles) tile.Rerender();
+        RefreshStyle();
+    }
+
+    /// <summary>A style, accent or size chosen from the tray while this window is open.</summary>
+    private void OnWidgetsChanged()
+    {
+        if (IsDisposed) return;
+        if (_themeSize?.Controls.OfType<NumericUpDown>().FirstOrDefault() is { } size)
+        {
+            bool was = _loading;
+            _loading = true;
+            size.Value = Math.Clamp((int)Math.Round(_config.Widgets.ScaleFor(_config.Clock) * 100), (int)size.Minimum, (int)size.Maximum);
+            _loading = was;
+        }
+        foreach (var tile in _tiles) tile.Rerender();
+        RefreshStyle();
     }
 
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
         _engine.AccentChanged -= OnAccentChanged;
+        _engine.WidgetsChanged -= OnWidgetsChanged;
+        _backdrop.Dispose();
         base.OnFormClosed(e);
     }
 

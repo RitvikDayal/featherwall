@@ -29,6 +29,8 @@ public sealed class GroupOverlay : IDisposable
         public CompositionSurface? Face;
         public required Size Size;
         public required Rectangle FaceBox;
+        /// <summary>What was last presented, so an unchanged panel is not re-shadowed each tick.</summary>
+        public byte[]? Content;
     }
 
     private readonly CompositionHost _host;
@@ -179,8 +181,15 @@ public sealed class GroupOverlay : IDisposable
 
                 using var bmp = new Bitmap(panel.Bounds.Width, panel.Bounds.Height, PixelFormat.Format32bppPArgb);
                 using (var g = Graphics.FromImage(bmp)) panel.Paint(g);
-                BakedShadow.DrawBehind(bmp, ShadowRecipe.Default, scale, panel.FaceBox.IsEmpty ? null : panel.FaceBox);
-                layers.Static.PresentBitmap(bmp);
+                // A clock tick changes only the clock: the other panels paint the same pixels, so
+                // their shadow and present (the expensive part) are skipped.
+                var content = PanelContent.Hash(bmp);
+                if (layers.Content is null || !content.AsSpan().SequenceEqual(layers.Content))
+                {
+                    BakedShadow.DrawBehind(bmp, ShadowRecipe.Default, scale, panel.FaceBox.IsEmpty ? null : panel.FaceBox);
+                    layers.Static.PresentBitmap(bmp);
+                    layers.Content = content;
+                }
 
                 if (layers.Face is not null && track is { } t)
                 {

@@ -31,10 +31,7 @@ public static class BatteryHaloRenderer
     /// <summary>GDI+ pads MeasureString for overhang, which pushes the per-cent sign away from the
     /// digits by a few pixels that look like a mistake at this size. Typographic measurement
     /// reports the glyphs' real extent.</summary>
-    private static readonly StringFormat Tight = new(StringFormat.GenericTypographic)
-    {
-        FormatFlags = StringFormatFlags.MeasureTrailingSpaces,
-    };
+    private static StringFormat Tight => Themes.ThemeFonts.Tight;
 
     /// <summary>A step, not a blend. Thresholds are inclusive upper bounds, and low wins any
     /// overlap an inverted config creates rather than throwing — a config written wrong should
