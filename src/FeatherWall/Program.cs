@@ -22,6 +22,10 @@ internal static class Program
             return 0;
         }
 
+        // Before Log.Init writes this run's log: an earlier run's log is how an upgrade is told apart
+        // from a fresh install when no config.json was ever saved.
+        bool ranBefore = ConfigStore.RanBefore(Log.Directory);
+
         Log.Init();
         Log.Info($"FeatherWall starting (pid {Environment.ProcessId})");
 
@@ -45,10 +49,8 @@ internal static class Program
             }
         }
 
-        // Every earlier version writes this on start, before anything else could have: its presence
-        // means FeatherWall has run here before, whether or not a config.json was ever saved.
-        bool ranBefore = File.Exists(Path.Combine(Log.Directory, "original-wallpaper.txt"));
-        var config = ConfigStore.Load(ConfigStore.ConfigPath, out bool configUnreadable, ranBefore);
+        var config = ConfigStore.LoadAtStartup(ConfigStore.ConfigPath, ranBefore, out bool configUnreadable);
+        if (config.IsFreshInstall) Log.Info("Fresh install: starting config saved");
 
         // --no-shortcut keeps a dev build from repointing the Start menu entry at bin\.
         if (!args.Contains("--no-shortcut") && Environment.ProcessPath is { } exe && StartMenuShortcut.IsOwnExe(exe))

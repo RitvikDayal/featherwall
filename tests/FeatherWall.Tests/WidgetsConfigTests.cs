@@ -139,3 +139,53 @@ public class UpgradeDetectionTests
         Assert.False(config.Info.Enabled);
     }
 }
+
+public class StartupConfigTests
+{
+    private static (string Config, string AppDir) Dirs()
+    {
+        var root = Directory.CreateTempSubdirectory("fw-start-").FullName;
+        var app = Path.Combine(root, "local");
+        Directory.CreateDirectory(app);
+        return (Path.Combine(root, "roaming", "config.json"), app);
+    }
+
+    [Fact]
+    public void EarlierRunThatExitedCleanly_IsStillAnUpgrade()
+    {
+        // A clean exit deletes original-wallpaper.txt; the log stays (CodeRabbit on #25).
+        var (config, app) = Dirs();
+        File.WriteAllText(Path.Combine(app, "featherwall.log"), "2026-11-09 [INF] FeatherWall starting");
+        var loaded = ConfigStore.LoadAtStartup(config, ConfigStore.RanBefore(app), out _);
+        Assert.Equal(WidgetTheme.Classic, loaded.Widgets.ResolveTheme());
+        Assert.False(loaded.IsFreshInstall);
+    }
+
+    [Fact]
+    public void FreshInstall_IsSaved_SoItsSecondStartIsStillOrbit()
+    {
+        var (config, app) = Dirs();
+        Assert.Equal(WidgetTheme.Orbit, ConfigStore.LoadAtStartup(config, ConfigStore.RanBefore(app), out _).Widgets.ResolveTheme());
+        Assert.True(File.Exists(config));
+
+        // The first run wrote its log; that must not turn the second start into an "upgrade".
+        File.WriteAllText(Path.Combine(app, "featherwall.log"), "x");
+        var second = ConfigStore.LoadAtStartup(config, ConfigStore.RanBefore(app), out _);
+        Assert.Equal(WidgetTheme.Orbit, second.Widgets.ResolveTheme());
+        Assert.True(second.Info.Enabled);
+    }
+
+    [Fact]
+    public void NothingThere_IsFresh() =>
+        Assert.False(ConfigStore.RanBefore(Dirs().AppDir));
+
+    [Theory]
+    [InlineData("featherwall.log")]
+    [InlineData("original-wallpaper.txt")]
+    public void AnyEarlierRunsFile_MeansItRanBefore(string file)
+    {
+        var app = Dirs().AppDir;
+        File.WriteAllText(Path.Combine(app, file), "x");
+        Assert.True(ConfigStore.RanBefore(app));
+    }
+}
