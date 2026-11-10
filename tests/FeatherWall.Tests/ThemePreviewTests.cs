@@ -56,3 +56,21 @@ public class ThemePreviewTests
         Assert.False(Uniform(tile));
     }
 }
+
+public class ThemePreviewFitTests
+{
+    [Fact]
+    public void LargeRecord_ShrinksEverythingUntilTheyStack()
+    {
+        // Ritvik's own config: a 260 px record under a 150 px clock overlapped it on the tile.
+        var clock = new System.Drawing.Size(420, 260);
+        var record = new System.Drawing.Size(300, 270);
+        float s = ThemePreview.Fit(clock, record, new System.Drawing.Size(60, 60));
+        Assert.True((clock.Height + record.Height) * s <= ThemePreview.CanvasSize.Height - ThemePreview.MarginPx * 3,
+                    $"scale {s} still overlaps");
+    }
+
+    [Fact]
+    public void SmallWidgets_KeepTheirPreviewSize() =>
+        Assert.Equal(0.8f, ThemePreview.Fit(new(200, 100), new(150, 80), new(40, 40)));
+}

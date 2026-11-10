@@ -3,6 +3,7 @@ using System.Drawing.Text;
 using System.Windows.Forms;
 using FeatherWall.Config;
 using FeatherWall.Widgets;
+using FeatherWall.Widgets.Themes;
 
 namespace FeatherWall.Tray;
 
@@ -27,6 +28,16 @@ public sealed class SettingsForm : Form
     private readonly ClockPreview _preview;
     private bool _loading = true;
 
+    /// <summary>The accent the themes use, read once and refreshed when the Style page changes it,
+    /// so the once-a-second preview does not ask the engine every tick.</summary>
+    private Color _accent;
+    private string _accentSource = "default";
+    private readonly List<(Label Caption, string Text)> _classicOnly = [];
+    private readonly List<ThemeTile> _tiles = [];
+    private Label? _styleHint;
+    private Button? _accentSwatch;
+    private Label? _accentHex;
+
     private Button _colorButton = null!;
     private Label _colorHex = null!;
 
@@ -34,7 +45,9 @@ public sealed class SettingsForm : Form
     {
         _engine = engine;
         _config = engine.Config;
-        _preview = new ClockPreview(_config.Clock);
+        (_accent, _accentSource) = engine.CurrentAccent();
+        engine.AccentChanged += OnAccentChanged;
+        _preview = new ClockPreview(_config.Clock, CurrentStyle);
 
         Text = "FeatherWall";
         FormBorderStyle = FormBorderStyle.Sizable;
@@ -57,6 +70,7 @@ public sealed class SettingsForm : Form
         var pages = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Colors.Window, AutoScroll = true };
         var rail = new Panel { Dock = DockStyle.Left, Width = RailWidth, BackColor = Theme.Colors.Window };
 
+        AddPage(pages, rail, "Style", BuildStyleSection());
         AddPage(pages, rail, "Clock", BuildClockSection());
         AddPage(pages, rail, "Date", BuildDateSection());
         AddPage(pages, rail, "Info", BuildInfoSection());
@@ -65,6 +79,7 @@ public sealed class SettingsForm : Form
         AddPage(pages, rail, "Wallpaper", BuildWallpaperSection());
         AddPage(pages, rail, "Behaviour", BuildBehaviorSection());
         SelectPage(0);
+        RefreshStyle();
 
         var body = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Colors.Window, Padding = new Padding(20, 16, 20, 8) };
         body.Controls.Add(pages);
@@ -176,6 +191,173 @@ public sealed class SettingsForm : Form
 
     // ---- sections ----------------------------------------------------------------------
 
+    // ---- style ---------------------------------------------------------------------------
+
+    private WidgetStyle CurrentStyle() =>
+        new(_config.Widgets.ResolveTheme(), _accent, Editorial.Scale(_config.Clock, 1.0));
+
+    /// <summary>First in the rail because it is the most visible choice. Every tile is drawn by
+    /// its theme's own renderers with sample data, so what is shown is what lands on the desktop.</summary>
+    private Control BuildStyleSection()
+    {
+        var (card, rows) = NewSection("Widget style");
+
+        var grid = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.LeftToRight,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = true,
+            MaximumSize = new Size(ContentWidth - 32, 0),
+            BackColor = Theme.Colors.Card,
+            Margin = new Padding(0, 0, 0, 10),
+        };
+        Image? backdrop = LoadBackdrop();
+        foreach (var theme in Enum.GetValues<WidgetTheme>())
+        {
+            var tile = new ThemeTile(theme, (t, size) => ThemePreview.Render(t, size, _accent, backdrop, _config))
+            {
+                Size = new Size(200, 138),
+                Margin = new Padding(0, 0, 10, 10),
+            };
+            tile.Click += (_, _) =>
+            {
+                if (_config.Widgets.ResolveTheme() == tile.Style) return;
+                _engine.SetWidgetTheme(tile.Style);
+                RefreshStyle();
+            };
+            _tiles.Add(tile);
+            grid.Controls.Add(tile);
+        }
+        card.Controls.Add(grid);
+        card.Controls.SetChildIndex(grid, 1);
+
+        rows.AddRow("Accent", BuildAccentPicker());
+
+        _styleHint = new Label
+        {
+            Text = "Turn on the Info widget, with Now playing and Battery, to see the full set.",
+            AutoSize = true,
+            MaximumSize = new Size(ContentWidth - 32, 0),
+            ForeColor = Theme.Colors.Subtle,
+            Margin = new Padding(0, 8, 0, 0),
+        };
+        card.Controls.Add(_styleHint);
+        return card;
+    }
+
+    /// <summary>The wallpaper's own frame behind the tiles when there is one. Copied out of the
+    /// file so the engine can keep rewriting it while the window is open.</summary>
+    private Image? LoadBackdrop()
+    {
+        try
+        {
+            if (_engine.PreviewBackdropPath() is not { } path) return null;
+            using var stream = File.OpenRead(path);
+            using var image = Image.FromStream(stream);
+            return new Bitmap(image);
+        }
+        catch (Exception ex)
+        {
+            Common.Log.Warn($"Style page backdrop unavailable: {ex.Message}");
+            return null;
+        }
+    }
+
+    private Control BuildAccentPicker()
+    {
+        var row = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.LeftToRight,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Theme.Colors.Card,
+            Margin = new Padding(0, 2, 0, 2),
+        };
+        _accentSwatch = new Button { Width = 58, Height = 26, FlatStyle = FlatStyle.Flat, Margin = new Padding(0, 0, 10, 0) };
+        _accentSwatch.FlatAppearance.BorderColor = Theme.Colors.Border;
+        _accentHex = new Label
+        {
+            AutoSize = true,
+            ForeColor = Theme.Colors.Subtle,
+            Margin = new Padding(0, 5, 10, 0),
+            Font = new Font("Consolas", 9f),
+        };
+        var auto = new Button
+        {
+            Text = "Auto",
+            Width = 66,
+            Height = 26,
+            FlatStyle = FlatStyle.Flat,
+            BackColor = Theme.Colors.Control,
+            ForeColor = Theme.Colors.Text,
+        };
+        auto.FlatAppearance.BorderColor = Theme.Colors.Border;
+
+        _accentSwatch.Click += (_, _) =>
+        {
+            using var dialog = new ColorDialog { Color = _accent, FullOpen = true };
+            if (dialog.ShowDialog(this) != DialogResult.OK) return;
+            var c = dialog.Color;
+            _engine.SetWidgetAccent($"#{c.R:X2}{c.G:X2}{c.B:X2}");
+            RefreshStyle();
+        };
+        auto.Click += (_, _) =>
+        {
+            _engine.SetWidgetAccent("auto");
+            RefreshStyle();
+        };
+
+        row.Controls.Add(_accentSwatch);
+        row.Controls.Add(_accentHex);
+        row.Controls.Add(auto);
+        return row;
+    }
+
+    /// <summary>After any theme or accent change: tiles, swatch, labels, preview and hint.</summary>
+    private void RefreshStyle()
+    {
+        var before = _accent;
+        (_accent, _accentSource) = _engine.CurrentAccent();
+        var theme = _config.Widgets.ResolveTheme();
+        foreach (var tile in _tiles)
+        {
+            tile.Selected = tile.Style == theme;
+            if (_accent != before) tile.Rerender();
+        }
+        if (_accentSwatch is not null) _accentSwatch.BackColor = _accent;
+        if (_accentHex is not null)
+            _accentHex.Text = $"#{_accent.R:X2}{_accent.G:X2}{_accent.B:X2}  {_accentSource}";
+        if (_styleHint is not null)
+            _styleHint.Visible = theme != WidgetTheme.Classic
+                && !(_config.Info.Enabled && HasSource("nowPlaying") && HasSource("battery"));
+        RefreshClassicOnly();
+        _preview.Invalidate();
+    }
+
+    private void OnAccentChanged()
+    {
+        if (!IsDisposed) RefreshStyle();
+    }
+
+    protected override void OnFormClosed(FormClosedEventArgs e)
+    {
+        _engine.AccentChanged -= OnAccentChanged;
+        base.OnFormClosed(e);
+    }
+
+    /// <summary>Marks every Classic-only setting while another theme is active, and unmarks them
+    /// when Classic is back.</summary>
+    private void RefreshClassicOnly()
+    {
+        bool other = _config.Widgets.ResolveTheme() != WidgetTheme.Classic;
+        foreach (var (caption, text) in _classicOnly)
+        {
+            caption.Text = other ? $"{text}  · Classic only" : text;
+            caption.ForeColor = other ? Theme.Colors.Subtle : Theme.Colors.Text;
+        }
+    }
+
     private Control BuildClockSection()
     {
         var (card, rows) = NewSection("Clock");
@@ -186,14 +368,14 @@ public sealed class SettingsForm : Form
         rows.AddRow("Show seconds", Check(_config.Clock.ShowSeconds, v => { _config.Clock.ShowSeconds = v; ApplyClock(); }));
         // "Show date" and "Separator rule" live on the Date page — two controls bound to one
         // property desync the moment either is used.
-        rows.AddRow("Drop shadow", Check(_config.Clock.Shadow, v => { _config.Clock.Shadow = v; ApplyClock(); }));
+        rows.AddClassicOnly("Drop shadow", Check(_config.Clock.Shadow, v => { _config.Clock.Shadow = v; ApplyClock(); }));
         rows.AddRow("Position", BuildAnchorPicker());
         rows.AddRow("Margin X", Spinner(0, 2000, _config.Clock.MarginX, v => { _config.Clock.MarginX = v; ApplyClock(); }, "px"));
         rows.AddRow("Margin Y", Spinner(0, 2000, _config.Clock.MarginY, v => { _config.Clock.MarginY = v; ApplyClock(); }, "px"));
         rows.AddRow("Font size", Spinner(24, 400, (int)_config.Clock.FontSize, v => { _config.Clock.FontSize = v; ApplyClock(); }, "px"));
-        rows.AddRow("Font", BuildFontPicker());
-        rows.AddRow("Colour", BuildColorPicker());
-        rows.AddRow("Opacity", Spinner(10, 100, (int)Math.Round(CurrentAlpha() / 2.55), v =>
+        rows.AddClassicOnly("Font", BuildFontPicker());
+        rows.AddClassicOnly("Colour", BuildColorPicker());
+        rows.AddClassicOnly("Opacity", Spinner(10, 100, (int)Math.Round(CurrentAlpha() / 2.55), v =>
         {
             SetColor(CurrentRgb(), (int)Math.Round(v * 2.55));
             UpdateColorLabel();
@@ -212,17 +394,17 @@ public sealed class SettingsForm : Form
         var clock = _config.Clock;
 
         rows.AddRow("Show date", Check(clock.ShowDate, v => { clock.ShowDate = v; ApplyClock(); }));
-        rows.AddRow("Separator rule", Check(clock.Separator, v => { clock.Separator = v; ApplyClock(); }));
-        rows.AddRow("Font", BuildFontPicker(
+        rows.AddClassicOnly("Separator rule", Check(clock.Separator, v => { clock.Separator = v; ApplyClock(); }));
+        rows.AddClassicOnly("Font", BuildFontPicker(
             () => clock.DateFontFamily,
             v => clock.DateFontFamily = v,
             placeholder: SameAsTime));
-        rows.AddRow("Size", Spinner(5, 100, (int)Math.Round(clock.DateFontScale * 100),
+        rows.AddClassicOnly("Size", Spinner(5, 100, (int)Math.Round(clock.DateFontScale * 100),
             v => { clock.DateFontScale = v / 100f; ApplyClock(); }, "% of time"));
-        rows.AddRow("Minimum size", Spinner(6, 200, (int)clock.DateMinFontSize,
+        rows.AddClassicOnly("Minimum size", Spinner(6, 200, (int)clock.DateMinFontSize,
             v => { clock.DateMinFontSize = v; ApplyClock(); }, "px"));
-        rows.AddRow("Colour", BuildDateColorPicker());
-        rows.AddRow("Opacity", Spinner(10, 100, (int)Math.Round(clock.DateOpacity * 100),
+        rows.AddClassicOnly("Colour", BuildDateColorPicker());
+        rows.AddClassicOnly("Opacity", Spinner(10, 100, (int)Math.Round(clock.DateOpacity * 100),
             v => { clock.DateOpacity = v / 100f; ApplyClock(); }, "% of time colour"));
 
         return card;
@@ -327,14 +509,14 @@ public sealed class SettingsForm : Form
             i => { SetOrder(nowPlayingFirst: i == 0); ApplyInfo(); }));
         rows.AddRow("Max characters", Spinner(10, 200, info.MaxCharacters,
             v => { info.MaxCharacters = v; ApplyInfo(); }, "chars"));
-        rows.AddRow("Drop shadow", Check(info.Shadow, v => { info.Shadow = v; ApplyInfo(); }));
+        rows.AddClassicOnly("Drop shadow", Check(info.Shadow, v => { info.Shadow = v; ApplyInfo(); }));
         rows.AddRow("Position", BuildAnchorPicker(() => info.Anchor, v => info.Anchor = v, ApplyInfo));
         rows.AddRow("Margin X", Spinner(0, 2000, info.MarginX, v => { info.MarginX = v; ApplyInfo(); }, "px"));
         rows.AddRow("Margin Y", Spinner(0, 2000, info.MarginY, v => { info.MarginY = v; ApplyInfo(); }, "px"));
-        rows.AddRow("Font size", Spinner(10, 200, (int)info.FontSize, v => { info.FontSize = v; ApplyInfo(); }, "px"));
-        rows.AddRow("Font", BuildFontPicker(() => info.FontFamily, v => info.FontFamily = v, apply: ApplyInfo));
-        rows.AddRow("Colour", BuildInfoColorPicker());
-        rows.AddRow("Opacity", Spinner(10, 100, (int)Math.Round(InfoAlpha() / 2.55), v =>
+        rows.AddClassicOnly("Font size", Spinner(10, 200, (int)info.FontSize, v => { info.FontSize = v; ApplyInfo(); }, "px"));
+        rows.AddClassicOnly("Font", BuildFontPicker(() => info.FontFamily, v => info.FontFamily = v, apply: ApplyInfo));
+        rows.AddClassicOnly("Colour", BuildInfoColorPicker());
+        rows.AddClassicOnly("Opacity", Spinner(10, 100, (int)Math.Round(InfoAlpha() / 2.55), v =>
         {
             SetInfoColor(InfoRgb(), (int)Math.Round(v * 2.55));
             if (_infoColorHex is not null) _infoColorHex.Text = _config.Info.Color.ToUpperInvariant();
@@ -371,7 +553,7 @@ public sealed class SettingsForm : Form
         var halo = _config.Info.Halo;
 
         rows.AddRow("Show halo", Check(halo.Enabled, v => { halo.Enabled = v; ApplyInfo(); }));
-        rows.AddRow("Size", Spinner(12, 200, halo.Size, v => { halo.Size = v; ApplyInfo(); }, "px"));
+        rows.AddClassicOnly("Size", Spinner(12, 200, halo.Size, v => { halo.Size = v; ApplyInfo(); }, "px"));
 
         _paletteCombo = Choice([.. Palettes.Keys, "Custom"], PaletteIndexFor(halo), i =>
         {
@@ -386,13 +568,13 @@ public sealed class SettingsForm : Form
             foreach (var refresh in _haloSwatchRefresh) refresh();
             ApplyInfo();
         });
-        rows.AddRow("Palette", _paletteCombo);
+        rows.AddClassicOnly("Palette", _paletteCombo);
 
-        rows.AddRow("Low colour", BuildHaloColorPicker(() => halo.LowColor, v => halo.LowColor = v));
-        rows.AddRow("Mid colour", BuildHaloColorPicker(() => halo.MidColor, v => halo.MidColor = v));
-        rows.AddRow("High colour", BuildHaloColorPicker(() => halo.HighColor, v => halo.HighColor = v));
-        rows.AddRow("Charged colour", BuildHaloColorPicker(() => halo.ChargedColor, v => halo.ChargedColor = v));
-        rows.AddRow("Track colour", BuildHaloColorPicker(() => halo.TrackColor, v => halo.TrackColor = v));
+        rows.AddClassicOnly("Low colour", BuildHaloColorPicker(() => halo.LowColor, v => halo.LowColor = v));
+        rows.AddClassicOnly("Mid colour", BuildHaloColorPicker(() => halo.MidColor, v => halo.MidColor = v));
+        rows.AddClassicOnly("High colour", BuildHaloColorPicker(() => halo.HighColor, v => halo.HighColor = v));
+        rows.AddClassicOnly("Charged colour", BuildHaloColorPicker(() => halo.ChargedColor, v => halo.ChargedColor = v));
+        rows.AddClassicOnly("Track colour", BuildHaloColorPicker(() => halo.TrackColor, v => halo.TrackColor = v));
 
         rows.AddRow("Colour by level", Check(halo.ColorByLevel, v => { halo.ColorByLevel = v; ApplyInfo(); }));
         // "up to", not "below": ColorFor tests percent <= threshold, so 20 is still the low band.
@@ -409,7 +591,7 @@ public sealed class SettingsForm : Form
         var placement = Choice(["Left", "Right", "Above", "Below"], (int)halo.Placement,
             i => { halo.Placement = (HaloPlacement)i; ApplyInfo(); });
         _haloAttachedOnly.Add(placement);
-        rows.AddRow("Beside text", placement);
+        rows.AddClassicOnly("Beside text", placement);
 
         var anchor = BuildAnchorPicker(() => halo.Anchor, v => halo.Anchor = v, ApplyInfo);
         var marginX = Spinner(0, 2000, halo.MarginX, v => { halo.MarginX = v; ApplyInfo(); }, "px");
@@ -536,20 +718,20 @@ public sealed class SettingsForm : Form
         var disc = _config.Info.Disc;
 
         rows.AddRow("Show record", Check(disc.Enabled, v => { disc.Enabled = v; ApplyInfo(); }));
-        rows.AddRow("Size", Spinner(40, 400, disc.Size, v => { disc.Size = v; ApplyInfo(); }, "px"));
+        rows.AddClassicOnly("Size", Spinner(40, 400, disc.Size, v => { disc.Size = v; ApplyInfo(); }, "px"));
         rows.AddRow("Spin while playing", Check(disc.Rotate, v => { disc.Rotate = v; ApplyInfo(); }));
         rows.AddRow("Show progress ring", Check(disc.ShowProgress, v => { disc.ShowProgress = v; ApplyInfo(); }));
-        rows.AddRow("Accent colour", BuildHaloColorPicker(() => disc.AccentColor, v => disc.AccentColor = v));
+        rows.AddClassicOnly("Accent colour", BuildHaloColorPicker(() => disc.AccentColor, v => disc.AccentColor = v));
 
-        rows.AddRow("Title size", Spinner(8, 96, (int)disc.TitleFontSize,
+        rows.AddClassicOnly("Title size", Spinner(8, 96, (int)disc.TitleFontSize,
             v => { disc.TitleFontSize = v; ApplyInfo(); }, "px"));
-        rows.AddRow("Artist size", Spinner(6, 72, (int)disc.ArtistFontSize,
+        rows.AddClassicOnly("Artist size", Spinner(6, 72, (int)disc.ArtistFontSize,
             v => { disc.ArtistFontSize = v; ApplyInfo(); }, "px"));
-        rows.AddRow("Artist in capitals", Check(disc.ArtistUppercase,
+        rows.AddClassicOnly("Artist in capitals", Check(disc.ArtistUppercase,
             v => { disc.ArtistUppercase = v; ApplyInfo(); }));
-        rows.AddRow("Artist spacing", Spinner(0, 12, (int)Math.Round(disc.ArtistLetterSpacing),
+        rows.AddClassicOnly("Artist spacing", Spinner(0, 12, (int)Math.Round(disc.ArtistLetterSpacing),
             v => { disc.ArtistLetterSpacing = v; ApplyInfo(); }, "px"));
-        rows.AddRow("Artist opacity", Spinner(10, 100, (int)Math.Round(disc.ArtistOpacity * 100),
+        rows.AddClassicOnly("Artist opacity", Spinner(10, 100, (int)Math.Round(disc.ArtistOpacity * 100),
             v => { disc.ArtistOpacity = v / 100f; ApplyInfo(); }, "%"));
 
         rows.AddRow("Position", BuildAnchorPicker(() => disc.Anchor, v => disc.Anchor = v, ApplyInfo));
@@ -958,23 +1140,33 @@ public sealed class SettingsForm : Form
     /// structural guarantee the old free-form 4-column flow grid lacked.</summary>
     private sealed class RowGrid : TableLayoutPanel
     {
+        private readonly SettingsForm _owner;
+
         public RowGrid(SettingsForm owner)
         {
+            _owner = owner;
             ColumnCount = 2;
             AutoSize = true;
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
             BackColor = Theme.Colors.Card;
             ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, LabelColumnWidth));
             ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            _ = owner;
         }
 
-        public void AddRow(string label, Control control)
+        public void AddRow(string label, Control control) => Add(label, control);
+
+        /// <summary>A setting only the Classic theme reads. It stays editable under another
+        /// theme — it is Classic's value for when Classic is chosen again — but says so.</summary>
+        public void AddClassicOnly(string label, Control control) =>
+            _owner._classicOnly.Add((Add(label, control), label));
+
+        private Label Add(string label, Control control)
         {
             var caption = new Label
             {
                 Text = label,
                 AutoSize = true,
+                MaximumSize = new Size(LabelColumnWidth - 12, 0),
                 ForeColor = Theme.Colors.Text,
                 Anchor = AnchorStyles.Left,
                 Margin = new Padding(0, 6, 12, 6),
@@ -982,6 +1174,7 @@ public sealed class SettingsForm : Form
             control.Anchor = AnchorStyles.Left;
             Controls.Add(caption);
             Controls.Add(control);
+            return caption;
         }
     }
 
