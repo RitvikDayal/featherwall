@@ -50,6 +50,7 @@ public static class ThemePreview
             {
                 case WidgetTheme.Classic: DrawClassic(g, config); break;
                 case WidgetTheme.Editorial: DrawEditorial(g, accent, config); break;
+                case var group when WidgetsConfig.IsGroup(group): DrawGroup(g, GroupThemes.For(group), accent, config); break;
                 // A theme with no preview fails EveryTheme_Renders rather than shipping a tile
                 // that quietly shows Classic under the new theme's name.
                 default: throw new NotSupportedException($"No Style page preview for {theme}");
@@ -112,6 +113,49 @@ public static class ThemePreview
         var hm = Editorial.MeasureInfo(config.Info, [], scale, Editorial.MeasureHalo(halo, SampleBattery, scale));
         Place(g, hm.Total, Canvas.Width - Margin / 2 - hm.Total.Width, Margin / 2,
               bg => Editorial.PaintHalo(bg, hm.HaloBox, halo, SampleBattery, accent), scale);
+    }
+
+    /// <summary>A group theme laid out on the miniature desktop, shrunk until every panel fits and
+    /// none overlaps. Each panel is painted and shadowed as GroupOverlay does, with the record's face
+    /// drawn above it where the compositor would turn it.</summary>
+    private static void DrawGroup(Graphics g, IGroupTheme theme, Color accent, AppConfig config)
+    {
+        float unit = Editorial.Scale(config.Clock, 1.0);
+        IReadOnlyList<GroupPanel> panels = [];
+        float f = WidgetScale;
+        for (int attempt = 0; attempt < 12; attempt++, f *= 0.85f)
+        {
+            var input = new GroupInput(SampleTime, config.Clock, config.Info.Disc, config.Info.Halo,
+                SampleTrack, SampleBattery, accent, unit * f, f, config.Widgets.Position,
+                new Rectangle(Point.Empty, Canvas), config.Info.MaxCharacters);
+            panels = theme.Layout(input);
+            if (FitsWithoutOverlap(panels)) break;
+        }
+
+        foreach (var panel in panels)
+        {
+            using var surface = new Bitmap(panel.Bounds.Width, panel.Bounds.Height, PixelFormat.Format32bppPArgb);
+            using (var sg = Graphics.FromImage(surface)) panel.Paint(sg);
+            BakedShadow.DrawBehind(surface, ShadowRecipe.Default, unit * f,
+                                   panel.FaceBox.IsEmpty ? null : panel.FaceBox);
+            g.DrawImage(surface, panel.Bounds.X, panel.Bounds.Y, surface.Width, surface.Height);
+            if (panel.FaceBox.IsEmpty) continue;
+            using var face = DiscRenderer.RenderFace(panel.FaceBox.Width, null, accent);
+            DiscRenderer.PaintFace(g, panel.FaceBox with { X = panel.Bounds.X + panel.FaceBox.X, Y = panel.Bounds.Y + panel.FaceBox.Y },
+                                   face, 0.1f, true);
+        }
+    }
+
+    private static bool FitsWithoutOverlap(IReadOnlyList<GroupPanel> panels)
+    {
+        var canvas = new Rectangle(Point.Empty, Canvas);
+        for (int i = 0; i < panels.Count; i++)
+        {
+            if (!canvas.Contains(panels[i].Bounds)) return false;
+            for (int j = i + 1; j < panels.Count; j++)
+                if (panels[i].Bounds.IntersectsWith(panels[j].Bounds)) return false;
+        }
+        return true;
     }
 
     /// <summary>Paints one widget into its own surface, exactly as its overlay does, then places it.

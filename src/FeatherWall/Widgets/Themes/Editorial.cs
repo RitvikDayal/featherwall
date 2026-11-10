@@ -126,7 +126,7 @@ public static class Editorial
         using var titleFont = ThemeFonts.Create(ThemeFonts.TextSemibold, TitlePx * scale);
         using var artistFont = ThemeFonts.Create(ThemeFonts.TextSemibold, ArtistPx * scale);
         using var g = Graphics.FromHwnd(IntPtr.Zero);
-        var titleSize = title.Length > 0 ? g.MeasureString(title, titleFont, PointF.Empty, ThemeFonts.Tight) : SizeF.Empty;
+        var titleSize = title.Length > 0 ? ThemeFonts.MeasureTracked(g, title, titleFont, 0f) : SizeF.Empty;
         var artistSize = artist.Length > 0
             ? ThemeFonts.MeasureTracked(g, artist, artistFont, ArtistPx * scale * ArtistTracking)
             : SizeF.Empty;
@@ -185,7 +185,7 @@ public static class Editorial
         {
             using var titleFont = ThemeFonts.Create(ThemeFonts.TextSemibold, TitlePx * scale);
             using var ink = new SolidBrush(Color.FromArgb((int)(Ink.A * fade), Ink));
-            g.DrawString(r.Title, titleFont, ink, m.TitleBox.X, m.TitleBox.Y, ThemeFonts.Tight);
+            ThemeFonts.DrawTracked(g, r.Title!, titleFont, ink, m.TitleBox.X, m.TitleBox.Y, 0f);
         }
 
         if (!m.ArtistBox.IsEmpty)
