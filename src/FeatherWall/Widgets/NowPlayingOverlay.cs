@@ -6,6 +6,7 @@ using FeatherWall.Config;
 using FeatherWall.Desktop;
 using FeatherWall.Interop;
 using FeatherWall.Rendering;
+using FeatherWall.Widgets.Themes;
 
 namespace FeatherWall.Widgets;
 
@@ -30,6 +31,7 @@ public sealed class NowPlayingOverlay : IDisposable
     private readonly MonitorInfo _monitor;
     private readonly double _dpiScale;
     private readonly NowPlayingSource _source;
+    private readonly WidgetStyle _style;
     private readonly Timer _timer;
     private readonly Lock _sync = new();
 
@@ -61,13 +63,14 @@ public sealed class NowPlayingOverlay : IDisposable
     private (string? Track, bool Art, bool Playing, int Side)? _presentedFace;
 
     public NowPlayingOverlay(CompositionHost host, InfoConfig config, MonitorInfo monitor,
-                             NowPlayingSource source, double dpiScale = 1.0)
+                             NowPlayingSource source, double dpiScale = 1.0, WidgetStyle? style = null)
     {
         _host = host;
         _config = config;
         _monitor = monitor;
         _dpiScale = dpiScale > 0 ? dpiScale : 1.0;
         _source = source;
+        _style = style ?? WidgetStyle.Classic;
         _timer = new Timer(_ => Tick(), null, Timeout.Infinite, Timeout.Infinite);
 
         _source.Changed += OnSourceChanged;
@@ -212,7 +215,9 @@ public sealed class NowPlayingOverlay : IDisposable
             if (_disposed || _suspended) return;
 
             var reading = _source.Current;
-            var metrics = NowPlayingRenderer.Measure(_config.Disc, reading, (float)_dpiScale);
+            var metrics = IsEditorial
+                ? Editorial.MeasureRecord(_config.Disc, reading, ThemeScale)
+                : NowPlayingRenderer.Measure(_config.Disc, reading, (float)_dpiScale);
             if (metrics.Total.IsEmpty)
             {
                 Log.Info($"Record: nothing to draw (title={reading.Title ?? "<none>"}, playing={reading.IsPlaying})");
@@ -254,8 +259,21 @@ public sealed class NowPlayingOverlay : IDisposable
 
             using var bmp = new Bitmap(_size.Cx, _size.Cy, PixelFormat.Format32bppPArgb);
             using (var g = Graphics.FromImage(bmp))
-                NowPlayingRenderer.Paint(g, metrics, _config.Disc, reading, _face, _turns,
-                                         (float)reading.Progress, (float)_dpiScale);
+            {
+                if (IsEditorial)
+                {
+                    if (_face is not null && !metrics.DiscBox.IsEmpty)
+                        DiscRenderer.PaintFace(g, metrics.DiscBox, _face, _turns, reading.IsPlaying);
+                    Editorial.PaintRecordStatic(g, metrics, _config.Disc, reading, (float)reading.Progress,
+                                                _style.Accent, ThemeScale);
+                }
+                else
+                {
+                    NowPlayingRenderer.Paint(g, metrics, _config.Disc, reading, _face, _turns,
+                                             (float)reading.Progress, (float)_dpiScale);
+                }
+            }
+            if (IsEditorial) BakedShadow.DrawBehind(bmp, ShadowRecipe.Default, ThemeScale);
             overlay.PresentBitmap(bmp);
         }
     }
@@ -298,8 +316,18 @@ public sealed class NowPlayingOverlay : IDisposable
 
         using var bmp = new Bitmap(_size.Cx, _size.Cy, PixelFormat.Format32bppPArgb);
         using (var g = Graphics.FromImage(bmp))
-            NowPlayingRenderer.Paint(g, metrics, _config.Disc, reading, _face, 0f, (float)reading.Progress,
-                                     (float)_dpiScale, includeFace: false);
+        {
+            if (IsEditorial)
+                Editorial.PaintRecordStatic(g, metrics, _config.Disc, reading, (float)reading.Progress,
+                                            _style.Accent, ThemeScale);
+            else
+                NowPlayingRenderer.Paint(g, metrics, _config.Disc, reading, _face, 0f, (float)reading.Progress,
+                                         (float)_dpiScale, includeFace: false);
+        }
+        // The face turns on the layer beneath, so its shadow is cast here and cleared inside it.
+        if (IsEditorial)
+            BakedShadow.DrawBehind(bmp, ShadowRecipe.Default, ThemeScale,
+                                   disc.IsEmpty || _face is null ? null : disc);
         _staticLayer.PresentBitmap(bmp);
     }
 
@@ -341,10 +369,14 @@ public sealed class NowPlayingOverlay : IDisposable
 
         var art = _source.Art;
         DisposeFace();
-        _face = DiscRenderer.RenderFace(side, art, ClockRenderer.ParseColor(_config.Disc.AccentColor));
+        _face = DiscRenderer.RenderFace(side, art,
+            IsEditorial ? _style.Accent : ClockRenderer.ParseColor(_config.Disc.AccentColor));
         _faceTrackId = reading.TrackId;
         _faceHasArt = art is not null;
     }
+
+    private bool IsEditorial => _style.Theme == WidgetTheme.Editorial;
+    private float ThemeScale => _style.Size * (float)_dpiScale;
 
     private void DisposeFace()
     {

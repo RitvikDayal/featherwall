@@ -6,6 +6,7 @@ using FeatherWall.Config;
 using FeatherWall.Desktop;
 using FeatherWall.Interop;
 using FeatherWall.Rendering;
+using FeatherWall.Widgets.Themes;
 
 namespace FeatherWall.Widgets;
 
@@ -23,6 +24,7 @@ public sealed class ClockOverlay : IDisposable
     private readonly MonitorInfo _monitor;
     private readonly double _dpiScale;
     private readonly Color _color;
+    private readonly WidgetStyle _style;
     private readonly Timer _timer;
     private readonly Lock _sync = new();
 
@@ -32,13 +34,15 @@ public sealed class ClockOverlay : IDisposable
 
     /// <summary><paramref name="dpiScale"/> is this monitor's DPI relative to the primary's, so
     /// it is 1.0 on a single-DPI machine and the widget renders exactly as it did in v0.1.0.</summary>
-    public ClockOverlay(CompositionHost host, ClockConfig config, MonitorInfo monitor, double dpiScale = 1.0)
+    public ClockOverlay(CompositionHost host, ClockConfig config, MonitorInfo monitor, double dpiScale = 1.0,
+                        WidgetStyle? style = null)
     {
         _host = host;
         _config = config;
         _monitor = monitor;
         _dpiScale = dpiScale > 0 ? dpiScale : 1.0;
         _color = ClockRenderer.ParseColor(config.Color);
+        _style = style ?? WidgetStyle.Classic;
         _timer = new Timer(_ => Tick(), null, Timeout.Infinite, Timeout.Infinite);
         Render();
         Arm();
@@ -108,8 +112,24 @@ public sealed class ClockOverlay : IDisposable
             // into a display that is off — the exact redraw suspension exists to avoid.
             if (_disposed || _suspended) return;
 
-            var metrics = ClockRenderer.Measure(_config, DateTime.Now, (float)_dpiScale);
-            var size = new SIZE { Cx = metrics.Total.Width, Cy = metrics.Total.Height };
+            // Classic paints exactly what v0.2.0 did and bakes no shadow; a theme bakes one.
+            Size total;
+            Action<Graphics> paint;
+            float shadowScale = 0f;
+            if (_style.Theme == WidgetTheme.Editorial)
+            {
+                shadowScale = _style.Size * (float)_dpiScale;
+                var editorial = Editorial.MeasureClock(_config, DateTime.Now, shadowScale);
+                total = editorial.Total;
+                paint = g => Editorial.PaintClock(g, editorial, _style.Accent);
+            }
+            else
+            {
+                var metrics = ClockRenderer.Measure(_config, DateTime.Now, (float)_dpiScale);
+                total = metrics.Total;
+                paint = g => ClockRenderer.Paint(g, _config, metrics, _color, metrics.Total);
+            }
+            var size = new SIZE { Cx = total.Width, Cy = total.Height };
 
             // Overlay offsets are relative to the wallpaper window, whose origin is the
             // monitor's top-left. Margins scale with the monitor so the widget keeps the same
@@ -135,7 +155,8 @@ public sealed class ClockOverlay : IDisposable
 
             using var bmp = new Bitmap(_size.Cx, _size.Cy, PixelFormat.Format32bppPArgb);
             using (var g = Graphics.FromImage(bmp))
-                ClockRenderer.Paint(g, _config, metrics, _color, metrics.Total);
+                paint(g);
+            if (shadowScale > 0f) BakedShadow.DrawBehind(bmp, ShadowRecipe.Default, shadowScale);
             overlay.PresentBitmap(bmp);
         }
     }
