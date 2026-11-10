@@ -443,7 +443,7 @@ if ($RequireRecordTurning) {
                 if ($measuredPids -contains [int]$start.Groups[1].Value) { $recordEvents.Clear(); $sawStart = $true }
                 continue
             }
-            $m = [regex]::Match($line, '^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}) \[INF\] Now-playing: record (turning|still)')
+            $m = [regex]::Match($line, '^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}) \[INF\] (?:Now-playing|Group): record (turning|still)')
             if (-not $m.Success) { continue }
             [void]$recordEvents.Add([pscustomobject]@{
                 At    = [datetime]::ParseExact($m.Groups[1].Value, 'yyyy-MM-dd HH:mm:ss.fff', [Globalization.CultureInfo]::InvariantCulture)
