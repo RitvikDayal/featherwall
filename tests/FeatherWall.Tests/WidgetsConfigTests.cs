@@ -48,6 +48,15 @@ public class WidgetsConfigTests
         Assert.Equal(WidgetTheme.Editorial, new WidgetsConfig { Theme = name }.ResolveTheme());
 
     [Fact]
+    public void ConfigName_IsTheSpellingTheFileUses_AndResolvesBack()
+    {
+        Assert.Equal("classic", WidgetsConfig.ConfigName(WidgetTheme.Classic));
+        Assert.Equal("editorial", WidgetsConfig.ConfigName(WidgetTheme.Editorial));
+        foreach (var theme in Enum.GetValues<WidgetTheme>())
+            Assert.Equal(theme, new WidgetsConfig { Theme = WidgetsConfig.ConfigName(theme) }.ResolveTheme());
+    }
+
+    [Fact]
     public void Widgets_SurvivesARoundTrip()
     {
         var config = new AppConfig();
