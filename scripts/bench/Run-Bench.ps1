@@ -51,7 +51,7 @@ param(
     [switch] $WithDwm,
     [string] $InfoMonitor,
     [switch] $RequireRecordTurning,
-    [ValidateSet('classic', 'editorial', 'glassDock', 'orbit', 'poster')][string] $Theme = 'classic',
+    [ValidateSet('classic', 'editorial', 'glassDock', 'orbit', 'poster', 'monolith', 'tiles')][string] $Theme = 'classic',
     [string[]] $ExtraArgs = @()
 )
 

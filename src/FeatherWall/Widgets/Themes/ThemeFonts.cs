@@ -12,10 +12,13 @@ public static class ThemeFonts
 {
     public static readonly string[] DisplayLight = ["Segoe UI Variable Display Light", "Segoe UI Light", "Segoe UI"];
     public static readonly string[] TextSemibold = ["Segoe UI Variable Text Semibold", "Segoe UI Semibold", "Segoe UI"];
+    public static readonly string[] DisplaySemibold = ["Segoe UI Variable Display Semibold", "Segoe UI Semibold", "Segoe UI"];
+    public static readonly string[] Text = ["Segoe UI Variable Text", "Segoe UI"];
 
     // Bahnschrift ships with Windows 10 1809 and later; Orbit and Poster fall back to Segoe UI.
     public static readonly string[] BahnLight = ["Bahnschrift Light", "Segoe UI Light", "Segoe UI"];
     public static readonly string[] Bahn = ["Bahnschrift", "Segoe UI"];
+    public static readonly string[] BahnCondensedLight = ["Bahnschrift SemiLight Condensed", "Bahnschrift Light Condensed", "Bahnschrift Light", "Segoe UI Light"];
     public static readonly string[] BahnSemibold = ["Bahnschrift SemiBold", "Segoe UI Semibold", "Segoe UI"];
 
     private static readonly Lazy<HashSet<string>> Installed = new(() =>
