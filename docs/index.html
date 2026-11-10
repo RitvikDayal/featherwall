@@ -346,13 +346,24 @@ main a:hover,footer a:hover{color:var(--signal)}
 
 /* figures — one inverted band, the strongest block on the page */
 .figures{background:var(--ink);color:var(--paper)}
-.figures .shell{display:grid;grid-template-columns:repeat(2,1fr);gap:0}
-@media(min-width:820px){.figures .shell{grid-template-columns:repeat(4,1fr)}}
-.fig{padding:1.7rem 0;border-left:1px solid rgba(237,233,225,.2);padding-left:1.2rem}
-.fig:first-child{border-left:0;padding-left:0}
-@media(max-width:819px){
-  .fig:nth-child(3),.fig:nth-child(4){border-top:1px solid rgba(237,233,225,.2)}
-  .fig:nth-child(odd){border-left:0;padding-left:0}
+/* six figures: two across on a phone, three on a laptop, one row of six on a wide screen.
+   A rule sits left of every figure but a row's first, and above every row but the first. */
+.figures .shell{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0}
+.fig{padding:1.7rem 0 1.7rem 1.2rem;border-left:1px solid rgba(237,233,225,.2)}
+.fig:nth-child(2n+1){border-left:0;padding-left:0}
+.fig:nth-child(n+3){border-top:1px solid rgba(237,233,225,.2)}
+@media(min-width:820px){
+  .figures .shell{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .fig:nth-child(2n+1){border-left:1px solid rgba(237,233,225,.2);padding-left:1.2rem}
+  .fig:nth-child(3n+1){border-left:0;padding-left:0}
+  .fig:nth-child(n+3){border-top:0}
+  .fig:nth-child(n+4){border-top:1px solid rgba(237,233,225,.2)}
+}
+@media(min-width:1200px){
+  .figures .shell{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .fig:nth-child(3n+1){border-left:1px solid rgba(237,233,225,.2);padding-left:1.2rem}
+  .fig:first-child{border-left:0;padding-left:0}
+  .fig:nth-child(n+4){border-top:0}
 }
 .fig.hot b{color:#E0703F}
 .fig b{
@@ -681,6 +692,8 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
       <div class="fig hot"><b data-to="110">0</b><span>MB for a still wallpaper</span></div>
       <div class="fig"><b data-to="0.008" data-dec="3">0</b><span>Percent CPU at rest</span></div>
       <div class="fig"><b data-to="0">0</b><span>Accounts or trackers</span></div>
+      <div class="fig"><b data-to="18" data-stat="stars">0</b><span>Stars on GitHub</span></div>
+      <div class="fig"><b data-to="783" data-stat="downloads">0</b><span>Downloads</span></div>
     </div>
   </div>
 
@@ -1040,11 +1053,12 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
   /* count the figures up, fill the bars, reveal sections */
   function countUp(el){
     var to = parseFloat(el.dataset.to), dec = parseInt(el.dataset.dec || '0', 10), start = null;
-    if (reduce || to === 0){ el.textContent = to.toFixed(dec); return; }
+    if (reduce || to === 0){ el.textContent = dec ? to.toFixed(dec) : to.toLocaleString(); return; }
     requestAnimationFrame(function step(ts){
       if (!start) start = ts;
       var q = Math.min((ts - start) / 850, 1);
-      el.textContent = (to * (1 - Math.pow(1 - q, 3))).toFixed(dec);
+      var v = parseFloat(el.dataset.to) * (1 - Math.pow(1 - q, 3));
+      el.textContent = dec ? v.toFixed(dec) : Math.round(v).toLocaleString();
       if (q < 1) requestAnimationFrame(step);
     });
   }
@@ -1111,8 +1125,14 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
     var repo = 'https://api.github.com/repos/RitvikDayal/featherwall';
     function show(stats){
       Object.keys(stats).forEach(function(k){
-        var el = document.querySelector('[data-stat="' + k + '"]');
-        if (el && typeof stats[k] === 'number') el.textContent = stats[k].toLocaleString();
+        if (typeof stats[k] !== 'number') return;
+        document.querySelectorAll('[data-stat="' + k + '"]').forEach(function(el){
+          if (el.dataset.to !== undefined) {
+            el.dataset.to = stats[k];
+            if (!el.closest('.figures').classList.contains('in')) return;
+          }
+          el.textContent = stats[k].toLocaleString();
+        });
       });
     }
     try { var cached = JSON.parse(sessionStorage.getItem('fw-stats') || 'null'); if (cached && typeof cached.stars === 'number' && typeof cached.downloads === 'number') { show(cached); return; } } catch (e) {}
