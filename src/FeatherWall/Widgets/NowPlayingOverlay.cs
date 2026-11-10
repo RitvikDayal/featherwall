@@ -294,7 +294,10 @@ public sealed class NowPlayingOverlay : IDisposable
             _faceLayer = group.AddLayer(Math.Max(disc.Width, 1), Math.Max(disc.Height, 1), disc.X, disc.Y);
             _staticLayer = group.AddLayer(size.Cx, size.Cy, 0, 0);
             if (_config.Disc.Rotate && !disc.IsEmpty)
+            {
                 _spin = new CompositorSpin(_host, _faceLayer.Visual, disc.Width / 2f, disc.Height / 2f);
+                _spin.Hold(_heldAngle);
+            }
         }
         else
         {

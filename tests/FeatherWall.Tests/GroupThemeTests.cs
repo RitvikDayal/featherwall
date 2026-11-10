@@ -213,3 +213,18 @@ public class PosterLineTests
         Assert.True(record.Bounds.Width < Group.Work.Width / 4, $"record line {record.Bounds.Width}px wide");
     }
 }
+
+public class GlassDockStabilityTests
+{
+    [Fact]
+    public void Width_IsTheSameEveryMinute()
+    {
+        // Proportional digits made the dock a few pixels wider or narrower most minutes, and every
+        // size change rebuilt the panel and stopped the record turning (review, Critical #1).
+        var theme = GroupThemes.For(WidgetTheme.GlassDock);
+        int Width(int h, int m) => Assert.Single(theme.Layout(Group.Input() with
+            { Now = new DateTime(2026, 11, 10, h, m, 0) })).Bounds.Width;
+        var widths = new[] { Width(10, 9), Width(10, 10), Width(10, 11), Width(11, 11), Width(20, 8) };
+        Assert.All(widths, w => Assert.Equal(widths[0], w));
+    }
+}
