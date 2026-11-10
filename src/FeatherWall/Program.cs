@@ -83,7 +83,7 @@ internal static class Program
 
         try
         {
-            engine = new Engine(config);
+            engine = new Engine(config, configUnreadable);
             engine.Start();
 
             if (args.Contains("--settings"))

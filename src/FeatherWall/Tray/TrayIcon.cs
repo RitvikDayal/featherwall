@@ -71,8 +71,14 @@ public sealed class TrayIcon : IDisposable
         Add();
     }
 
-    public void ShowBalloon(string title, string text)
+    /// <summary>What clicking the balloon on screen does; set by every ShowBalloon.</summary>
+    public BalloonClick Clicks { get; } = new();
+
+    /// <summary><paramref name="onClick"/> runs if this balloon is clicked. Most balloons pass
+    /// none, which also clears the previous balloon's action.</summary>
+    public void ShowBalloon(string title, string text, Action? onClick = null)
     {
+        Clicks.Set(onClick);
         var data = BaseData();
         data.Flags = 0x00000010; // NIF_INFO
         data.InfoTitle = title.Length > 60 ? title[..60] : title;

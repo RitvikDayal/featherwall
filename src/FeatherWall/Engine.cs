@@ -68,7 +68,15 @@ public sealed class Engine : IDisposable
     private static string StaticPath(string device) =>
         Path.Combine(StaticDir, new string(device.Select(c => char.IsLetterOrDigit(c) ? c : '_').ToArray()) + ".png");
 
-    public Engine(AppConfig config) => _config = config;
+    /// <summary>True when config.json existed but could not be read: the defaults in use are not
+    /// the user's settings, and nothing may save over the file on start-up's account.</summary>
+    private readonly bool _configUnreadable;
+
+    public Engine(AppConfig config, bool configUnreadable = false)
+    {
+        _config = config;
+        _configUnreadable = configUnreadable;
+    }
 
     public void Start()
     {
@@ -90,8 +98,18 @@ public sealed class Engine : IDisposable
 
         ApplyFromConfig();
 
-        if (_windows.Count == 0)
+        // A second balloon replaces the first, so the notice wins when both would show.
+        if (UpgradeNotice.ShouldShow(_config, _configUnreadable))
+        {
+            _config.Widgets.ThemesNoticeShown = true;
+            ConfigStore.Save(_config);
+            Log.Info("Showing the new widget styles notice");
+            _tray.ShowBalloon(UpgradeNotice.Title, UpgradeNotice.Text, OpenSettings);
+        }
+        else if (_windows.Count == 0)
+        {
             _tray.ShowBalloon("FeatherWall is running", "Right-click the tray icon to choose a wallpaper.");
+        }
     }
 
     // ---- wallpaper application ----------------------------------------------------------
@@ -1053,7 +1071,15 @@ public sealed class Engine : IDisposable
             if (msg == TrayIcon.CallbackMessage)
             {
                 uint mouse = (uint)(lParam.ToInt64() & 0xFFFF);
-                if (mouse is WM_RBUTTONUP or WM_CONTEXTMENU)
+                const uint NIN_BALLOONUSERCLICK = 0x0405;
+                if (mouse is >= 0x0402 and <= NIN_BALLOONUSERCLICK)
+                    Log.Info($"Tray balloon event 0x{mouse:X}");
+                // A timeout does not clear the click: with Do Not Disturb on, Windows reports the
+                // balloon timed out 15 ms after showing it and files it in the notification centre,
+                // where it is still clickable. Only a newer balloon replaces the action.
+                if (mouse == NIN_BALLOONUSERCLICK)
+                    _engine._tray?.Clicks.OnClick();
+                else if (mouse is WM_RBUTTONUP or WM_CONTEXTMENU)
                     _engine.ShowTrayMenu();
                 else if (mouse == WM_LBUTTONDBLCLK)
                     _engine.OpenSettings();
