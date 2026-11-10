@@ -76,6 +76,38 @@ public sealed class PauseConfig
     public bool OnRemoteSession { get; set; } = true;
 }
 
+public enum WidgetTheme { Classic, Editorial }
+
+/// <summary>How the widgets look as a set. Classic is v0.2.0's look, and what every config written
+/// before this section existed loads as.</summary>
+public sealed class WidgetsConfig
+{
+    private static readonly HashSet<string> Warned = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>A string rather than an enum: a JSON enum throws on a name it does not know, and
+    /// that throw makes the whole config unreadable — one typo, or a theme from a later version,
+    /// would cost every other setting in the file. Read it through <see cref="ResolveTheme"/>.</summary>
+    public string Theme { get; set; } = "classic";
+
+    /// <summary>"auto" samples the wallpaper; #RRGGBB fixes it. Classic ignores it.</summary>
+    public string Accent { get; set; } = "auto";
+
+    /// <summary>Case-insensitive. An unknown name renders as Classic and is logged once.</summary>
+    public WidgetTheme ResolveTheme()
+    {
+        // Names only: Enum.TryParse would also accept "1".
+        var name = Theme?.Trim() ?? "";
+        if (name.Length > 0 && char.IsLetter(name[0])
+            && Enum.TryParse<WidgetTheme>(name, ignoreCase: true, out var theme))
+            return theme;
+
+        lock (Warned)
+            if (Warned.Add(Theme ?? ""))
+                Common.Log.Warn($"Unknown widget theme '{Theme}', using Classic");
+        return WidgetTheme.Classic;
+    }
+}
+
 /// <summary>The info widget: a stack of lines fed by system sources, anchored independently of
 /// the clock. Disabled by default — an upgrade must render exactly as it did before, the same
 /// rule the date-styling defaults follow.</summary>
@@ -197,6 +229,7 @@ public sealed class AppConfig
     public ClockConfig Clock { get; set; } = new();
     public InfoConfig Info { get; set; } = new();
     public PauseConfig Pause { get; set; } = new();
+    public WidgetsConfig Widgets { get; set; } = new();
 
     /// <summary>Set once a Start menu shortcut exists. From then on it is only repointed, never
     /// recreated, so deleting it from the Start menu sticks. Set back to false to get it again.</summary>
