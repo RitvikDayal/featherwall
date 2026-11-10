@@ -15,7 +15,7 @@ public static partial class Accent
     /// <summary>The record's v0.2.0 accent, used when a wallpaper has no colour worth taking.</summary>
     public static readonly Color Fallback = Color.FromArgb(255, 0x8F, 0xB4, 0xFF);
 
-    private const int Grid = 32;
+    private const int Grid = 64;
     private const int Bins = 24;
     private const int MinPixels = 20;
 
@@ -31,13 +31,16 @@ public static partial class Accent
         using var small = new Bitmap(Grid, Grid, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
         using (var g = Graphics.FromImage(small))
         {
-            g.InterpolationMode = InterpolationMode.HighQualityBilinear;
+            // Point samples, not an average: averaging mixes a small vivid area into the grey around
+            // it, and the samurai frame's violet — the colour a person would pick — vanished that way.
+            g.InterpolationMode = InterpolationMode.NearestNeighbor;
             g.DrawImage(image, new Rectangle(0, 0, Grid, Grid));
         }
 
         var weight = new float[Bins];
         var hueSum = new float[Bins];
         var lightSum = new float[Bins];
+        var satSum = new float[Bins];
         var count = new int[Bins];
         for (int x = 0; x < Grid; x++)
             for (int y = 0; y < Grid; y++)
@@ -48,9 +51,12 @@ public static partial class Accent
                 if (s < 0.25f || l < 0.08f || l > 0.92f) continue;
                 float hue = c.GetHue();
                 int bin = Math.Min((int)(hue / (360f / Bins)), Bins - 1);
-                weight[bin] += s;
-                hueSum[bin] += hue * s;
-                lightSum[bin] += l * s;
+                // Squared, so a vivid minority outweighs a large wash of faintly tinted grey.
+                float w = s * s;
+                weight[bin] += w;
+                hueSum[bin] += hue * w;
+                lightSum[bin] += l * w;
+                satSum[bin] += s * w;
                 count[bin]++;
             }
 
@@ -58,8 +64,8 @@ public static partial class Accent
 
         int best = Array.IndexOf(weight, weight.Max());
         float meanHue = hueSum[best] / weight[best];
-        float meanSat = Math.Clamp(weight[best] / count[best], 0.45f, 0.85f);
-        float meanLight = Math.Clamp(lightSum[best] / weight[best], 0.60f, 0.72f);
+        float meanSat = Math.Clamp(satSum[best] / weight[best], 0.45f, 0.85f);
+        float meanLight = Math.Clamp(lightSum[best] / weight[best], 0.70f, 0.80f);
         return FromHsl(meanHue, meanSat, meanLight);
     }
 

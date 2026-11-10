@@ -43,6 +43,19 @@ public class BakedShadowTests
     }
 
     [Fact]
+    public void ThinStroke_GetsADarkEdge()
+    {
+        // Small accent capitals are hairlines. The wide soft shadow alone averages them away to
+        // almost nothing, which is how the date vanished into a blue sky; the mockup's second,
+        // tight shadow is what keeps them off any background.
+        using var b = new Bitmap(60, 60, PixelFormat.Format32bppPArgb);
+        using (var g = Graphics.FromImage(b))
+            g.FillRectangle(Brushes.White, 10, 30, 40, 1);
+        BakedShadow.DrawBehind(b, ShadowRecipe.Default, 1f);
+        Assert.True(b.GetPixel(30, 29).A >= 60, $"alpha above the stroke was {b.GetPixel(30, 29).A}");
+    }
+
+    [Fact]
     public void Shadow_FadesToZeroWithinPad()
     {
         using var b = Square();
