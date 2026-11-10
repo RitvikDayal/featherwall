@@ -45,12 +45,11 @@ Korean use a Windows font that has the letters, and channel names written in Uni
 
 ## The record still turns on its timer, and here is why
 
-This release tried turning the record on the compositor instead of redrawing it 15 times a second,
-and measured both ways with DWM's own cost included. On a 240 Hz display over a still image, the
-compositor version used less than half the CPU (0.13 % against 0.56 %), but the GPU went from 1.2 % to
-11 %, because Windows recomposed the turning record 240 times a second. FeatherWall's rule was that a
-change ships only if it is no more expensive on any measure, so the record keeps its 15 fps timer.
-The numbers and the method are in `docs/benchmark.md`.
+This release tried turning the record on the compositor instead of redrawing it 15 times a second.
+Both ways were measured against a still record, in the same session, with DWM's own cost counted
+separately. The compositor left FeatherWall idle, but Windows then recomposed the turning record 240
+times a second. Over the still record it added 0.60 % CPU and 10.8 % GPU, against 0.21 % and 1.3 %
+for the timer, so the timer stays. The method and every run are in `docs/benchmark.md`.
 
 What did change: in Glass dock, Orbit and Poster, only the small record itself is redrawn while it
 turns, not the whole widget.

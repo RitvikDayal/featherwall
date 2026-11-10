@@ -153,46 +153,54 @@ the same source and running the harness once — not a limitation, just work nob
 
 ## Record spin: timer vs compositor — measured 2026-11-10
 
-v0.3.0 tried turning the now-playing record with a DirectComposition rotation animation instead
-of the 15 fps GDI+ redraw. A compositor animation moves the work out of FeatherWall and into
-`dwm.exe`, so every row here measures **FeatherWall + DWM together** (`-WithDwm`), and the harness
-refused any row in which the record was not turning for the whole window
-(`-RequireRecordTurning`).
+v0.3.0 tried turning the now-playing record with a DirectComposition rotation animation instead of
+the 15 fps GDI+ redraw. A compositor animation moves work out of FeatherWall and into `dwm.exe`, so
+DWM has to be measured too. DWM also composes everything else on screen, so its numbers mean
+something only next to a baseline taken under the same conditions.
 
-The rule, set before measuring: the compositor path ships only if **both** combined machine CPU and
-the combined busiest GPU engine are no higher than the timer's, on every display and in every state.
-One failing row keeps the timer everywhere.
+**Method.**
+- **Three arms, interleaved over three rounds in one session**, all on the same still image on
+  `\\.\DISPLAY1` (2560 × 1600 at 240 Hz), Classic theme, info widget on:
+  - **off:** the record shown but not turning (`disc.rotate = false`), the baseline;
+  - **compositor:** the rotation animation;
+  - **timer:** the 15 fps redraw.
+- **Steady media.** A silent media session played throughout, so the record turned for every
+  spinning window. The harness refused any row where it did not.
+- **Each process reported separately:** CPU, and its own busiest GPU engine. All 9 runs were
+  accepted.
 
-Display: `\\.\DISPLAY1`, 2560 × 1600 at **240 Hz**, the worst case for a compositor animation. Classic
-theme, info widget on, medians of the accepted runs:
+Medians of the three rounds:
 
-| State | Spin | Accepted | Combined CPU | Busiest GPU | of which DWM CPU |
-|---|---|---|---|---|---|
-| Still image | compositor | 2 of 3 | **0.129 %** | 11.05 % | 0.116, 0.120 % |
-| Still image | 15 fps timer | 2 of 3 | 0.556 % | **1.2 %** | 0.393, 0.489 % |
-| 4K video | compositor | 3 of 3 | 2.338 % | 48.3 % | 0.556, 1.390, 1.522 % |
-| 4K video | 15 fps timer | 2 of 3 | 1.778 % | 47.6 % | 1.077, 0.583 % |
+| Arm | FeatherWall CPU | FeatherWall GPU | DWM CPU | DWM GPU (3D) |
+|---|---|---|---|---|
+| off (baseline) | 0.015 % | 0 % | 0.242 % | 0 % |
+| compositor | 0.017 % | 0 % | 0.840 % | **10.8 %** |
+| timer | 0.106 % | 0.6 % (copy) | 0.363 % | 0.7 % |
 
-**Verdict: the compositor path failed, and the record keeps its 15 fps timer.** Over a still image
-it took CPU down by more than half, but DWM recomposed the turning record at the display's 240 Hz and
-the busiest GPU engine went from 1.2 % to 11 %. Over video, where DWM composes every frame anyway,
-neither number improved.
+Cost of turning the record, over the baseline:
 
-What these rows do and do not show:
+| Arm | CPU (FeatherWall + DWM) | GPU (FeatherWall + DWM) |
+|---|---|---|
+| compositor | +0.60 % | +10.8 % |
+| timer | +0.21 % | +1.3 % |
 
-- The second display (1920 × 1080, 60 Hz) was not measured. Under the rule, one failing row decides,
-  so its numbers could not change the outcome. A 60 Hz panel would very likely do better, and that is
-  the open question if this is ever revisited.
-- The compositor still-image rows ran with music playing in a browser. The timer still-image rows
-  ran about half an hour later with a silent media session, so that the record kept turning without
-  depending on the browser. In both, the harness confirmed the record was turning for the whole
-  window.
-- Video CPU on this machine moves roughly twofold from run to run (1.16 % to 2.37 % in three
-  compositor runs), so the video rows say "no improvement", not "worse".
+**Verdict: the timer is cheaper on both measures, so the record keeps it.**
+- **Why the compositor costs more:** it leaves FeatherWall idle, but DWM then recomposes the turning
+  record at the display's 240 Hz rather than 15 times a second.
+- **Repeatability:** DWM's GPU cost under the compositor was 10.7–10.8 % in every round. Its CPU
+  varied, at 1.08 %, 0.84 % and 0.12 %.
+- **Not measured:** the second display (60 Hz) and video. Over video, DWM composes every frame
+  anyway, so the difference there should shrink. A slower panel would cut the compositor's cost, but
+  nothing measured here suggests it would beat the timer.
 
-Result files: `scripts/bench/results/spin-gate-DISPLAY1-compositor.json` (both compositor rows),
-`spin-gate-DISPLAY1-timer.json` (timer, video) and `spin-gate-DISPLAY1-timer-still.json` (timer,
-still image).
+**An earlier attempt the same day is superseded.** It reported "combined busiest GPU" across
+FeatherWall and DWM, and it ran the two arms half an hour apart with different media playing. That
+made the compositor look cheaper on CPU, and its video rows took FeatherWall's video-decode engine
+as the "busiest" while hiding DWM's 3D engine. Its files are kept as a record:
+`scripts/bench/results/spin-gate-DISPLAY1-*.json`.
+
+Result file for the numbers above: `scripts/bench/results/spin-ab-DISPLAY1.json`, one row per run,
+with the full measurement attached.
 
 ## Against the competition
 

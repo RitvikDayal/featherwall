@@ -1,0 +1,398 @@
+﻿[
+    {
+        "Arm":  "off",
+        "Round":  1,
+        "FwCpu":  0.009,
+        "FwGpu":  0,
+        "FwGpuEngine":  null,
+        "DwmCpu":  0.239,
+        "DwmGpu":  0,
+        "DwmGpuEngine":  "3d",
+        "Raw":  {
+                    "App":  "featherwall",
+                    "Label":  "off r1",
+                    "SampledSeconds":  34.9,
+                    "Processes":  1,
+                    "Threads":  74,
+                    "Handles":  571,
+                    "WorkingSetMB":  222.3,
+                    "PrivateMB":  160.9,
+                    "GpuDedicatedMB":  0,
+                    "GpuSharedMB":  140.5,
+                    "CpuPercentMachine":  0.009,
+                    "CpuPercentOneCore":  0.2,
+                    "BusiestGpuEngine":  null,
+                    "BusiestGpuPercent":  0,
+                    "GpuCounters":  "all read",
+                    "ProcessReadErrors":  0,
+                    "Cores":  24,
+                    "PauseState":  "Playing, verified for the full window on 2 monitor(s): \\\\.\\DISPLAY1, \\\\.\\DISPLAY5",
+                    "RecordState":  "not checked",
+                    "Extra":  {
+                                  "dwm":  {
+                                              "CpuPercentMachine":  0.239,
+                                              "BusiestGpuPercent":  0,
+                                              "BusiestGpuEngine":  "3d"
+                                          }
+                              },
+                    "Combined":  {
+                                     "CpuPercentMachine":  0.248,
+                                     "BusiestGpuPercent":  0,
+                                     "BusiestGpuEngine":  "3d"
+                                 },
+                    "MeasuredAtUtc":  "2026-11-10T14:11:13Z"
+                }
+    },
+    {
+        "Arm":  "compositor",
+        "Round":  1,
+        "FwCpu":  0.017,
+        "FwGpu":  0,
+        "FwGpuEngine":  "copy",
+        "DwmCpu":  1.081,
+        "DwmGpu":  10.8,
+        "DwmGpuEngine":  "3d",
+        "Raw":  {
+                    "App":  "featherwall",
+                    "Label":  "compositor r1",
+                    "SampledSeconds":  34.7,
+                    "Processes":  1,
+                    "Threads":  73,
+                    "Handles":  572,
+                    "WorkingSetMB":  208.5,
+                    "PrivateMB":  146.8,
+                    "GpuDedicatedMB":  0,
+                    "GpuSharedMB":  124.1,
+                    "CpuPercentMachine":  0.017,
+                    "CpuPercentOneCore":  0.4,
+                    "BusiestGpuEngine":  "copy",
+                    "BusiestGpuPercent":  0,
+                    "GpuCounters":  "GPU Process Memory counters read on 6/7 samples",
+                    "ProcessReadErrors":  0,
+                    "Cores":  24,
+                    "PauseState":  "Playing, verified for the full window on 2 monitor(s): \\\\.\\DISPLAY1, \\\\.\\DISPLAY5",
+                    "RecordState":  "turning, verified for the full window",
+                    "Extra":  {
+                                  "dwm":  {
+                                              "CpuPercentMachine":  1.081,
+                                              "BusiestGpuPercent":  10.8,
+                                              "BusiestGpuEngine":  "3d"
+                                          }
+                              },
+                    "Combined":  {
+                                     "CpuPercentMachine":  1.098,
+                                     "BusiestGpuPercent":  10.8,
+                                     "BusiestGpuEngine":  "3d"
+                                 },
+                    "MeasuredAtUtc":  "2026-11-10T14:12:03Z"
+                }
+    },
+    {
+        "Arm":  "timer",
+        "Round":  1,
+        "FwCpu":  0.081,
+        "FwGpu":  0.7,
+        "FwGpuEngine":  "copy",
+        "DwmCpu":  0.363,
+        "DwmGpu":  0.7,
+        "DwmGpuEngine":  "3d",
+        "Raw":  {
+                    "App":  "featherwall",
+                    "Label":  "timer r1",
+                    "SampledSeconds":  34.4,
+                    "Processes":  1,
+                    "Threads":  75,
+                    "Handles":  571,
+                    "WorkingSetMB":  223,
+                    "PrivateMB":  161.6,
+                    "GpuDedicatedMB":  0,
+                    "GpuSharedMB":  140.4,
+                    "CpuPercentMachine":  0.081,
+                    "CpuPercentOneCore":  2,
+                    "BusiestGpuEngine":  "copy",
+                    "BusiestGpuPercent":  0.7,
+                    "GpuCounters":  "all read",
+                    "ProcessReadErrors":  0,
+                    "Cores":  24,
+                    "PauseState":  "Playing, verified for the full window on 2 monitor(s): \\\\.\\DISPLAY1, \\\\.\\DISPLAY5",
+                    "RecordState":  "turning, verified for the full window",
+                    "Extra":  {
+                                  "dwm":  {
+                                              "CpuPercentMachine":  0.363,
+                                              "BusiestGpuPercent":  0.7,
+                                              "BusiestGpuEngine":  "3d"
+                                          }
+                              },
+                    "Combined":  {
+                                     "CpuPercentMachine":  0.445,
+                                     "BusiestGpuPercent":  1.1,
+                                     "BusiestGpuEngine":  "3d"
+                                 },
+                    "MeasuredAtUtc":  "2026-11-10T14:12:53Z"
+                }
+    },
+    {
+        "Arm":  "off",
+        "Round":  2,
+        "FwCpu":  0.015,
+        "FwGpu":  0,
+        "FwGpuEngine":  "3d",
+        "DwmCpu":  0.242,
+        "DwmGpu":  0,
+        "DwmGpuEngine":  "3d",
+        "Raw":  {
+                    "App":  "featherwall",
+                    "Label":  "off r2",
+                    "SampledSeconds":  34.5,
+                    "Processes":  1,
+                    "Threads":  74,
+                    "Handles":  572,
+                    "WorkingSetMB":  217.5,
+                    "PrivateMB":  156.1,
+                    "GpuDedicatedMB":  0,
+                    "GpuSharedMB":  131.1,
+                    "CpuPercentMachine":  0.015,
+                    "CpuPercentOneCore":  0.4,
+                    "BusiestGpuEngine":  "3d",
+                    "BusiestGpuPercent":  0,
+                    "GpuCounters":  "all read",
+                    "ProcessReadErrors":  0,
+                    "Cores":  24,
+                    "PauseState":  "Playing, verified for the full window on 2 monitor(s): \\\\.\\DISPLAY1, \\\\.\\DISPLAY5",
+                    "RecordState":  "not checked",
+                    "Extra":  {
+                                  "dwm":  {
+                                              "CpuPercentMachine":  0.242,
+                                              "BusiestGpuPercent":  0,
+                                              "BusiestGpuEngine":  "3d"
+                                          }
+                              },
+                    "Combined":  {
+                                     "CpuPercentMachine":  0.257,
+                                     "BusiestGpuPercent":  0,
+                                     "BusiestGpuEngine":  "3d"
+                                 },
+                    "MeasuredAtUtc":  "2026-11-10T14:13:43Z"
+                }
+    },
+    {
+        "Arm":  "compositor",
+        "Round":  2,
+        "FwCpu":  0.017,
+        "FwGpu":  0,
+        "FwGpuEngine":  "3d",
+        "DwmCpu":  0.84,
+        "DwmGpu":  10.8,
+        "DwmGpuEngine":  "3d",
+        "Raw":  {
+                    "App":  "featherwall",
+                    "Label":  "compositor r2",
+                    "SampledSeconds":  34.7,
+                    "Processes":  1,
+                    "Threads":  74,
+                    "Handles":  572,
+                    "WorkingSetMB":  222.1,
+                    "PrivateMB":  160.3,
+                    "GpuDedicatedMB":  0,
+                    "GpuSharedMB":  135.7,
+                    "CpuPercentMachine":  0.017,
+                    "CpuPercentOneCore":  0.4,
+                    "BusiestGpuEngine":  "3d",
+                    "BusiestGpuPercent":  0,
+                    "GpuCounters":  "GPU Engine counters read on 6/7 samples",
+                    "ProcessReadErrors":  0,
+                    "Cores":  24,
+                    "PauseState":  "Playing, verified for the full window on 2 monitor(s): \\\\.\\DISPLAY1, \\\\.\\DISPLAY5",
+                    "RecordState":  "turning, verified for the full window",
+                    "Extra":  {
+                                  "dwm":  {
+                                              "CpuPercentMachine":  0.84,
+                                              "BusiestGpuPercent":  10.8,
+                                              "BusiestGpuEngine":  "3d"
+                                          }
+                              },
+                    "Combined":  {
+                                     "CpuPercentMachine":  0.857,
+                                     "BusiestGpuPercent":  10.8,
+                                     "BusiestGpuEngine":  "3d"
+                                 },
+                    "MeasuredAtUtc":  "2026-11-10T14:14:32Z"
+                }
+    },
+    {
+        "Arm":  "timer",
+        "Round":  2,
+        "FwCpu":  0.114,
+        "FwGpu":  0.6,
+        "FwGpuEngine":  "copy",
+        "DwmCpu":  0.36,
+        "DwmGpu":  0.7,
+        "DwmGpuEngine":  "3d",
+        "Raw":  {
+                    "App":  "featherwall",
+                    "Label":  "timer r2",
+                    "SampledSeconds":  34.7,
+                    "Processes":  1,
+                    "Threads":  74,
+                    "Handles":  570,
+                    "WorkingSetMB":  223.8,
+                    "PrivateMB":  163,
+                    "GpuDedicatedMB":  0,
+                    "GpuSharedMB":  140.6,
+                    "CpuPercentMachine":  0.114,
+                    "CpuPercentOneCore":  2.7,
+                    "BusiestGpuEngine":  "copy",
+                    "BusiestGpuPercent":  0.6,
+                    "GpuCounters":  "all read",
+                    "ProcessReadErrors":  0,
+                    "Cores":  24,
+                    "PauseState":  "Playing, verified for the full window on 2 monitor(s): \\\\.\\DISPLAY1, \\\\.\\DISPLAY5",
+                    "RecordState":  "turning, verified for the full window",
+                    "Extra":  {
+                                  "dwm":  {
+                                              "CpuPercentMachine":  0.36,
+                                              "BusiestGpuPercent":  0.7,
+                                              "BusiestGpuEngine":  "3d"
+                                          }
+                              },
+                    "Combined":  {
+                                     "CpuPercentMachine":  0.474,
+                                     "BusiestGpuPercent":  1.1,
+                                     "BusiestGpuEngine":  "3d"
+                                 },
+                    "MeasuredAtUtc":  "2026-11-10T14:15:22Z"
+                }
+    },
+    {
+        "Arm":  "off",
+        "Round":  3,
+        "FwCpu":  0.017,
+        "FwGpu":  0,
+        "FwGpuEngine":  "copy",
+        "DwmCpu":  0.243,
+        "DwmGpu":  0,
+        "DwmGpuEngine":  "3d",
+        "Raw":  {
+                    "App":  "featherwall",
+                    "Label":  "off r3",
+                    "SampledSeconds":  34.4,
+                    "Processes":  1,
+                    "Threads":  73,
+                    "Handles":  569,
+                    "WorkingSetMB":  222.4,
+                    "PrivateMB":  161.3,
+                    "GpuDedicatedMB":  0,
+                    "GpuSharedMB":  140.5,
+                    "CpuPercentMachine":  0.017,
+                    "CpuPercentOneCore":  0.4,
+                    "BusiestGpuEngine":  "copy",
+                    "BusiestGpuPercent":  0,
+                    "GpuCounters":  "all read",
+                    "ProcessReadErrors":  0,
+                    "Cores":  24,
+                    "PauseState":  "Playing, verified for the full window on 2 monitor(s): \\\\.\\DISPLAY1, \\\\.\\DISPLAY5",
+                    "RecordState":  "not checked",
+                    "Extra":  {
+                                  "dwm":  {
+                                              "CpuPercentMachine":  0.243,
+                                              "BusiestGpuPercent":  0,
+                                              "BusiestGpuEngine":  "3d"
+                                          }
+                              },
+                    "Combined":  {
+                                     "CpuPercentMachine":  0.26,
+                                     "BusiestGpuPercent":  0,
+                                     "BusiestGpuEngine":  "3d"
+                                 },
+                    "MeasuredAtUtc":  "2026-11-10T14:16:12Z"
+                }
+    },
+    {
+        "Arm":  "compositor",
+        "Round":  3,
+        "FwCpu":  0.008,
+        "FwGpu":  0,
+        "FwGpuEngine":  "copy",
+        "DwmCpu":  0.121,
+        "DwmGpu":  10.7,
+        "DwmGpuEngine":  "3d",
+        "Raw":  {
+                    "App":  "featherwall",
+                    "Label":  "compositor r3",
+                    "SampledSeconds":  34.6,
+                    "Processes":  1,
+                    "Threads":  73,
+                    "Handles":  572,
+                    "WorkingSetMB":  208.1,
+                    "PrivateMB":  146.7,
+                    "GpuDedicatedMB":  0,
+                    "GpuSharedMB":  124,
+                    "CpuPercentMachine":  0.008,
+                    "CpuPercentOneCore":  0.2,
+                    "BusiestGpuEngine":  "copy",
+                    "BusiestGpuPercent":  0,
+                    "GpuCounters":  "all read",
+                    "ProcessReadErrors":  0,
+                    "Cores":  24,
+                    "PauseState":  "Playing, verified for the full window on 2 monitor(s): \\\\.\\DISPLAY1, \\\\.\\DISPLAY5",
+                    "RecordState":  "turning, verified for the full window",
+                    "Extra":  {
+                                  "dwm":  {
+                                              "CpuPercentMachine":  0.121,
+                                              "BusiestGpuPercent":  10.7,
+                                              "BusiestGpuEngine":  "3d"
+                                          }
+                              },
+                    "Combined":  {
+                                     "CpuPercentMachine":  0.128,
+                                     "BusiestGpuPercent":  10.7,
+                                     "BusiestGpuEngine":  "3d"
+                                 },
+                    "MeasuredAtUtc":  "2026-11-10T14:17:02Z"
+                }
+    },
+    {
+        "Arm":  "timer",
+        "Round":  3,
+        "FwCpu":  0.106,
+        "FwGpu":  0.6,
+        "FwGpuEngine":  "copy",
+        "DwmCpu":  0.363,
+        "DwmGpu":  0.7,
+        "DwmGpuEngine":  "3d",
+        "Raw":  {
+                    "App":  "featherwall",
+                    "Label":  "timer r3",
+                    "SampledSeconds":  34.5,
+                    "Processes":  1,
+                    "Threads":  75,
+                    "Handles":  569,
+                    "WorkingSetMB":  224,
+                    "PrivateMB":  162.5,
+                    "GpuDedicatedMB":  0,
+                    "GpuSharedMB":  140.5,
+                    "CpuPercentMachine":  0.106,
+                    "CpuPercentOneCore":  2.5,
+                    "BusiestGpuEngine":  "copy",
+                    "BusiestGpuPercent":  0.6,
+                    "GpuCounters":  "GPU Process Memory counters read on 5/7 samples",
+                    "ProcessReadErrors":  0,
+                    "Cores":  24,
+                    "PauseState":  "Playing, verified for the full window on 2 monitor(s): \\\\.\\DISPLAY1, \\\\.\\DISPLAY5",
+                    "RecordState":  "turning, verified for the full window",
+                    "Extra":  {
+                                  "dwm":  {
+                                              "CpuPercentMachine":  0.363,
+                                              "BusiestGpuPercent":  0.7,
+                                              "BusiestGpuEngine":  "3d"
+                                          }
+                              },
+                    "Combined":  {
+                                     "CpuPercentMachine":  0.469,
+                                     "BusiestGpuPercent":  1,
+                                     "BusiestGpuEngine":  "3d"
+                                 },
+                    "MeasuredAtUtc":  "2026-11-10T14:17:52Z"
+                }
+    }
+]
