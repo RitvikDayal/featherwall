@@ -449,9 +449,17 @@ The tray menu and settings panel cover the common cases. Everything lives in
     }
   },
   "pause": { "onFullscreen": true, "onBatterySaver": true, "onRemoteSession": true },
+  "widgets": { "theme": "classic", "accent": "auto" },
   "startMenuShortcutAdded": true
 }
 ```
+
+`widgets.theme` picks how the clock, the record and the battery ring look as a set. `classic` is
+the look FeatherWall has always had, and what an upgrade keeps. `editorial` sets the date in small
+capitals above a light clock, with a short rule beneath and one soft shadow under every widget, so
+they stay legible over bright sky. A name this version does not know falls back to `classic`.
+`widgets.accent` is the colour the themes use: `auto` takes it once from the wallpaper, or set
+`#RRGGBB` to fix it. `classic` ignores it.
 
 `startMenuShortcutAdded` records that the Start menu entry has been created once, which is what
 keeps a deleted entry deleted. Set it to `false` to get the entry back on the next start.

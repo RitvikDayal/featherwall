@@ -28,6 +28,10 @@
     what the widgets cost. Without this the benchmark config has no "info" block at all, which
     is the shipped default, so a plain run measures the widget as off rather than as absent.
 
+.PARAMETER Theme
+    The widget theme to measure, written as "widgets.theme". Needs -Widgets. Defaults to classic,
+    the look every upgrade keeps.
+
 .PARAMETER Exe
     featherwall.exe to measure. Defaults to the Release build.
 
@@ -47,6 +51,7 @@ param(
     [switch] $WithDwm,
     [string] $InfoMonitor,
     [switch] $RequireRecordTurning,
+    [ValidateSet('classic', 'editorial')][string] $Theme = 'classic',
     [string[]] $ExtraArgs = @()
 )
 
@@ -69,6 +74,7 @@ if (($States -contains 'Video auto-paused' -or $States -contains 'Settings panel
 }
 if ($InfoMonitor -and -not $Widgets) { throw "-InfoMonitor places the info widget, so it needs -Widgets." }
 if ($RequireRecordTurning -and -not $Widgets) { throw "-RequireRecordTurning checks the info widget's record, so it needs -Widgets." }
+if ($Theme -ne 'classic' -and -not $Widgets) { throw "-Theme styles the widgets, so it needs -Widgets." }
 
 function Stop-FeatherWall {
     & $Exe --exit 2>$null | Out-Null
@@ -104,6 +110,7 @@ function Set-Wallpaper {
                       anchor = 'BottomRight'; marginX = 48; marginY = 48 }
         }
         if ($InfoMonitor) { $config.info.monitor = $InfoMonitor }
+        $config.widgets = @{ theme = $Theme; accent = 'auto' }
     }
     $config | ConvertTo-Json -Depth 6 | Set-Content -Path $configPath -Encoding UTF8
 }
