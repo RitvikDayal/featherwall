@@ -1,0 +1,75 @@
+﻿[
+    {
+        "App":  "featherwall",
+        "Label":  "Still image + info widget",
+        "SampledSeconds":  31.8,
+        "Processes":  1,
+        "Threads":  74,
+        "Handles":  576,
+        "WorkingSetMB":  225.2,
+        "PrivateMB":  161.8,
+        "GpuDedicatedMB":  0,
+        "GpuSharedMB":  140.5,
+        "CpuPercentMachine":  0.113,
+        "CpuPercentOneCore":  2.7,
+        "BusiestGpuEngine":  "copy",
+        "BusiestGpuPercent":  0.7,
+        "GpuCounters":  "all read",
+        "ProcessReadErrors":  0,
+        "Cores":  24,
+        "PauseState":  "Playing, verified for the full window on 2 monitor(s): \\\\.\\DISPLAY1, \\\\.\\DISPLAY5",
+        "RecordState":  "turning, verified for the full window",
+        "Extra":  {
+                      "dwm":  {
+                                  "CpuPercentMachine":  0.393,
+                                  "BusiestGpuPercent":  0.8,
+                                  "BusiestGpuEngine":  "3d"
+                              }
+                  },
+        "Combined":  {
+                         "CpuPercentMachine":  0.506,
+                         "BusiestGpuPercent":  1.2,
+                         "BusiestGpuEngine":  "3d"
+                     },
+        "MeasuredAtUtc":  "2026-11-10T13:52:15Z"
+    },
+    {
+        "App":  "featherwall",
+        "Label":  "Still image + info widget",
+        "SampledSeconds":  34.1,
+        "Processes":  1,
+        "Threads":  74,
+        "Handles":  578,
+        "WorkingSetMB":  225.2,
+        "PrivateMB":  163.2,
+        "GpuDedicatedMB":  0,
+        "GpuSharedMB":  140.5,
+        "CpuPercentMachine":  0.117,
+        "CpuPercentOneCore":  2.8,
+        "BusiestGpuEngine":  "copy",
+        "BusiestGpuPercent":  0.7,
+        "GpuCounters":  "all read",
+        "ProcessReadErrors":  0,
+        "Cores":  24,
+        "PauseState":  "Playing, verified for the full window on 2 monitor(s): \\\\.\\DISPLAY1, \\\\.\\DISPLAY5",
+        "RecordState":  "turning, verified for the full window",
+        "Extra":  {
+                      "dwm":  {
+                                  "CpuPercentMachine":  0.489,
+                                  "BusiestGpuPercent":  0.8,
+                                  "BusiestGpuEngine":  "3d"
+                              }
+                  },
+        "Combined":  {
+                         "CpuPercentMachine":  0.606,
+                         "BusiestGpuPercent":  1.2,
+                         "BusiestGpuEngine":  "3d"
+                     },
+        "MeasuredAtUtc":  "2026-11-10T13:53:02Z"
+    },
+    {
+        "Label":  "Still image + info widget",
+        "Refused":  "DISCARDED: the wallpaper changed pause state during the \u0027Still image + info widget\u0027 window, so this number is an average of two different states and means nothing.",
+        "ExpectedState":  "Playing"
+    }
+]
