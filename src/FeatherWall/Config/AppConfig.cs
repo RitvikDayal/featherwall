@@ -92,6 +92,14 @@ public sealed class WidgetsConfig
     /// <summary>"auto" samples the wallpaper; #RRGGBB fixes it. Classic ignores it.</summary>
     public string Accent { get; set; } = "auto";
 
+    /// <summary>The spelling written to the file: camelCase, as the design names them
+    /// (classic, editorial, glassDock…).</summary>
+    public static string ConfigName(WidgetTheme theme)
+    {
+        var name = theme.ToString();
+        return char.ToLowerInvariant(name[0]) + name[1..];
+    }
+
     /// <summary>Case-insensitive. An unknown name renders as Classic and is logged once.</summary>
     public WidgetTheme ResolveTheme()
     {

@@ -556,6 +556,7 @@ public sealed class Engine : IDisposable
     private const uint CmdSettings = 13;
     private const uint CmdFitBase = 20;      // + (int)FitMode
     private const uint CmdAnchorBase = 30;   // + (int)ClockAnchor
+    private const uint CmdThemeBase = 40;    // + (int)WidgetTheme
     private const uint CmdGalleryBase = 2000;
 
     private void ShowTrayMenu()
@@ -568,6 +569,7 @@ public sealed class Engine : IDisposable
         IntPtr anchorMenu = User32.CreatePopupMenu();
         IntPtr galleryMenu = User32.CreatePopupMenu();
         IntPtr pauseMenu = User32.CreatePopupMenu();
+        IntPtr themeMenu = User32.CreatePopupMenu();
         try
         {
             User32.AppendMenuW(menu, MF_STRING, CmdPick, "Set wallpaper…");
@@ -599,6 +601,12 @@ public sealed class Engine : IDisposable
                     CmdAnchorBase + (uint)anchor, PrettyAnchor(anchor));
             User32.AppendMenuW(clockMenu, MF_POPUP, (nuint)anchorMenu, "Position");
             User32.AppendMenuW(menu, MF_POPUP, (nuint)clockMenu, "Clock");
+
+            var currentTheme = _config.Widgets.ResolveTheme();
+            foreach (var theme in Enum.GetValues<WidgetTheme>())
+                User32.AppendMenuW(themeMenu, MF_STRING | (currentTheme == theme ? MF_CHECKED : 0),
+                    CmdThemeBase + (uint)theme, theme.ToString());
+            User32.AppendMenuW(menu, MF_POPUP, (nuint)themeMenu, "Widget style");
 
             User32.AppendMenuW(pauseMenu, MF_STRING | (_config.Pause.OnFullscreen ? MF_CHECKED : 0), CmdPauseFullscreen, "Pause when a fullscreen app is active");
             User32.AppendMenuW(pauseMenu, MF_STRING | (_config.Pause.OnBatterySaver ? MF_CHECKED : 0), CmdPauseBattery, "Pause on battery saver");
@@ -701,6 +709,14 @@ public sealed class Engine : IDisposable
         {
             _config.Clock.Anchor = (ClockAnchor)(cmd - CmdAnchorBase);
             SaveAndRefreshClockOnly();
+            return;
+        }
+        if (cmd >= CmdThemeBase && cmd < CmdThemeBase + 10)
+        {
+            var theme = (WidgetTheme)(cmd - CmdThemeBase);
+            _config.Widgets.Theme = WidgetsConfig.ConfigName(theme);
+            Log.Info($"Widget style: {_config.Widgets.Theme} (tray)");
+            SaveAndRefreshWidgets();
             return;
         }
         if (cmd >= CmdGalleryBase && cmd < CmdGalleryBase + (uint)_gallery.Manifest.Entries.Count)
