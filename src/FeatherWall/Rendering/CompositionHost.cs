@@ -36,7 +36,7 @@ public sealed class CompositionHost : IDisposable
 
     /// <summary>Overlays by key, so more than one widget can be composed above the content.
     /// A single field would mean each new widget disposed the previous one.</summary>
-    private readonly Dictionary<string, CompositionSurface> _overlays = [];
+    private readonly Dictionary<string, IComposedOverlay> _overlays = [];
 
     /// <summary>Guards the overlay dictionary and every mutation of the visual tree.
     ///
@@ -119,7 +119,27 @@ public sealed class CompositionHost : IDisposable
 
     public CompositionSurface? GetOverlay(string key)
     {
-        lock (_tree) return _overlays.TryGetValue(key, out var surface) ? surface : null;
+        lock (_tree) return _overlays.TryGetValue(key, out var overlay) ? overlay as CompositionSurface : null;
+    }
+
+    public CompositionLayerGroup? GetOverlayGroup(string key)
+    {
+        lock (_tree) return _overlays.TryGetValue(key, out var overlay) ? overlay as CompositionLayerGroup : null;
+    }
+
+    /// <summary>A keyed overlay of ordered layers, for a widget whose parts overlap and must stack
+    /// in a fixed order. Separate overlays will not do: their order among themselves is unspecified.</summary>
+    public CompositionLayerGroup CreateOverlayGroup(string key, int offsetX, int offsetY)
+    {
+        lock (_tree)
+        {
+            RemoveOverlayCore(key);
+            var group = new CompositionLayerGroup(this, offsetX, offsetY);
+            _rootVisual.AddVisual(group.Visual, true, Content?.Visual);
+            _overlays[key] = group;
+            _dcompDevice.Commit();
+            return group;
+        }
     }
 
     /// <summary>A transparent surface composed above the content (clock and friends). Keyed, so
@@ -140,7 +160,7 @@ public sealed class CompositionHost : IDisposable
         }
     }
 
-    private void RaiseDeviceLost() => DeviceLost?.Invoke();
+    internal void RaiseDeviceLost() => DeviceLost?.Invoke();
 
     public void RemoveOverlay(string key)
     {
@@ -154,9 +174,9 @@ public sealed class CompositionHost : IDisposable
     /// existing overlay without releasing the lock in between.</summary>
     private bool RemoveOverlayCore(string key)
     {
-        if (!_overlays.Remove(key, out var surface)) return false;
-        _rootVisual.RemoveVisual(surface.Visual);
-        surface.Dispose();
+        if (!_overlays.Remove(key, out var overlay)) return false;
+        _rootVisual.RemoveVisual(overlay.Visual);
+        overlay.Dispose();
         return true;
     }
 
@@ -193,7 +213,7 @@ public sealed class CompositionHost : IDisposable
         {
             Content?.Dispose();
             Content = null;
-            foreach (var surface in _overlays.Values) surface.Dispose();
+            foreach (var overlay in _overlays.Values) overlay.Dispose();
             _overlays.Clear();
         }
         _rootVisual?.Dispose();
@@ -208,7 +228,7 @@ public sealed class CompositionHost : IDisposable
 
 /// <summary>One flip-model composition swapchain bound to a DComp visual, with a D2D
 /// render target for CPU-bitmap content.</summary>
-public sealed class CompositionSurface : IDisposable
+public sealed class CompositionSurface : IComposedOverlay
 {
     private readonly CompositionHost _host;
     private readonly bool _premultiplied;
@@ -218,6 +238,10 @@ public sealed class CompositionSurface : IDisposable
     public ID3D11Texture2D BackBuffer { get; private set; }
     public ID3D11RenderTargetView Rtv { get; private set; }
     public IDCompositionVisual Visual { get; }
+
+    /// <summary>The visual this surface is a child of when it is a layer in a group; null when it
+    /// sits directly under the root.</summary>
+    internal IDCompositionVisual? Parent { get; init; }
 
     public int Width { get; private set; }
     public int Height { get; private set; }
@@ -371,7 +395,12 @@ public sealed class CompositionSurface : IDisposable
     {
         _d2dTarget?.Dispose();
         _d2dTarget = null;
-        try { _host.RemoveVisual(Visual); } catch { /* host may be tearing down */ }
+        try
+        {
+            if (Parent is null) _host.RemoveVisual(Visual);
+            else _host.MutateTree(() => Parent.RemoveVisual(Visual));
+        }
+        catch { /* host may be tearing down */ }
         Visual.Dispose();
         Rtv.Dispose();
         BackBuffer.Dispose();

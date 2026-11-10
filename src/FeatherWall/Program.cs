@@ -25,6 +25,13 @@ internal static class Program
         Log.Init();
         Log.Info($"FeatherWall starting (pid {Environment.ProcessId})");
 
+        // Temporary, for measuring the record's spin both ways in one build. Removed with the loser.
+        if (args.Contains("--spin-timer"))
+        {
+            Widgets.NowPlayingOverlay.UseTimerSpin = true;
+            Log.Info("Record spin: 15 fps timer (--spin-timer)");
+        }
+
         using var singleInstance = new Mutex(initiallyOwned: true, "FeatherWall.SingleInstance", out bool isFirst);
         if (!isFirst)
         {
