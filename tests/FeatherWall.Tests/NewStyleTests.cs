@@ -115,6 +115,17 @@ public class MonolithTests
         }
     }
 
+    /// <summary>Some players report an artist with no title; the line is then just the artist, with no
+    /// separator in front of it.</summary>
+    [Fact]
+    public void ArtistWithoutTitle_HasNoLeadingSeparator()
+    {
+        var artistOnly = Theme.Layout(Group.Input(title: "")).Single(p => p.Key == "monolith-strip");
+        var asTitle = Theme.Layout(Group.Input() with { Track = Group.Track with { Title = "Banjaare", Artist = null } })
+            .Single(p => p.Key == "monolith-strip");
+        Assert.Equal(asTitle.Bounds.Width, artistOnly.Bounds.Width);
+    }
+
     [Fact]
     public void LongTitle_StaysWithinTheScreen_AtLargeSizes()
     {
@@ -175,6 +186,19 @@ public class TilesTests
         var topLeft = Assert.Single(Theme.Layout(Group.Input(position: ClockAnchor.TopLeft)));
         Assert.True(topLeft.Bounds.Left < 200 && topLeft.Bounds.Top < 200);
         Assert.True(Group.Work.Contains(topLeft.Bounds));
+    }
+
+    /// <summary>The review's case: size 300% on a 1080p screen at 100% made the stack 988 px tall in a
+    /// 1032 px work area, so the margin pushed it 4 px off the top or bottom.</summary>
+    [Fact]
+    public void TallStack_StaysOnScreen_AtEveryPosition()
+    {
+        var laptop = new Rectangle(0, 0, 1920, 1032);
+        foreach (var anchor in Enum.GetValues<ClockAnchor>())
+        {
+            var panel = Assert.Single(Theme.Layout(Group.Input(position: anchor, scale: 3f) with { WorkArea = laptop }));
+            Assert.True(laptop.Contains(panel.Bounds), $"{anchor}: {panel.Bounds}");
+        }
     }
 
     [Fact]

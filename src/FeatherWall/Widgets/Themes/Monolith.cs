@@ -157,7 +157,9 @@ public sealed class Monolith : IGroupTheme
         {
             var culture = CultureInfo.CurrentCulture;
             title = (r.Title ?? "").ToUpper(culture);
-            artist = string.IsNullOrWhiteSpace(r.Artist) ? "" : " · " + r.Artist!.ToUpper(culture);
+            artist = string.IsNullOrWhiteSpace(r.Artist) ? "" : r.Artist!.ToUpper(culture);
+            if (string.IsNullOrWhiteSpace(title)) (title, artist) = (artist, "");
+            else if (artist.Length > 0) artist = " · " + artist;
             x = record + gap;
             // The title gets what the record, the rule and the charge leave of the cap.
             float rest = power is null ? 0 : gap + (ruleW > 0 ? ruleW + gap : 0) + powerW;
