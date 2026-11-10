@@ -140,3 +140,71 @@ public class EditorialTests
         Assert.Equal(0, b.GetPixel(30, 30).A);
     }
 }
+
+public class ThemeTextFallbackTests
+{
+    [Theory]
+    [InlineData("Banjaare", true)]
+    [InlineData("BAIRAN — BANJAARE…", true)]
+    [InlineData("Café Müller · 10 NOV", true)]
+    [InlineData("बरसात", false)]
+    [InlineData("東京", false)]
+    public void IsLatin_TellsWhichTextTheThemeFacesCanDraw(string text, bool latin) =>
+        Assert.Equal(latin, ThemeFonts.IsLatin(text));
+
+    [Fact]
+    public void NonLatin_IsMeasuredWhole_NotGlyphByGlyph()
+    {
+        // Drawn a glyph at a time, Devanagari loses its joins and Bahnschrift has no glyphs for it
+        // at all — the record's caption showed empty boxes. Non-Latin text is measured and drawn
+        // whole in a face Windows links fallbacks for, so tracking does not apply to it.
+        using var bmp = new System.Drawing.Bitmap(1, 1);
+        using var g = System.Drawing.Graphics.FromImage(bmp);
+        using var font = ThemeFonts.Create(ThemeFonts.Bahn, 20);
+        var tracked = ThemeFonts.MeasureTracked(g, "बरसात", font, 10f);
+        var untracked = ThemeFonts.MeasureTracked(g, "बरसात", font, 0f);
+        Assert.Equal(untracked.Width, tracked.Width, 1);
+    }
+}
+
+public class ThemeScriptFaceTests
+{
+    [Theory]
+    [InlineData("बरसात", "Nirmala UI")]
+    [InlineData("ਪੰਜਾਬੀ", "Nirmala UI")]
+    [InlineData("ภาษาไทย", "Leelawadee UI")]
+    [InlineData("東京", "Microsoft YaHei UI")]
+    [InlineData("ひらがな", "Yu Gothic UI")]
+    [InlineData("한국어", "Malgun Gothic")]
+    [InlineData("Привет", "Segoe UI")]
+    public void ScriptFace_CoversTheScript(string text, string face) =>
+        Assert.Equal(face, ThemeFonts.ScriptFace(text));
+}
+
+public class ThemeStyledLetterTests
+{
+    // "𝐋𝐎𝐅𝐈 𝐎𝐍 𝐅𝐈𝐑𝐄": a channel name set in Mathematical Bold letters, which the theme faces do not
+    // carry. It drew as boxes on Orbit's caption.
+    private static readonly string Styled = char.ConvertFromUtf32(0x1D40B) + char.ConvertFromUtf32(0x1D40E)
+                                          + char.ConvertFromUtf32(0x1D405) + char.ConvertFromUtf32(0x1D408);
+
+    [Fact]
+    public void StyledLetters_AreMeasuredAsPlainLetters()
+    {
+        using var bmp = new System.Drawing.Bitmap(1, 1);
+        using var g = System.Drawing.Graphics.FromImage(bmp);
+        using var font = ThemeFonts.Create(ThemeFonts.Bahn, 20);
+        Assert.Equal(ThemeFonts.MeasureTracked(g, "LOFI", font, 2f).Width,
+                     ThemeFonts.MeasureTracked(g, Styled, font, 2f).Width, 1);
+    }
+
+    [Fact]
+    public void Fit_NeverSplitsAStyledLetter()
+    {
+        using var bmp = new System.Drawing.Bitmap(1, 1);
+        using var g = System.Drawing.Graphics.FromImage(bmp);
+        using var font = ThemeFonts.Create(ThemeFonts.Bahn, 20);
+        var cut = GroupThemes.FitText(g, string.Concat(Enumerable.Repeat(Styled, 20)), font, 60f);
+        Assert.DoesNotContain(cut, c => char.IsSurrogate(c));
+    }
+}

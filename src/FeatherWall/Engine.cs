@@ -49,6 +49,10 @@ public sealed class Engine : IDisposable
     private HaloOverlay? _halo;
     private NowPlayingOverlay? _record;
 
+    /// <summary>Orbit, Poster or Glass dock: one overlay for the whole set, in place of the four
+    /// above. Exactly one of the two arrangements exists at a time.</summary>
+    private GroupOverlay? _group;
+
     /// <summary>Which monitor the record lives on. Pause events arrive per monitor, and without
     /// this a second display going behind a window would stop a record on the first.</summary>
     private string? _recordDevice;
@@ -199,7 +203,7 @@ public sealed class Engine : IDisposable
         {
             _config.Assign(monitorDevice, path);
             ConfigStore.Save(_config);
-            if (_clock is null && _info is null && _halo is null && _record is null) RecreateWidgets();
+            if (_clock is null && _info is null && _halo is null && _record is null && _group is null) RecreateWidgets();
         }
     }
 
@@ -250,6 +254,7 @@ public sealed class Engine : IDisposable
             _info?.SetSuspended(off);
             _halo?.SetSuspended(off);
             _record?.SetSuspended(off);
+            _group?.SetSuspended(off);
         }
         else if (setting == PowerNotifications.PowerSavingStatus || setting == PowerNotifications.AcDcPowerSource)
         {
@@ -319,6 +324,8 @@ public sealed class Engine : IDisposable
             _halo = null;
             _record?.Dispose();
             _record = null;
+            _group?.Dispose();
+            _group = null;
             _recordDevice = null;
             foreach (var window in _windows.Values) window.Dispose();
             _windows.Clear();
@@ -339,8 +346,67 @@ public sealed class Engine : IDisposable
     private void RecreateWidgets()
     {
         _stylesInUse.Clear();
+        var theme = _config.Widgets.ResolveTheme();
+        if (WidgetsConfig.IsGroup(theme))
+        {
+            RecreateGroup(theme);
+            return;
+        }
+        _group?.Dispose();
+        _group = null;
         RecreateClock();
         RecreateInfo();
+    }
+
+    /// <summary>A group theme replaces the four per-widget overlays with one. The sources are kept
+    /// exactly as the info widget keeps them: created from Info.Sources, disposed only when the
+    /// widget is switched off.</summary>
+    private void RecreateGroup(WidgetTheme theme)
+    {
+        _clock?.Dispose();
+        _clock = null;
+        _info?.Dispose();
+        _info = null;
+        _halo?.Dispose();
+        _halo = null;
+        _record?.Dispose();
+        _record = null;
+        _group?.Dispose();
+        _group = null;
+        _recordDevice = null;
+
+        bool info = _config.Info.Enabled;
+        if (!info) DisposeSources();
+        Log.Info($"Widget group: {WidgetsConfig.ConfigName(theme)}, clock={_config.Clock.Enabled}, info={info}");
+        if (!_config.Clock.Enabled && !info) return;
+
+        var monitors = MonitorTracker.Enumerate();
+        var target = monitors.FirstOrDefault(m =>
+                string.Equals(m.Device, _config.Widgets.Monitor, StringComparison.OrdinalIgnoreCase))
+            ?? monitors.FirstOrDefault(m => m.Primary) ?? monitors.FirstOrDefault();
+        if (target is null) return;
+
+        try
+        {
+            if (!_windows.TryGetValue(target.Device, out var window))
+            {
+                window = new WallpaperWindow(target);
+                window.DeviceLost += OnDeviceLost;
+                _host.Attach(window.Hwnd, target.Bounds);
+                window.EnsureHost();
+                _windows[target.Device] = window;
+            }
+            if (info) ResolveSources();
+            _group = new GroupOverlay(window.EnsureHost(), GroupThemes.For(theme), _config, target,
+                info ? _nowPlaying : null, info ? _battery : null,
+                MonitorTracker.DpiScale(target, monitors), StyleFor(target.Device));
+            _recordDevice = target.Device;
+            _nowPlaying?.Refresh();
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Widget group failed", ex);
+        }
     }
 
     /// <summary>Rebuilds the info widget. The sources OUTLIVE it.
@@ -359,6 +425,8 @@ public sealed class Engine : IDisposable
         _halo = null;
         _record?.Dispose();
         _record = null;
+        _group?.Dispose();
+        _group = null;
         _recordDevice = null;
         Log.Info($"Info widget: enabled={_config.Info.Enabled}, sources=[{string.Join(", ", _config.Info.Sources)}]");
         if (!_config.Info.Enabled)
@@ -506,7 +574,7 @@ public sealed class Engine : IDisposable
             if (reason == PauseReason.None)
             {
                 window.Renderer.Resume();
-                if (IsRecordMonitor(monitorDevice)) _record?.SetCovered(false);
+                if (IsRecordMonitor(monitorDevice)) { _record?.SetCovered(false); _group?.SetCovered(false); }
                 Log.Info($"Resumed {monitorDevice}");
             }
             else
@@ -514,7 +582,7 @@ public sealed class Engine : IDisposable
                 window.Renderer.Pause();
                 // The record stops for exactly the reasons the wallpaper does. Turning behind a
                 // maximised window is the clearest possible waste of a frame clock.
-                if (IsRecordMonitor(monitorDevice)) _record?.SetCovered(true);
+                if (IsRecordMonitor(monitorDevice)) { _record?.SetCovered(true); _group?.SetCovered(true); }
                 Log.Info($"Paused {monitorDevice}: {reason}");
             }
         });
@@ -608,7 +676,7 @@ public sealed class Engine : IDisposable
             var currentTheme = _config.Widgets.ResolveTheme();
             foreach (var theme in Enum.GetValues<WidgetTheme>())
                 User32.AppendMenuW(themeMenu, MF_STRING | (currentTheme == theme ? MF_CHECKED : 0),
-                    CmdThemeBase + (uint)theme, theme.ToString());
+                    CmdThemeBase + (uint)theme, WidgetsConfig.DisplayName(theme));
             User32.AppendMenuW(menu, MF_POPUP, (nuint)themeMenu, "Widget style");
 
             User32.AppendMenuW(pauseMenu, MF_STRING | (_config.Pause.OnFullscreen ? MF_CHECKED : 0), CmdPauseFullscreen, "Pause when a fullscreen app is active");
@@ -796,7 +864,8 @@ public sealed class Engine : IDisposable
     private void SaveAndRefreshClockOnly()
     {
         ConfigStore.Save(_config);
-        RecreateClock();
+        if (WidgetsConfig.IsGroup(_config.Widgets.ResolveTheme())) RecreateWidgets();
+        else RecreateClock();
     }
 
     // ---- settings panel hooks ------------------------------------------------------------
@@ -854,8 +923,9 @@ public sealed class Engine : IDisposable
     private string PreviewDevice()
     {
         var monitors = MonitorTracker.Enumerate();
+        string wanted = WidgetsConfig.IsGroup(_config.Widgets.ResolveTheme()) ? _config.Widgets.Monitor : _config.Clock.Monitor;
         var target = monitors.FirstOrDefault(m =>
-                string.Equals(m.Device, _config.Clock.Monitor, StringComparison.OrdinalIgnoreCase))
+                string.Equals(m.Device, wanted, StringComparison.OrdinalIgnoreCase))
             ?? monitors.FirstOrDefault(m => m.Primary) ?? monitors.FirstOrDefault();
         return target?.Device ?? "";
     }
@@ -959,7 +1029,7 @@ public sealed class Engine : IDisposable
         sb.AppendLine($"Progman: 0x{layer.Progman:X}  WorkerW: 0x{layer.WorkerW:X}  DefView: 0x{layer.DefView:X}");
         foreach (var monitor in MonitorTracker.Enumerate())
             sb.AppendLine($"Monitor {monitor.Device}: {monitor.Bounds}{(monitor.Primary ? " (primary)" : "")}");
-        sb.AppendLine($"Attached surfaces: {_windows.Count}   Clock: {(_clock is null ? "off" : "on")}   Info: {(_info is null ? "off" : "on")}   Halo: {(_halo is null ? "attached/off" : "detached")}   Record: {(_record is null ? "off" : "on")}");
+        sb.AppendLine($"Attached surfaces: {_windows.Count}   Clock: {(_clock is null ? "off" : "on")}   Info: {(_info is null ? "off" : "on")}   Halo: {(_halo is null ? "attached/off" : "detached")}   Record: {(_record is null ? "off" : "on")}   Group: {(_group is null ? "off" : "on")}");
         sb.AppendLine($"Config: {ConfigStore.ConfigPath}");
         sb.AppendLine($"Log: {Path.Combine(Log.Directory, "featherwall.log")}");
         return sb.ToString();
@@ -1032,6 +1102,7 @@ public sealed class Engine : IDisposable
                     _engine._info?.Refresh();
                     _engine._halo?.Refresh();
                     _engine._record?.Refresh();
+                    _engine._group?.Refresh();
                     _engine._host.ValidateLayer();
                     return IntPtr.Zero;
                 case WM_POWERBROADCAST when (int)wParam == PBT_POWERSETTINGCHANGE:
@@ -1054,6 +1125,8 @@ public sealed class Engine : IDisposable
         _halo = null;
         _record?.Dispose();
         _record = null;
+        _group?.Dispose();
+        _group = null;
         _recordDevice = null;
         DisposeSources();
         foreach (var window in _windows.Values) window.Dispose();
