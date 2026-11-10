@@ -27,6 +27,8 @@ public class StartMenuShortcutTests : IDisposable
     {
         var exe = @"C:\Apps\FeatherWall\featherwall.exe";
         StartMenuShortcut.Ensure(exe, Lnk);
+        // Backdated so a rewrite inside the file system's timestamp resolution still shows.
+        File.SetLastWriteTimeUtc(Lnk, DateTime.UtcNow.AddDays(-1));
         var written = File.GetLastWriteTimeUtc(Lnk);
 
         Assert.False(StartMenuShortcut.Ensure(exe, Lnk));
