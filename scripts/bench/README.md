@@ -50,8 +50,8 @@ free. DWM's CPU time comes from the `% Processor Time` counter, because an unele
 open `dwm.exe` for its process times and PowerShell returns `$null` rather than failing.
 
 Other selectors for focused runs: `-States` picks rows by label, `-Runs N` reports each row as
-the median of its accepted runs, `-InfoMonitor \\.\DISPLAYn` places the info widget, and
-`-ExtraArgs` is passed to `featherwall.exe`.
+the median of its accepted runs, `-InfoMonitor \\.\DISPLAYn` places the info widget, `-Theme`
+picks the widget theme (`classic` or `editorial`), and `-ExtraArgs` is passed to `featherwall.exe`.
 
 ## What is measured, and why that way
 
