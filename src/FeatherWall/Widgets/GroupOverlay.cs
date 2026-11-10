@@ -10,8 +10,9 @@ using FeatherWall.Widgets.Themes;
 namespace FeatherWall.Widgets;
 
 /// <summary>Orbit, Poster and Glass dock on the desktop: the theme's panels, each an ordered layer
-/// group of a static layer and, for the panel holding the record, a face layer above it that the
-/// compositor turns.
+/// group of a static layer and, for the panel holding the record, a face layer above it. Only that
+/// small face is re-presented while the record turns, at the same 15 fps as the classic record —
+/// the compositor-driven spin was measured and lost on GPU (docs/benchmark.md, 2026-11-10).
 ///
 /// It replaces the four per-widget overlays while a group theme is active, and keeps their rules:
 /// it repaints only on the clock's tick, a source event or a resume; it goes silent with the
@@ -52,8 +53,6 @@ public sealed class GroupOverlay : IDisposable
     private bool _faceHasArt;
     private (string? Track, bool Art, bool Playing, int Side)? _presentedFace;
     private CompositionSurface? _faceLayer;
-    private CompositorSpin? _spin;
-    private float _heldAngle;
     private float _turns;
     private bool _ticking;
     private bool _hasFace;
@@ -219,11 +218,6 @@ public sealed class GroupOverlay : IDisposable
             layers.Face = group.AddLayer(panel.FaceBox.Width, panel.FaceBox.Height, panel.FaceBox.X, panel.FaceBox.Y);
             DropFace();
             _faceLayer = layers.Face;
-            if (_config.Info.Disc.Rotate && !NowPlayingOverlay.UseTimerSpin)
-            {
-                _spin = new CompositorSpin(_host, layers.Face.Visual, panel.FaceBox.Width / 2f, panel.FaceBox.Height / 2f);
-                _spin.Hold(_heldAngle);
-            }
         }
         _panels[panel.Key] = layers;
         return layers;
@@ -236,15 +230,10 @@ public sealed class GroupOverlay : IDisposable
         try { _host.RemoveOverlay(KeyPrefix + key); } catch { /* host may already be gone */ }
     }
 
-    /// <summary>Forgets the face layer and its spin, keeping the angle. Caller holds the lock.</summary>
+    /// <summary>Forgets the face layer and stops its timer; the angle stays in _turns, so a rebuilt
+    /// record carries on from where it was. Caller holds the lock.</summary>
     private void DropFace()
     {
-        if (_spin is not null)
-        {
-            _heldAngle = _spin.Stop();
-            _spin.Dispose();
-            _spin = null;
-        }
         _ticking = false;
         _faceLayer = null;
         _presentedFace = null;
@@ -267,7 +256,7 @@ public sealed class GroupOverlay : IDisposable
         }
 
         var key = (_faceTrackId, _faceHasArt, track.IsPlaying, side);
-        if (_presentedFace == key && !NowPlayingOverlay.UseTimerSpin) return;
+        if (_presentedFace == key && _ticking) return;   // the spin timer is presenting it
         PaintFace(layer, track.IsPlaying);
         _presentedFace = key;
     }
@@ -278,7 +267,7 @@ public sealed class GroupOverlay : IDisposable
         using var bmp = new Bitmap(_face.Width, _face.Height, PixelFormat.Format32bppPArgb);
         using (var g = Graphics.FromImage(bmp))
             DiscRenderer.PaintFace(g, new Rectangle(0, 0, bmp.Width, bmp.Height), _face,
-                                   NowPlayingOverlay.UseTimerSpin ? _turns : 0f, playing);
+                                   _turns, playing);
         layer.PresentBitmap(bmp);
     }
 
@@ -295,14 +284,8 @@ public sealed class GroupOverlay : IDisposable
             _ticking = shouldTurn;
             Log.Info(shouldTurn ? "Group: record turning" : "Group: record still");
 
-            if (NowPlayingOverlay.UseTimerSpin)
-            {
-                try { _spinTimer.Change(shouldTurn ? 0 : Timeout.Infinite, shouldTurn ? 1000 / RecordSpin.TimerFramesPerSecond : Timeout.Infinite); }
-                catch (ObjectDisposedException) { }
-                return;
-            }
-            if (shouldTurn) _spin?.Start(_heldAngle);
-            else if (_spin is { Running: true }) _heldAngle = _spin.Stop();
+            try { _spinTimer.Change(shouldTurn ? 0 : Timeout.Infinite, shouldTurn ? 1000 / RecordSpin.TimerFramesPerSecond : Timeout.Infinite); }
+            catch (ObjectDisposedException) { }
         }
     }
 
