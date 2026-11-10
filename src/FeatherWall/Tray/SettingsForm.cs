@@ -171,7 +171,9 @@ public sealed class SettingsForm : Form
             _pages[i].Page.Visible = active;
             _pages[i].Tab.BackColor = active ? Theme.Colors.Card : Theme.Colors.Window;
             _pages[i].Tab.ForeColor = active ? Theme.Colors.Accent : Theme.Colors.Text;
-            _pages[i].Tab.Font = new Font("Segoe UI", 9.5f, active ? FontStyle.Bold : FontStyle.Regular);
+            // From the form's font, which WinForms rescales per monitor; a fresh 9.5 pt font is sized
+            // for the primary display, so on a 100% monitor the tabs grew 1.5x on the first click.
+            _pages[i].Tab.Font = new Font(Font, active ? FontStyle.Bold : FontStyle.Regular);
         }
         ResizeToActivePage();
     }
@@ -242,7 +244,6 @@ public sealed class SettingsForm : Form
             {
                 if (_config.Widgets.ResolveTheme() == tile.Style) return;
                 _engine.SetWidgetTheme(tile.Style);
-                RefreshStyle();
             };
             _tiles.Add(tile);
             grid.Controls.Add(tile);
@@ -373,12 +374,10 @@ public sealed class SettingsForm : Form
             if (dialog.ShowDialog(this) != DialogResult.OK) return;
             var c = dialog.Color;
             _engine.SetWidgetAccent($"#{c.R:X2}{c.G:X2}{c.B:X2}");
-            RefreshStyle();
         };
         auto.Click += (_, _) =>
         {
             _engine.SetWidgetAccent("auto");
-            RefreshStyle();
         };
 
         row.Controls.Add(_accentSwatch);
@@ -416,7 +415,8 @@ public sealed class SettingsForm : Form
     private void OnAccentChanged()
     {
         if (IsDisposed) return;
-        _backdrop.Replace(LoadBackdrop());
+        // One failed read keeps the frame already shown rather than greying every tile.
+        if (LoadBackdrop() is { } fresh) _backdrop.Replace(fresh);
         foreach (var tile in _tiles) tile.Rerender();
         RefreshStyle();
     }
