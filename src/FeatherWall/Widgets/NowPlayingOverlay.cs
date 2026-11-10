@@ -25,13 +25,6 @@ public sealed class NowPlayingOverlay : IDisposable
 {
     private const string OverlayKey = "nowplaying";
 
-    /// <summary>15 fps. A record at 33⅓ rpm turns 13° per frame at this rate, which reads as
-    /// motion; going higher spends frames nobody can see on a wallpaper.</summary>
-    private const int FramesPerSecond = 15;
-
-    /// <summary>33⅓ rpm, as an LP.</summary>
-    private const float TurnsPerSecond = 0.5556f;
-
     private readonly CompositionHost _host;
     private readonly InfoConfig _config;
     private readonly MonitorInfo _monitor;
@@ -131,10 +124,8 @@ public sealed class NowPlayingOverlay : IDisposable
         bool shouldTick;
         lock (_sync)
         {
-            shouldTick = !_disposed && !_suspended && !_covered
-                         && _config.Disc.Rotate
-                         && _source.Current.IsPlaying
-                         && _size.Cx > 0 && _size.Cy > 0;
+            shouldTick = RecordSpin.ShouldTurn(_disposed, _suspended, _covered, _config.Disc.Rotate,
+                                               _source.Current.IsPlaying, _size.Cx > 0 && _size.Cy > 0);
 
             if (shouldTick == _ticking) return;
             _ticking = shouldTick;
@@ -145,7 +136,7 @@ public sealed class NowPlayingOverlay : IDisposable
             if (shouldTick)
             {
                 Log.Info("Now-playing: record turning");
-                _timer.Change(0, 1000 / FramesPerSecond);
+                _timer.Change(0, 1000 / RecordSpin.TimerFramesPerSecond);
             }
             else
             {
@@ -163,7 +154,7 @@ public sealed class NowPlayingOverlay : IDisposable
             lock (_sync)
             {
                 if (_disposed || !_ticking) return;
-                _turns = (_turns + TurnsPerSecond / FramesPerSecond) % 1f;
+                _turns = (_turns + RecordSpin.DegreesPerSecond / 360f / RecordSpin.TimerFramesPerSecond) % 1f;
             }
             Render();
         }
