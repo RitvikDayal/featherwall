@@ -5,6 +5,7 @@ using FeatherWall.Config;
 using FeatherWall.Desktop;
 using FeatherWall.Interop;
 using FeatherWall.Rendering;
+using FeatherWall.Widgets.Themes;
 
 namespace FeatherWall.Widgets;
 
@@ -22,6 +23,7 @@ public sealed class HaloOverlay : IDisposable
     private readonly MonitorInfo _monitor;
     private readonly double _dpiScale;
     private readonly BatterySource _battery;
+    private readonly WidgetStyle _style;
     private readonly Lock _sync = new();
 
     private SIZE _size;
@@ -29,13 +31,14 @@ public sealed class HaloOverlay : IDisposable
     private bool _suspended;
 
     public HaloOverlay(CompositionHost host, InfoConfig config, MonitorInfo monitor,
-                       BatterySource battery, double dpiScale = 1.0)
+                       BatterySource battery, double dpiScale = 1.0, WidgetStyle? style = null)
     {
         _host = host;
         _config = config;
         _monitor = monitor;
         _dpiScale = dpiScale > 0 ? dpiScale : 1.0;
         _battery = battery;
+        _style = style ?? WidgetStyle.Classic;
 
         _battery.Changed += OnBatteryChanged;
         try
@@ -79,7 +82,11 @@ public sealed class HaloOverlay : IDisposable
             if (_disposed || _suspended) return;
 
             var reading = _battery.Current;
-            var measured = BatteryHaloRenderer.Measure(_config.Halo, reading, (float)_dpiScale);
+            bool editorial = _style.Theme == WidgetTheme.Editorial;
+            float themeScale = _style.Size * (float)_dpiScale;
+            var measured = editorial
+                ? Editorial.MeasureHalo(_config.Halo, reading, themeScale)
+                : BatteryHaloRenderer.Measure(_config.Halo, reading, (float)_dpiScale);
             if (measured.IsEmpty)
             {
                 // No battery, or switched off. Drop the visual rather than composing an empty one.
@@ -91,6 +98,14 @@ public sealed class HaloOverlay : IDisposable
             Log.Info($"Halo repaint: {reading.Percent}% {reading.State}");
 
             var halo = _config.Halo;
+            // A theme's ring sits inside the shadow's pad; Classic's fills its surface.
+            var ring = new Rectangle(Point.Empty, measured);
+            if (editorial)
+            {
+                var surface = Editorial.MeasureInfo(_config, [], themeScale, measured);
+                ring = surface.HaloBox;
+                measured = surface.Total;
+            }
             var size = new SIZE { Cx = measured.Width, Cy = measured.Height };
 
             // Offsets are relative to the wallpaper window, whose origin is the monitor's top-left.
@@ -117,7 +132,11 @@ public sealed class HaloOverlay : IDisposable
 
             using var bmp = new Bitmap(_size.Cx, _size.Cy, PixelFormat.Format32bppPArgb);
             using (var g = Graphics.FromImage(bmp))
-                BatteryHaloRenderer.Paint(g, new Rectangle(0, 0, _size.Cx, _size.Cy), halo, reading);
+            {
+                if (editorial) Editorial.PaintHalo(g, ring, halo, reading, _style.Accent);
+                else BatteryHaloRenderer.Paint(g, new Rectangle(0, 0, _size.Cx, _size.Cy), halo, reading);
+            }
+            if (editorial) BakedShadow.DrawBehind(bmp, ShadowRecipe.Default, themeScale);
             overlay.PresentBitmap(bmp);
         }
     }

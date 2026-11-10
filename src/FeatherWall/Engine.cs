@@ -9,6 +9,7 @@ using FeatherWall.Playback;
 using FeatherWall.Rendering;
 using FeatherWall.Tray;
 using FeatherWall.Widgets;
+using FeatherWall.Widgets.Themes;
 using static FeatherWall.Interop.Win32Constants;
 
 namespace FeatherWall;
@@ -26,6 +27,18 @@ public sealed class Engine : IDisposable
     private readonly Dictionary<string, WallpaperWindow> _windows = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentQueue<Action> _mainThreadActions = new();
     private readonly DeviceLossGuard _deviceLoss = new();
+
+    /// <summary>Each monitor's wallpaper accent, sampled from the static frame once per wallpaper
+    /// and only when a theme uses it.</summary>
+    private readonly AccentCache _accents = new(png =>
+    {
+        using var stream = File.OpenRead(png);
+        using var frame = new System.Drawing.Bitmap(stream);
+        return Accent.Sample(frame);
+    });
+
+    /// <summary>The style each monitor's widgets were last built with. Main thread only.</summary>
+    private readonly Dictionary<string, WidgetStyle> _stylesInUse = new(StringComparer.OrdinalIgnoreCase);
     private readonly uint _taskbarCreatedMessage = User32.RegisterWindowMessageW("TaskbarCreated");
 
     private MessageWindow? _messageWindow;
@@ -133,6 +146,13 @@ public sealed class Engine : IDisposable
                 try { VirtualDesktopWallpaper.SetAll(staticPath); }
                 catch (Exception ex) { Log.Error("Set per-desktop fallback failed", ex); }
             }
+
+            // Rebuilt only when this monitor's accent actually changed: a re-apply of the same
+            // wallpaper is answered from the cache and costs nothing.
+            bool usesAccent = _config.Widgets.ResolveTheme() != WidgetTheme.Classic;
+            if (_accents.OnStaticFrame(captured.Device, path, staticPath, usesAccent)
+                && WidgetStyles.ShouldRebuild(_stylesInUse, captured.Device, StyleFor(captured.Device, record: false)))
+                RecreateWidgets();
         });
 
         IWallpaperRenderer renderer;
@@ -315,6 +335,7 @@ public sealed class Engine : IDisposable
 
     private void RecreateWidgets()
     {
+        _stylesInUse.Clear();
         RecreateClock();
         RecreateInfo();
     }
@@ -362,19 +383,20 @@ public sealed class Engine : IDisposable
             // ResolveSources first: it is what creates _battery, and the overlay needs it.
             var sources = ResolveSources();
             double dpi = MonitorTracker.DpiScale(target, monitors);
-            _info = new InfoOverlay(window.EnsureHost(), _config.Info, target, sources, _battery, dpi);
+            var style = StyleFor(target.Device);
+            _info = new InfoOverlay(window.EnsureHost(), _config.Info, target, sources, _battery, dpi, style);
 
             // Detached: the halo gets its own overlay instead of being drawn into the info
             // bitmap. Requires the battery source to exist — no battery in Sources, no ring,
             // the same rule attached mode follows.
             if (_config.Info.Halo is { Enabled: true, Detached: true } && _battery is not null)
-                _halo = new HaloOverlay(window.EnsureHost(), _config.Info, target, _battery, dpi);
+                _halo = new HaloOverlay(window.EnsureHost(), _config.Info, target, _battery, dpi, style);
 
             // The record replaces the now-playing text line entirely; it is its own block with its
             // own anchor, not an item in the list.
             if (_config.Info.Disc.Enabled && _nowPlaying is not null)
             {
-                _record = new NowPlayingOverlay(window.EnsureHost(), _config.Info, target, _nowPlaying, dpi);
+                _record = new NowPlayingOverlay(window.EnsureHost(), _config.Info, target, _nowPlaying, dpi, style);
                 _recordDevice = target.Device;
                 Log.Info($"Record: created (rotate={_config.Info.Disc.Rotate}, size={_config.Info.Disc.Size})");
             }
@@ -424,6 +446,19 @@ public sealed class Engine : IDisposable
         _nowPlaying = null;
     }
 
+    /// <summary>The theme, and the accent of the monitor a widget sits on. Classic is returned
+    /// without touching the accent cache, so it never triggers a sample.</summary>
+    private WidgetStyle StyleFor(string monitorDevice, bool record = true)
+    {
+        var theme = _config.Widgets.ResolveTheme();
+        var style = theme == WidgetTheme.Classic
+            ? WidgetStyle.Classic
+            : new WidgetStyle(theme, Accent.Resolve(_config.Widgets.Accent, _accents.For(monitorDevice)),
+                              Editorial.Scale(_config.Clock, 1.0));
+        if (record) _stylesInUse[monitorDevice] = style;
+        return style;
+    }
+
     private void RecreateClock()
     {
         _clock?.Dispose();
@@ -449,7 +484,7 @@ public sealed class Engine : IDisposable
                 _windows[target.Device] = window;
             }
             _clock = new ClockOverlay(window.EnsureHost(), _config.Clock, target,
-                MonitorTracker.DpiScale(target, monitors));
+                MonitorTracker.DpiScale(target, monitors), StyleFor(target.Device));
         }
         catch (Exception ex)
         {

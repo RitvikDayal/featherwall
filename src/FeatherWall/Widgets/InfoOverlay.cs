@@ -5,6 +5,7 @@ using FeatherWall.Config;
 using FeatherWall.Desktop;
 using FeatherWall.Interop;
 using FeatherWall.Rendering;
+using FeatherWall.Widgets.Themes;
 
 namespace FeatherWall.Widgets;
 
@@ -24,6 +25,7 @@ public sealed class InfoOverlay : IDisposable
     private readonly MonitorInfo _monitor;
     private readonly double _dpiScale;
     private readonly Color _color;
+    private readonly WidgetStyle _style;
     private readonly IReadOnlyList<IWidgetSource> _sources;
 
     /// <summary>Null when "battery" is not among the configured sources. The halo follows the
@@ -43,13 +45,14 @@ public sealed class InfoOverlay : IDisposable
     /// whatever it is handed, in the order it is handed.</summary>
     public InfoOverlay(CompositionHost host, InfoConfig config, MonitorInfo monitor,
                        IReadOnlyList<IWidgetSource> sources, BatterySource? battery = null,
-                       double dpiScale = 1.0)
+                       double dpiScale = 1.0, WidgetStyle? style = null)
     {
         _host = host;
         _config = config;
         _monitor = monitor;
         _dpiScale = dpiScale > 0 ? dpiScale : 1.0;
         _color = ClockRenderer.ParseColor(config.Color);
+        _style = style ?? WidgetStyle.Classic;
         _sources = sources;
         _battery = battery;
 
@@ -107,9 +110,13 @@ public sealed class InfoOverlay : IDisposable
 
             var reading = _battery?.Current ?? default;
             // Detached mode draws the halo in its own overlay, so this one must not draw it too.
+            bool editorial = _style.Theme == WidgetTheme.Editorial;
+            float themeScale = _style.Size * (float)_dpiScale;
             var haloSize = _config.Halo.Detached
                 ? Size.Empty
-                : BatteryHaloRenderer.Measure(_config.Halo, reading, (float)_dpiScale);
+                : editorial
+                    ? Editorial.MeasureHalo(_config.Halo, reading, themeScale)
+                    : BatteryHaloRenderer.Measure(_config.Halo, reading, (float)_dpiScale);
 
             // The halo now prints the percentage inside the ring, so the battery's text line
             // repeats it — "97" in a circle beside "97% charging". Whenever a halo is drawn at
@@ -124,7 +131,9 @@ public sealed class InfoOverlay : IDisposable
                 for (int i = 0; i < _sources.Count; i++)
                     if (_sources[i] is NowPlayingSource) values[i] = null;
 
-            var metrics = InfoRenderer.Measure(_config, values, (float)_dpiScale, haloSize);
+            var metrics = editorial
+                ? Editorial.MeasureInfo(_config, values, themeScale, haloSize)
+                : InfoRenderer.Measure(_config, values, (float)_dpiScale, haloSize);
             // Every one of these lines is a source event. If they ever appear at a regular
             // interval, a timer has crept in and the feature has failed its cost budget.
             Log.Info($"Info repaint: [{string.Join(" | ", metrics.Lines)}]{(haloSize.IsEmpty ? "" : " +halo")}");
@@ -166,10 +175,20 @@ public sealed class InfoOverlay : IDisposable
             using var bmp = new Bitmap(_size.Cx, _size.Cy, PixelFormat.Format32bppPArgb);
             using (var g = Graphics.FromImage(bmp))
             {
-                InfoRenderer.Paint(g, _config, metrics, _color);
-                if (!metrics.HaloBox.IsEmpty)
-                    BatteryHaloRenderer.Paint(g, metrics.HaloBox, _config.Halo, reading);
+                if (editorial)
+                {
+                    Editorial.PaintInfo(g, metrics);
+                    if (!metrics.HaloBox.IsEmpty)
+                        Editorial.PaintHalo(g, metrics.HaloBox, _config.Halo, reading, _style.Accent);
+                }
+                else
+                {
+                    InfoRenderer.Paint(g, _config, metrics, _color);
+                    if (!metrics.HaloBox.IsEmpty)
+                        BatteryHaloRenderer.Paint(g, metrics.HaloBox, _config.Halo, reading);
+                }
             }
+            if (editorial) BakedShadow.DrawBehind(bmp, ShadowRecipe.Default, themeScale);
             overlay.PresentBitmap(bmp);
         }
     }
