@@ -76,7 +76,9 @@ public sealed class PauseConfig
     public bool OnRemoteSession { get; set; } = true;
 }
 
-public enum WidgetTheme { Classic, Editorial }
+/// <summary>Classic and Editorial place each widget on its own; the rest place the set as a group
+/// at <see cref="WidgetsConfig.Position"/>.</summary>
+public enum WidgetTheme { Classic, Editorial, GlassDock, Orbit, Poster }
 
 /// <summary>How the widgets look as a set. Classic is v0.2.0's look, and what every config written
 /// before this section existed loads as.</summary>
@@ -91,6 +93,24 @@ public sealed class WidgetsConfig
 
     /// <summary>"auto" samples the wallpaper; #RRGGBB fixes it. Classic ignores it.</summary>
     public string Accent { get; set; } = "auto";
+
+    /// <summary>Where Orbit, Poster and Glass dock put the set. Null is the theme's own default.
+    /// Glass dock reads only the top or bottom half.</summary>
+    public ClockAnchor? Position { get; set; }
+
+    /// <summary>The monitor the group themes draw on; "*" is the primary.</summary>
+    public string Monitor { get; set; } = "*";
+
+    /// <summary>The group themes: one position and one monitor for the whole set.</summary>
+    public static bool IsGroup(WidgetTheme theme) =>
+        theme is WidgetTheme.GlassDock or WidgetTheme.Orbit or WidgetTheme.Poster;
+
+    /// <summary>The name a person reads, in the tray and on the Style page.</summary>
+    public static string DisplayName(WidgetTheme theme) => theme switch
+    {
+        WidgetTheme.GlassDock => "Glass dock",
+        _ => theme.ToString(),
+    };
 
     /// <summary>The spelling written to the file: camelCase, as the design names them
     /// (classic, editorial, glassDock…).</summary>
@@ -285,6 +305,7 @@ public static class ConfigStore
         {
             if (File.Exists(path))
                 return JsonSerializer.Deserialize(File.ReadAllText(path), ConfigJsonContext.Default.AppConfig) ?? new AppConfig();
+            return FreshInstall();
         }
         catch (Exception ex)
         {
@@ -292,6 +313,17 @@ public static class ConfigStore
             Common.Log.Warn($"Config unreadable, using defaults ({ex.Message})");
         }
         return new AppConfig();
+    }
+
+    /// <summary>No config.json has ever been written, so there is no look to protect: a fresh
+    /// install starts on Orbit with the music and battery widget on, so its rings have something to
+    /// show. An existing file without a "widgets" section is an upgrade and loads as Classic.</summary>
+    private static AppConfig FreshInstall()
+    {
+        var config = new AppConfig();
+        config.Widgets.Theme = WidgetsConfig.ConfigName(WidgetTheme.Orbit);
+        config.Info.Enabled = true;
+        return config;
     }
 
     public static void Save(AppConfig config)

@@ -60,7 +60,7 @@ internal sealed class ThemeTile : Control
 
         var caption = new Rectangle(0, Height - CaptionHeight, Width, CaptionHeight);
         using var font = new Font("Segoe UI", 9.5f, _selected ? FontStyle.Bold : FontStyle.Regular);
-        TextRenderer.DrawText(g, Style.ToString() + (_selected ? "  ✓" : ""), font, caption, _selected ? Theme.Colors.Accent : Theme.Colors.Text,
+        TextRenderer.DrawText(g, WidgetsConfig.DisplayName(Style) + (_selected ? "  ✓" : ""), font, caption, _selected ? Theme.Colors.Accent : Theme.Colors.Text,
             TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
     }
 

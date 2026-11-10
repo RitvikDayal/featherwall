@@ -70,3 +70,40 @@ public class WidgetsConfigTests
         Assert.Equal("#C08BFF", back.Widgets.Accent);
     }
 }
+
+public class GroupThemeConfigTests
+{
+    [Theory]
+    [InlineData("glassDock", WidgetTheme.GlassDock)]
+    [InlineData("orbit", WidgetTheme.Orbit)]
+    [InlineData("poster", WidgetTheme.Poster)]
+    public void GroupThemes_Resolve(string name, WidgetTheme expected) =>
+        Assert.Equal(expected, new WidgetsConfig { Theme = name }.ResolveTheme());
+
+    [Fact]
+    public void DisplayName_ReadsAsWords() =>
+        Assert.Equal("Glass dock", WidgetsConfig.DisplayName(WidgetTheme.GlassDock));
+
+    [Fact]
+    public void Position_DefaultsToTheThemesOwn() =>
+        Assert.Null(new WidgetsConfig().Position);
+
+    [Fact]
+    public void FreshInstall_GetsOrbit_WithTheInfoWidgetOn()
+    {
+        var path = Path.Combine(Directory.CreateTempSubdirectory("fw-config-").FullName, "config.json");
+        var config = ConfigStore.Load(path, out _);
+        Assert.Equal(WidgetTheme.Orbit, config.Widgets.ResolveTheme());
+        Assert.True(config.Info.Enabled);
+    }
+
+    [Fact]
+    public void Upgrade_KeepsClassic()
+    {
+        var path = Path.Combine(Directory.CreateTempSubdirectory("fw-config-").FullName, "config.json");
+        File.WriteAllText(path, """{ "wallpapers": [], "info": { "enabled": false } }""");
+        var config = ConfigStore.Load(path, out _);
+        Assert.Equal(WidgetTheme.Classic, config.Widgets.ResolveTheme());
+        Assert.False(config.Info.Enabled);
+    }
+}
