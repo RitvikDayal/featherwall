@@ -449,17 +449,25 @@ The tray menu and settings panel cover the common cases. Everything lives in
     }
   },
   "pause": { "onFullscreen": true, "onBatterySaver": true, "onRemoteSession": true },
-  "widgets": { "theme": "classic", "accent": "auto" },
+  "widgets": { "theme": "classic", "accent": "auto", "size": null, "position": null, "monitor": "*", "themesNoticeShown": false },
   "startMenuShortcutAdded": true
 }
 ```
 
-`widgets.theme` picks how the clock, the record and the battery ring look as a set. `classic` is
-the look FeatherWall has always had, and what an upgrade keeps. `editorial` sets the date in small
-capitals above a light clock, with a short rule beneath and one soft shadow under every widget, so
-they stay legible over bright sky. A name this version does not know falls back to `classic`.
-`widgets.accent` is the colour the themes use: `auto` takes it once from the wallpaper, or set
-`#RRGGBB` to fix it. `classic` ignores it.
+`widgets` is the widget style, and is easiest to set from the tray (**Widget style**) or
+Settings → **Style**, which previews each one with your own settings.
+
+| Key | Values | |
+|---|---|---|
+| `theme` | `classic`, `editorial`, `glassDock`, `orbit`, `poster` | `classic` is the look FeatherWall has always had, and what an upgrade keeps. A fresh install starts on `orbit`. A name this version does not know falls back to `classic`. |
+| `accent` | `auto` or `#RRGGBB` | The colour every style but Classic uses. `auto` takes it once from the wallpaper. |
+| `size` | 50–300, or `null` | Percentage size for every style but Classic. `null` follows `clock.fontSize` against its 110 px default. |
+| `position` | an anchor, or `null` | Where Glass dock, Orbit and Poster place the set; `null` is each style's own default. Glass dock reads only top or bottom. |
+| `monitor` | a device name, or `*` | The monitor those three draw on; `*` is the primary. |
+| `themesNoticeShown` | `true`/`false` | Set once the one-time "new widget styles" notice has been shown. |
+
+Classic and Editorial keep each widget's own position, monitor and margins. Glass dock, Orbit and
+Poster place the whole set from `position` and `monitor`, and ignore the per-widget ones.
 
 `startMenuShortcutAdded` records that the Start menu entry has been created once, which is what
 keeps a deleted entry deleted. Set it to `false` to get the entry back on the next start.
