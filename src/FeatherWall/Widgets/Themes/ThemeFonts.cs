@@ -27,7 +27,12 @@ public static class ThemeFonts
     /// <summary>Replaced by tests to simulate a machine without Segoe UI Variable.</summary>
     public static Func<string, bool> IsInstalled = name => Installed.Value.Contains(name);
 
-    internal static readonly StringFormat Tight = new(StringFormat.GenericTypographic)
+    [ThreadStatic] private static StringFormat? t_tight;
+
+    /// <summary>Typographic measurement without the generic padding. One per thread: GDI+ objects are
+    /// not safe to share, and the widgets paint on timer threads while the Style page paints on the
+    /// UI thread.</summary>
+    public static StringFormat Tight => t_tight ??= new StringFormat(StringFormat.GenericTypographic)
     {
         FormatFlags = StringFormatFlags.MeasureTrailingSpaces,
     };

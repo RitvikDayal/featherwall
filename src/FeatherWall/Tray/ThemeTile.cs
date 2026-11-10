@@ -59,7 +59,9 @@ internal sealed class ThemeTile : Control
             g.DrawRectangle(border, 1, 1, Width - 3, Height - CaptionHeight - 2);
 
         var caption = new Rectangle(0, Height - CaptionHeight, Width, CaptionHeight);
-        using var font = new Font("Segoe UI", 9.5f, _selected ? FontStyle.Bold : FontStyle.Regular);
+        // The form's font, which WinForms rescales per monitor. A fresh 9.5 pt font converts at the
+        // primary display's DPI, so on a 100% monitor beside a 150% one the captions came out 1.5x.
+        using var font = new Font(Font, _selected ? FontStyle.Bold : FontStyle.Regular);
         TextRenderer.DrawText(g, WidgetsConfig.DisplayName(Style) + (_selected ? "  ✓" : ""), font, caption, _selected ? Theme.Colors.Accent : Theme.Colors.Text,
             TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
     }

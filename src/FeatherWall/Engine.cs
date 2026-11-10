@@ -907,6 +907,7 @@ public sealed class Engine : IDisposable
         _config.Widgets.Theme = WidgetsConfig.ConfigName(theme);
         Log.Info($"Widget style: {_config.Widgets.Theme} ({from})");
         SaveAndRefreshWidgets();
+        WidgetsChanged?.Invoke();
     }
 
     /// <summary>"auto" or #RRGGBB, as the config takes it.</summary>
@@ -915,6 +916,7 @@ public sealed class Engine : IDisposable
         _config.Widgets.Accent = accent;
         Log.Info($"Widget accent: {accent}");
         SaveAndRefreshWidgets();
+        WidgetsChanged?.Invoke();
     }
 
     /// <summary>The accent the themes would use on the clock's monitor, whichever theme is active,
@@ -929,6 +931,10 @@ public sealed class Engine : IDisposable
     /// <summary>Raised on the main thread when a monitor's sampled accent arrives or changes, so an
     /// open Style page can show it rather than the default it opened with.</summary>
     public event Action? AccentChanged;
+
+    /// <summary>Raised on the main thread after a style or accent is chosen, from the tray or the
+    /// Style page, so an open Settings window shows it.</summary>
+    public event Action? WidgetsChanged;
 
     /// <summary>The static frame of the clock's monitor, for the Style page's tiles. Null before
     /// any frame has been written.</summary>

@@ -103,14 +103,14 @@ public sealed class Poster : IGroupTheme
             g.TranslateTransform(pad, pad);
             using (var outline = new Pen(Color.FromArgb(235, 255, 255, 255), stroke) { LineJoin = LineJoin.Round })
             {
-                var m = new Matrix();
+                using var m = new Matrix();
                 m.Translate(blockW - hb.Right - stroke / 2f, -hb.Top + stroke / 2f);
                 hourPath.Transform(m);
                 g.DrawPath(outline, hourPath);
             }
             using (var fill = new SolidBrush(input.Accent))
             {
-                var m = new Matrix();
+                using var m = new Matrix();
                 m.Translate(blockW - mb.Right - stroke / 2f, lineH - hb.Top + stroke / 2f);
                 minutePath.Transform(m);
                 g.FillPath(fill, minutePath);
@@ -118,7 +118,7 @@ public sealed class Poster : IGroupTheme
             if (secondPath is not null)
             {
                 using var dim = new SolidBrush(Color.FromArgb(153, 255, 255, 255));
-                var m = new Matrix();
+                using var m = new Matrix();
                 m.Translate(blockW - sb.Right - stroke / 2f, lineH + mb.Bottom - hb.Top + lineH * 0.45f - sb.Top);
                 secondPath.Transform(m);
                 g.FillPath(dim, secondPath);

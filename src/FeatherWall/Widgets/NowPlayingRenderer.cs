@@ -22,10 +22,7 @@ public static class NowPlayingRenderer
     /// the widget agree about the state.</summary>
     private const float PausedFade = 0.55f;
 
-    private static readonly StringFormat Tight = new(StringFormat.GenericTypographic)
-    {
-        FormatFlags = StringFormatFlags.MeasureTrailingSpaces,
-    };
+    private static StringFormat Tight => Themes.ThemeFonts.Tight;
 
     public static Font TitleFont(DiscConfig config, float scale) =>
         new("Segoe UI", Math.Max(config.TitleFontSize * scale, 7f), FontStyle.Regular, GraphicsUnit.Pixel);
