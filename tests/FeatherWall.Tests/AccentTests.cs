@@ -109,3 +109,15 @@ public class AccentTests
     public void Resolve_Garbage_IsAuto_NotWhite(string setting) =>
         Assert.Equal(Accent.Fallback, Accent.Resolve(setting, null));
 }
+
+public class AccentSourceTests
+{
+    [Theory]
+    [InlineData("#C08BFF", true, "fixed")]
+    [InlineData("#C08BFF", false, "fixed")]
+    [InlineData("auto", true, "from wallpaper")]
+    [InlineData("auto", false, "default")]
+    [InlineData("blue", true, "from wallpaper")]
+    public void Source_SaysWhereTheColourCameFrom(string setting, bool sampled, string expected) =>
+        Assert.Equal(expected, Accent.Source(setting, sampled ? System.Drawing.Color.Teal : null));
+}

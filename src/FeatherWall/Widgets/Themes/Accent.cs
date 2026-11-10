@@ -85,6 +85,15 @@ public static partial class Accent
         return sampled ?? Fallback;
     }
 
+    /// <summary>Where <see cref="Resolve"/>'s answer came from, in words for the Style page:
+    /// "fixed", "from wallpaper", or "default" when nothing has been sampled.</summary>
+    public static string Source(string? setting, Color? sampled)
+    {
+        var value = setting?.Trim() ?? "";
+        if (value.Length > 0 && HexColour().IsMatch(value)) return "fixed";
+        return sampled is null ? "default" : "from wallpaper";
+    }
+
     private static Color FromHsl(float hue, float s, float l)
     {
         float c = (1 - Math.Abs(2 * l - 1)) * s;

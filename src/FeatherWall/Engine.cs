@@ -150,9 +150,12 @@ public sealed class Engine : IDisposable
             // Rebuilt only when this monitor's accent actually changed: a re-apply of the same
             // wallpaper is answered from the cache and costs nothing.
             bool usesAccent = _config.Widgets.ResolveTheme() != WidgetTheme.Classic;
-            if (_accents.OnStaticFrame(captured.Device, path, staticPath, usesAccent)
-                && WidgetStyles.ShouldRebuild(_stylesInUse, captured.Device, StyleFor(captured.Device, record: false)))
-                RecreateWidgets();
+            if (_accents.OnStaticFrame(captured.Device, path, staticPath, usesAccent))
+            {
+                if (WidgetStyles.ShouldRebuild(_stylesInUse, captured.Device, StyleFor(captured.Device, record: false)))
+                    RecreateWidgets();
+                AccentChanged?.Invoke();
+            }
         });
 
         IWallpaperRenderer renderer;
@@ -828,9 +831,17 @@ public sealed class Engine : IDisposable
     }
 
     /// <summary>The accent the themes would use on the clock's monitor, whichever theme is active,
-    /// so the Style page's swatch and tiles show the colour a theme will actually get.</summary>
-    public System.Drawing.Color CurrentAccent() =>
-        Accent.Resolve(_config.Widgets.Accent, _accents.For(PreviewDevice()));
+    /// and where it came from: "from wallpaper", "default" (nothing sampled yet, or a wallpaper
+    /// with no colour), or "fixed".</summary>
+    public (System.Drawing.Color Colour, string Source) CurrentAccent()
+    {
+        var sampled = _accents.For(PreviewDevice());
+        return (Accent.Resolve(_config.Widgets.Accent, sampled), Accent.Source(_config.Widgets.Accent, sampled));
+    }
+
+    /// <summary>Raised on the main thread when a monitor's sampled accent arrives or changes, so an
+    /// open Style page can show it rather than the default it opened with.</summary>
+    public event Action? AccentChanged;
 
     /// <summary>The static frame of the clock's monitor, for the Style page's tiles. Null before
     /// any frame has been written.</summary>

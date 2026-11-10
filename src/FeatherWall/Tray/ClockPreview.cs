@@ -14,11 +14,13 @@ namespace FeatherWall.Tray;
 public sealed class ClockPreview : Control
 {
     private readonly ClockConfig _config;
+    private readonly Func<FeatherWall.Widgets.Themes.WidgetStyle> _style;
     private readonly Timer _timer;
 
-    public ClockPreview(ClockConfig config)
+    public ClockPreview(ClockConfig config, Func<FeatherWall.Widgets.Themes.WidgetStyle>? style = null)
     {
         _config = config;
+        _style = style ?? (() => FeatherWall.Widgets.Themes.WidgetStyle.Classic);
         DoubleBuffered = true;
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
         _timer = new Timer { Interval = 1000 };
@@ -44,6 +46,13 @@ public sealed class ClockPreview : Control
         if (!_config.Enabled)
         {
             DrawCentredHint(g, "Clock is off");
+            return;
+        }
+
+        var style = _style();
+        if (style.Theme == WidgetTheme.Editorial)
+        {
+            PaintEditorial(g, style);
             return;
         }
 
@@ -73,6 +82,38 @@ public sealed class ClockPreview : Control
         g.TranslateTransform(x, y);
         ClockRenderer.Paint(g, _config, metrics, ClockRenderer.ParseColor(_config.Color), metrics.Total);
         g.Restore(state);
+    }
+
+    /// <summary>The Editorial clock, through its own renderer and the same baked shadow the desktop
+    /// gets, scaled to fit exactly as the Classic path is.</summary>
+    private void PaintEditorial(Graphics g, FeatherWall.Widgets.Themes.WidgetStyle style)
+    {
+        var now = DateTime.Now;
+        var full = FeatherWall.Widgets.Themes.Editorial.MeasureClock(_config, now, style.Size);
+        float inset = 8f;
+        float fit = Math.Min(
+            (Width - inset * 2) / Math.Max(full.Total.Width, 1),
+            (Height - inset * 2) / Math.Max(full.Total.Height, 1));
+        float shrink = Math.Min(fit, 1f);
+        float scale = style.Size * shrink;
+
+        var m = FeatherWall.Widgets.Themes.Editorial.MeasureClock(_config, now, scale);
+        if (m.Total.Width <= 0 || m.Total.Height <= 0) return;
+
+        using var surface = new Bitmap(m.Total.Width, m.Total.Height, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+        using (var sg = Graphics.FromImage(surface))
+            FeatherWall.Widgets.Themes.Editorial.PaintClock(sg, m, style.Accent);
+        FeatherWall.Widgets.Themes.BakedShadow.DrawBehind(surface, FeatherWall.Widgets.Themes.ShadowRecipe.Default, scale);
+
+        var pos = ClockLayout.Position(
+            new Interop.RECT(0, 0, Width, Height),
+            m.Total.Width, m.Total.Height,
+            _config.Anchor,
+            (int)Math.Round(_config.MarginX * shrink),
+            (int)Math.Round(_config.MarginY * shrink));
+        int x = Math.Clamp(pos.X, 0, Math.Max(Width - m.Total.Width, 0));
+        int y = Math.Clamp(pos.Y, 0, Math.Max(Height - m.Total.Height, 0));
+        g.DrawImageUnscaled(surface, x, y);
     }
 
     private void DrawCentredHint(Graphics g, string text)
