@@ -78,7 +78,7 @@ public sealed class PauseConfig
 
 /// <summary>Classic and Editorial place each widget on its own; the rest place the set as a group
 /// at <see cref="WidgetsConfig.Position"/>.</summary>
-public enum WidgetTheme { Classic, Editorial, GlassDock, Orbit, Poster }
+public enum WidgetTheme { Classic, Editorial, GlassDock, Orbit, Poster, Monolith, Tiles }
 
 /// <summary>How the widgets look as a set. Classic is v0.2.0's look, and what every config written
 /// before this section existed loads as.</summary>
@@ -117,7 +117,8 @@ public sealed class WidgetsConfig
 
     /// <summary>The group themes: one position and one monitor for the whole set.</summary>
     public static bool IsGroup(WidgetTheme theme) =>
-        theme is WidgetTheme.GlassDock or WidgetTheme.Orbit or WidgetTheme.Poster;
+        theme is WidgetTheme.GlassDock or WidgetTheme.Orbit or WidgetTheme.Poster
+            or WidgetTheme.Monolith or WidgetTheme.Tiles;
 
     /// <summary>The name a person reads, in the tray and on the Style page.</summary>
     public static string DisplayName(WidgetTheme theme) => theme switch

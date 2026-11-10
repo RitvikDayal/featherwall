@@ -21,7 +21,7 @@ public sealed record GroupInput(
 /// <paramref name="Paint"/> draws everything else, measured by the same call that built it.</summary>
 public sealed record GroupPanel(string Key, Rectangle Bounds, Rectangle FaceBox, Action<Graphics> Paint);
 
-/// <summary>Orbit, Poster and Glass dock: the set placed as a group at one position.</summary>
+/// <summary>Orbit, Poster, Glass dock, Monolith and Tiles: the set placed as a group at one position.</summary>
 public interface IGroupTheme
 {
     ClockAnchor DefaultPosition { get; }
@@ -39,6 +39,8 @@ public static class GroupThemes
         WidgetTheme.Orbit => Orbit.Instance,
         WidgetTheme.Poster => Poster.Instance,
         WidgetTheme.GlassDock => GlassDock.Instance,
+        WidgetTheme.Monolith => Monolith.Instance,
+        WidgetTheme.Tiles => Tiles.Instance,
         _ => throw new NotSupportedException($"{theme} is not a group theme"),
     };
 

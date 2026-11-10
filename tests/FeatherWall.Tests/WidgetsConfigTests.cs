@@ -77,6 +77,8 @@ public class GroupThemeConfigTests
     [InlineData("glassDock", WidgetTheme.GlassDock)]
     [InlineData("orbit", WidgetTheme.Orbit)]
     [InlineData("poster", WidgetTheme.Poster)]
+    [InlineData("monolith", WidgetTheme.Monolith)]
+    [InlineData("tiles", WidgetTheme.Tiles)]
     public void GroupThemes_Resolve(string name, WidgetTheme expected) =>
         Assert.Equal(expected, new WidgetsConfig { Theme = name }.ResolveTheme());
 
