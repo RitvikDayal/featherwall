@@ -98,13 +98,19 @@ public static class NowPlayingRenderer
         return new SizeF(Math.Max(w - tracking, 0), h);
     }
 
+    /// <summary><paramref name="includeFace"/> false leaves the record's face out and draws only its
+    /// rim, for when the face lives on its own layer below this one.</summary>
     public static void Paint(Graphics g, in NowPlayingMetrics metrics, DiscConfig config,
-                             NowPlayingReading reading, Bitmap? face, float turns, float progress, float scale = 1f)
+                             NowPlayingReading reading, Bitmap? face, float turns, float progress, float scale = 1f,
+                             bool includeFace = true)
     {
         g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
         if (!metrics.DiscBox.IsEmpty && face is not null)
-            DiscRenderer.Paint(g, metrics.DiscBox, config, face, turns, progress, reading.IsPlaying);
+        {
+            if (includeFace) DiscRenderer.PaintFace(g, metrics.DiscBox, face, turns, reading.IsPlaying);
+            DiscRenderer.PaintRim(g, metrics.DiscBox, config, progress, reading.IsPlaying);
+        }
 
         using var titleFont = TitleFont(config, scale);
         using var artistFont = ArtistFont(config, scale);
