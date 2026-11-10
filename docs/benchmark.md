@@ -256,7 +256,7 @@ CPU and GPU, which is the state the wallpaper is in whenever you are actually ga
 
 ## The README's full notes, as of v0.3.0
 
-The README now carries a short summary. These are the notes it used to carry, moved here word for word.
+The README now carries a short summary. These are the notes it used to carry, moved here word for word, so where they mention `docs/benchmark.md` they mean this file.
 
 These are measurements, not estimates. Each row is 25 one-second samples on a running instance,
 with the pause state checked before and after the window so a silently paused wallpaper could

@@ -19,6 +19,8 @@ One process. No browser engine, no launcher, no account.
 
 ![FeatherWall on a live wallpaper with the clock, the battery halo and the now-playing record](docs/media/widgets-hero.jpg)
 
+<sub>Wallpaper: <i>Samurai Boss Fight Fantasy Dragon</i>, via <a href="https://moewalls.com/fantasy/samurai-boss-fight-fantasy-dragon-live-wallpaper/">MoeWalls</a>, shown with credit; see <a href="THIRD-PARTY-NOTICES.md#widget-style-samples">THIRD-PARTY-NOTICES.md</a>.</sub>
+
 ## Install
 
 ```powershell
@@ -95,7 +97,7 @@ or you choose it. Size goes from 50 to 300%.
 
 **A record for whatever you're playing.** Real album art from the Windows media session, turning
 at 33⅓ rpm with the track's progress on the rim. Any app with media controls counts, browser tabs
-included.
+included. The record and the battery halo stay off until you turn on the info widget.
 
 <div align="center">
 
@@ -131,8 +133,8 @@ displays. It re-attaches if explorer.exe restarts and puts your old wallpaper ba
 
 ## What it costs
 
-Measured by [`scripts/bench/Run-Bench.ps1`](scripts/bench/), which throws out any sample where the
-wallpaper paused partway. Full method, raw records and every correction:
+Measured by [`scripts/bench/Run-Bench.ps1`](scripts/bench/), which refuses any row whose pause
+state changed during the sampling window. Full method, raw records and every correction:
 [`docs/benchmark.md`](docs/benchmark.md).
 
 | State | CPU (whole machine) | CPU (one core) | Memory (working set) | Graphics memory | Busiest GPU engine |
@@ -148,6 +150,8 @@ wallpaper paused partway. Full method, raw records and every correction:
   `nvidia-smi` shows nothing on the RTX 5090. Your games keep the big GPU.
 - **Paused means stopped.** Fullscreen apps, the lock screen, remote sessions and battery saver stop
   playback outright. Memory stays allocated so resuming is instant.
+- **Only the record animates.** It stops when playback stops, the desktop is covered or the display
+  sleeps; turn off spin and its timer never runs. Everything else redraws on a Windows event.
 - **Add the memory columns** for the real footprint: about 470 MB for 4K60.
 - **CPU varies between runs**, so the table shows ranges. Treat any single figure as one sample.
 
@@ -288,13 +292,15 @@ extensions from the Microsoft Store. Gallery entries say when they need one.
   the scripted harness showed the hand-read figure was 2.6× too high, and the raw record is committed.
 - **A re-apply leak is fixed.** Every display change, hot-plug or explorer restart used to strand
   about 27 threads and 24 MB, because a disposed WinRT `MediaPlayer` kept its Media Foundation
-  threads alive. The pipeline is now reclaimed explicitly; 30 re-applies in a row move memory by
+  threads alive; a laptop that docked a few times a day drifted past 500 MB and 129 threads. The
+  pipeline is now reclaimed explicitly; 30 re-applies in a row move memory by
   under 30 MB.
 - **Quitting no longer hangs.** Restoring the wallpaper used to broadcast to every window and wait
   on the UI thread, so one unresponsive app could block exit. It now writes the setting without
   the blocking broadcast.
 - **Not yet verified on real hardware:** multi-monitor layouts, the classic `WorkerW` desktop
-  (the development machine runs 24H2) and recovery from an explorer.exe restart. If you have a
+  (the development machine runs 24H2) and recovery from an explorer.exe restart. They are
+  unit-tested where unit tests reach. If you have a
   second monitor or a Windows 10 machine, that is the most useful thing you could test.
 
 ## Contributing
