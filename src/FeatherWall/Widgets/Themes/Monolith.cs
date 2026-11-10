@@ -39,8 +39,16 @@ public sealed class Monolith : IGroupTheme
 
         if (input.Clock.Enabled)
         {
-            var lines = DayLines(input);
+            var lines = DayLines(input, s);
             var day = Measure(mg, lines, s);
+            // A long weekday ("QUARTA-FEIRA") at a large size outgrows the screen; shrink the day, not the
+            // smaller lines, until the block fits between the margins.
+            float room = input.WorkArea.Width - margin * 2 - pad * 2;
+            if (day.Width > room)
+            {
+                lines = lines with { DayPx = lines.DayPx * room / day.Width * 0.98f };
+                day = Measure(mg, lines, s);
+            }
             var size = new Size((int)Math.Ceiling(day.Width) + pad * 2, (int)Math.Ceiling(day.Height) + pad * 2);
             var origin = GroupThemes.Place(input.WorkArea, size, anchor, margin);
             panels.Add(new GroupPanel("monolith-day", new Rectangle(origin, size), Rectangle.Empty,
@@ -51,7 +59,9 @@ public sealed class Monolith : IGroupTheme
         var battery = input.Battery;
         if (track is not null || battery is not null)
         {
-            var strip = StripLayout(mg, track, battery, s);
+            // Capped short of the screen, as Poster caps its record line, so a long title at a large
+            // size cannot run the strip off the edge or into the day block.
+            var strip = StripLayout(mg, track, battery, s, input.WorkArea.Width * 0.42f);
             var size = new Size((int)Math.Ceiling(strip.Width) + pad * 2, (int)Math.Ceiling(strip.Height) + pad * 2);
             // The opposite end of the same column, or the anchor itself when there is no day block.
             var stripAnchor = panels.Count == 0 ? anchor : (ClockAnchor)((row == 2 ? 0 : 2) * 3 + col);
@@ -66,20 +76,20 @@ public sealed class Monolith : IGroupTheme
 
     // ---- the day block -----------------------------------------------------------------------
 
-    private sealed record DayText(string Day, string? Date, string Time);
+    private sealed record DayText(string Day, string? Date, string Time, float DayPx);
 
-    private static DayText DayLines(GroupInput input)
+    private static DayText DayLines(GroupInput input, float s)
     {
         var culture = CultureInfo.CurrentCulture;
         string day = input.Now.ToString("dddd", culture).ToUpper(culture);
         string? date = input.Clock.ShowDate ? (input.Now.ToString("d MMMM, yyyy", culture) + ".").ToUpper(culture) : null;
         string time = "— " + ClockLayout.TimeText(input.Now, input.Clock.TwentyFourHour, input.Clock.ShowSeconds) + " —";
-        return new DayText(day, date, time);
+        return new DayText(day, date, time, GroupThemes.U(DayPx, s));
     }
 
     private static SizeF Measure(Graphics g, DayText t, float s)
     {
-        using var dayFont = ThemeFonts.Create(ThemeFonts.BahnCondensedLight, GroupThemes.U(DayPx, s));
+        using var dayFont = ThemeFonts.Create(ThemeFonts.BahnCondensedLight, t.DayPx);
         using var dateFont = ThemeFonts.Create(ThemeFonts.BahnSemibold, GroupThemes.Text(LinePx, s));
         using var timeFont = ThemeFonts.Create(ThemeFonts.Bahn, GroupThemes.Text(LinePx, s));
         var day = ThemeFonts.MeasureTracked(g, t.Day, dayFont, dayFont.Size * DayTracking);
@@ -93,7 +103,7 @@ public sealed class Monolith : IGroupTheme
     private static void PaintDay(Graphics g, DayText t, float s, int pad, float width, int col, Color accent)
     {
         g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-        using var dayFont = ThemeFonts.Create(ThemeFonts.BahnCondensedLight, GroupThemes.U(DayPx, s));
+        using var dayFont = ThemeFonts.Create(ThemeFonts.BahnCondensedLight, t.DayPx);
         using var dateFont = ThemeFonts.Create(ThemeFonts.BahnSemibold, GroupThemes.Text(LinePx, s));
         using var timeFont = ThemeFonts.Create(ThemeFonts.Bahn, GroupThemes.Text(LinePx, s));
         using var ink = new SolidBrush(Ink);
@@ -127,12 +137,19 @@ public sealed class Monolith : IGroupTheme
     private sealed record Strip(float Width, float Height, float Record, string Title, string Artist, string? Power,
                                 float TextX, float TitleWidth, float RuleX, float PowerX);
 
-    private static Strip StripLayout(Graphics g, NowPlayingReading? track, BatteryReading? battery, float s)
+    private static Strip StripLayout(Graphics g, NowPlayingReading? track, BatteryReading? battery, float s, float limit)
     {
         float px = GroupThemes.Text(StripPx, s), tracking = px * StripTracking, gap = GroupThemes.U(StripGap, s);
         using var font = ThemeFonts.Create(ThemeFonts.Bahn, px);
         float lineH = g.MeasureString("Ag", font, PointF.Empty, ThemeFonts.Tight).Height;
         float record = track is null ? 0 : GroupThemes.U(Record, s);
+
+        string? power = battery is { } b
+            ? b.State == BatteryState.Charged ? "CHARGED" : b.Percent.ToString(CultureInfo.InvariantCulture) + "%"
+            : null;
+        float ruleW = power is not null && track is not null ? GroupThemes.U(Rule, s) : 0;
+        float boltW = battery is { State: BatteryState.Charging } ? px * 0.7f : 0;
+        float powerW = power is null ? 0 : boltW + ThemeFonts.MeasureTracked(g, power, font, tracking).Width;
 
         string title = "", artist = "";
         float x = 0, titleWidth = 0;
@@ -141,22 +158,18 @@ public sealed class Monolith : IGroupTheme
             var culture = CultureInfo.CurrentCulture;
             title = (r.Title ?? "").ToUpper(culture);
             artist = string.IsNullOrWhiteSpace(r.Artist) ? "" : " · " + r.Artist!.ToUpper(culture);
-            float max = GroupThemes.U(MaxText, s);
+            x = record + gap;
+            // The title gets what the record, the rule and the charge leave of the cap.
+            float rest = power is null ? 0 : gap + (ruleW > 0 ? ruleW + gap : 0) + powerW;
+            float max = Math.Max(Math.Min(GroupThemes.U(MaxText, s), limit - x - rest), 0);
             title = GroupThemes.FitText(g, title, font, max, tracking);
             float tw = ThemeFonts.MeasureTracked(g, title, font, tracking).Width;
             artist = artist.Length == 0 || tw + tracking >= max ? "" : GroupThemes.FitText(g, artist, font, max - tw - tracking, tracking);
             titleWidth = tw + (artist.Length == 0 ? 0 : tracking + ThemeFonts.MeasureTracked(g, artist, font, tracking).Width);
-            x = record + gap;
         }
 
-        string? power = battery is { } b
-            ? b.State == BatteryState.Charged ? "CHARGED" : b.Percent.ToString(CultureInfo.InvariantCulture) + "%"
-            : null;
         float ruleX = x + titleWidth + (titleWidth > 0 ? gap : 0);
-        float ruleW = power is not null && track is not null ? GroupThemes.U(Rule, s) : 0;
-        float boltW = battery is { State: BatteryState.Charging } ? px * 0.7f : 0;
         float powerX = ruleX + (ruleW > 0 ? ruleW + gap : 0);
-        float powerW = power is null ? 0 : boltW + ThemeFonts.MeasureTracked(g, power, font, tracking).Width;
 
         float width = power is null ? x + titleWidth : powerX + powerW;
         return new Strip(width, Math.Max(record, lineH), record, title, artist, power, x, titleWidth, ruleX, powerX);
