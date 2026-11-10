@@ -267,8 +267,9 @@ Windows 10 1809 or newer. Grab the release, or build it yourself.
 Take `featherwall-v0.2.0-win-x64.zip` from the
 [latest release](https://github.com/RitvikDayal/featherwall/releases/latest). It unzips to a
 single `featherwall.exe`, so there is no installer. Run it and you are done — the first run adds
-FeatherWall to your Start menu, so you can find it again after quitting from the tray. To
-uninstall, delete the folder and the `FeatherWall` Start menu entry.
+FeatherWall to your Start menu, so you can find it again after quitting from the tray. Remove that
+entry and it stays removed. To uninstall, quit it from the tray, delete the folder and the
+`FeatherWall` Start menu entry, and turn off "Run at startup" first if you had it on.
 
 You need the [.NET 10 desktop runtime](https://dotnet.microsoft.com/download/dotnet/10.0), which
 is a much smaller download than the SDK. Keeping the build framework-dependent is what holds the
@@ -302,6 +303,7 @@ A feather appears in your tray. Right-click it and pick **Set wallpaper** for yo
 | `--settings` | Opens the settings panel |
 | `--diag` | Prints the detected desktop topology and monitor layout |
 | `--exit` | Stops the running instance |
+| `--no-shortcut` | Leaves the Start menu entry alone, for running a development build |
 
 > Releases are unsigned today, and a program that reaches into shell windows is exactly the shape
 > security heuristics dislike. Build from source, or choose *More info* then *Run anyway*. Code
