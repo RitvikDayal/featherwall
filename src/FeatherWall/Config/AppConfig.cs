@@ -109,6 +109,9 @@ public sealed class WidgetsConfig
             ? Math.Clamp(percent, 50, 300) / 100f
             : Math.Max(clock.FontSize / 110f, 0.25f);
 
+    /// <summary>Set once the one-time "new widget styles" notice has been shown to an upgrader.</summary>
+    public bool ThemesNoticeShown { get; set; }
+
     /// <summary>The monitor the group themes draw on; "*" is the primary.</summary>
     public string Monitor { get; set; } = "*";
 
@@ -274,6 +277,11 @@ public sealed class AppConfig
     /// recreated, so deleting it from the Start menu sticks. Set back to false to get it again.</summary>
     public bool StartMenuShortcutAdded { get; set; }
 
+    /// <summary>True only for the config made because no config.json existed yet. Never saved:
+    /// after the first save the file exists, and the next start is not fresh.</summary>
+    [JsonIgnore]
+    public bool IsFreshInstall { get; set; }
+
     public string? WallpaperFor(string monitorDevice)
     {
         var exact = Wallpapers.FirstOrDefault(w => string.Equals(w.Monitor, monitorDevice, StringComparison.OrdinalIgnoreCase));
@@ -331,7 +339,7 @@ public static class ConfigStore
     /// show. An existing file without a "widgets" section is an upgrade and loads as Classic.</summary>
     private static AppConfig FreshInstall()
     {
-        var config = new AppConfig();
+        var config = new AppConfig { IsFreshInstall = true };
         config.Widgets.Theme = WidgetsConfig.ConfigName(WidgetTheme.Orbit);
         config.Info.Enabled = true;
         return config;
