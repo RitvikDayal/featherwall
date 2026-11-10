@@ -44,6 +44,20 @@ internal static class Program
             }
         }
 
+        // --no-shortcut keeps a dev build from repointing the Start menu entry at bin\.
+        if (!args.Contains("--no-shortcut") && Environment.ProcessPath is { } exe)
+        {
+            try
+            {
+                if (StartMenuShortcut.Ensure(exe))
+                    Log.Info($"Start menu shortcut now points at {exe}");
+            }
+            catch (Exception ex)
+            {
+                Log.Warn($"Start menu shortcut not written: {ex.Message}");
+            }
+        }
+
         System.Windows.Forms.Application.EnableVisualStyles();
         System.Windows.Forms.Application.SetHighDpiMode(System.Windows.Forms.HighDpiMode.PerMonitorV2);
 

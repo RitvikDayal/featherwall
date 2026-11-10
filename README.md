@@ -266,8 +266,9 @@ Windows 10 1809 or newer. Grab the release, or build it yourself.
 
 Take `featherwall-v0.2.0-win-x64.zip` from the
 [latest release](https://github.com/RitvikDayal/featherwall/releases/latest). It unzips to a
-single `featherwall.exe`, so there is no installer and nothing to uninstall. Run it and you are
-done.
+single `featherwall.exe`, so there is no installer. Run it and you are done — the first run adds
+FeatherWall to your Start menu, so you can find it again after quitting from the tray. To
+uninstall, delete the folder and the `FeatherWall` Start menu entry.
 
 You need the [.NET 10 desktop runtime](https://dotnet.microsoft.com/download/dotnet/10.0), which
 is a much smaller download than the SDK. Keeping the build framework-dependent is what holds the
