@@ -123,6 +123,15 @@ public static class DiscRenderer
     public static void Paint(Graphics g, Rectangle box, DiscConfig config, Bitmap face,
                              float turns, float progress, bool playing)
     {
+        PaintFace(g, box, face, turns, playing);
+        PaintRim(g, box, config, progress, playing);
+    }
+
+    /// <summary>The turning part: artwork and grooves, rotated by <paramref name="turns"/> and
+    /// dimmed when paused. Split from the rim so the face can sit on its own layer and be turned
+    /// by the compositor while the rim stays still above it.</summary>
+    public static void PaintFace(Graphics g, Rectangle box, Bitmap face, float turns, bool playing)
+    {
         if (box.Width <= 0 || box.Height <= 0) return;
 
         g.SmoothingMode = SmoothingMode.AntiAlias;
@@ -151,9 +160,17 @@ public static class DiscRenderer
             g.DrawImage(face, -side / 2f, -side / 2f, side, side);
         }
         g.Restore(saved);
+    }
 
-        if (!config.ShowProgress) return;
+    /// <summary>The still part: the progress track and arc on the record's edge.</summary>
+    public static void PaintRim(Graphics g, Rectangle box, DiscConfig config, float progress, bool playing)
+    {
+        if (box.Width <= 0 || box.Height <= 0 || !config.ShowProgress) return;
 
+        // Set here as well as in PaintFace: on its own layer the rim is drawn with no face before it.
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+
+        float side = Math.Min(box.Width, box.Height);
         float stroke = Math.Max(side * 0.045f, 1.5f);
         var rim = new RectangleF(box.X + stroke / 2f, box.Y + stroke / 2f, side - stroke, side - stroke);
         var accent = ClockRenderer.ParseColor(config.AccentColor);
