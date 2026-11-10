@@ -49,7 +49,7 @@ files exist solely as documentation screenshots.
 
 ## Widget style samples
 
-The `style-*.jpg` stills and `live-*.mp4` clips on the website show FeatherWall's widget styles
+The `style-*.jpg` stills and the `live-*` clips and their posters on the website show FeatherWall's widget styles
 over anime wallpapers. The widgets are drawn by FeatherWall's own renderers; the wallpapers are
 other artists' work. **They are not used under a licence.** They are shown with credit, and any of
 them will be taken down at the artist's request: open an issue.
