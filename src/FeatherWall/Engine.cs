@@ -525,7 +525,7 @@ public sealed class Engine : IDisposable
         var style = theme == WidgetTheme.Classic
             ? WidgetStyle.Classic
             : new WidgetStyle(theme, Accent.Resolve(_config.Widgets.Accent, _accents.For(monitorDevice)),
-                              Editorial.Scale(_config.Clock, 1.0));
+                              _config.Widgets.ScaleFor(_config.Clock));
         if (record) _stylesInUse[monitorDevice] = style;
         return style;
     }

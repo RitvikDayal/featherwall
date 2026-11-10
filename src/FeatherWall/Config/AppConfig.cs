@@ -98,6 +98,17 @@ public sealed class WidgetsConfig
     /// Glass dock reads only the top or bottom half.</summary>
     public ClockAnchor? Position { get; set; }
 
+    /// <summary>How big the themed widgets are, as a percentage. Unset follows the clock's
+    /// <see cref="ClockConfig.FontSize"/> against its 110 px default, which is how the themes were
+    /// sized before this existed — so nothing changes size until it is set.</summary>
+    public int? Size { get; set; }
+
+    /// <summary>The themes' overall scale, before the monitor's DPI factor. 50–300 %.</summary>
+    public float ScaleFor(ClockConfig clock) =>
+        Size is { } percent
+            ? Math.Clamp(percent, 50, 300) / 100f
+            : Math.Max(clock.FontSize / 110f, 0.25f);
+
     /// <summary>The monitor the group themes draw on; "*" is the primary.</summary>
     public string Monitor { get; set; } = "*";
 

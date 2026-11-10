@@ -39,6 +39,12 @@ public sealed class SettingsForm : Form
     private readonly List<(Label Caption, string Text)> _placement = [];
     private readonly List<Control> _groupRows = [];
     private Panel? _groupPositionHost;
+    private Control? _themeSize;
+    private Label? _themeSizeCaption;
+
+    /// <summary>The clock's font size also sizes the themes until the Style page's Size is set;
+    /// after that it is Classic's alone, and says so.</summary>
+    private Label? _clockFontSizeCaption;
     private readonly List<ThemeTile> _tiles = [];
     private Label? _styleHint;
     private Button? _accentSwatch;
@@ -200,7 +206,7 @@ public sealed class SettingsForm : Form
     // ---- style ---------------------------------------------------------------------------
 
     private WidgetStyle CurrentStyle() =>
-        new(_config.Widgets.ResolveTheme(), _accent, Editorial.Scale(_config.Clock, 1.0));
+        new(_config.Widgets.ResolveTheme(), _accent, _config.Widgets.ScaleFor(_config.Clock));
 
     /// <summary>First in the rail because it is the most visible choice. Every tile is drawn by
     /// its theme's own renderers with sample data, so what is shown is what lands on the desktop.</summary>
@@ -239,6 +245,18 @@ public sealed class SettingsForm : Form
         card.Controls.SetChildIndex(grid, 1);
 
         rows.AddRow("Accent", BuildAccentPicker());
+
+        // Every theme but Classic; Classic keeps its own font size on the Clock page.
+        _themeSize = Spinner(50, 300, (int)Math.Round(_config.Widgets.ScaleFor(_config.Clock) * 100), v =>
+        {
+            if (_loading) return;
+            _config.Widgets.Size = v;
+            _engine.RefreshWidgets();
+            foreach (var tile in _tiles) tile.Rerender();
+            RefreshClassicOnly();
+            _preview.Invalidate();
+        }, "%");
+        _themeSizeCaption = rows.AddRowLabel("Size", _themeSize);
 
         // Orbit, Poster and Glass dock place the whole set at one position on one monitor.
         _groupPositionHost = new Panel
@@ -408,6 +426,14 @@ public sealed class SettingsForm : Form
             caption.Text = other ? $"{text}  · Classic only" : text;
             caption.ForeColor = other ? Theme.Colors.Subtle : Theme.Colors.Text;
         }
+        if (_clockFontSizeCaption is not null)
+        {
+            bool classicOnly = other && _config.Widgets.Size.HasValue;
+            _clockFontSizeCaption.Text = classicOnly ? "Font size  · Classic only" : "Font size";
+            _clockFontSizeCaption.ForeColor = classicOnly ? Theme.Colors.Subtle : Theme.Colors.Text;
+        }
+        if (_themeSize is not null && _themeSizeCaption is not null)
+            _themeSize.Visible = _themeSizeCaption.Visible = other;
         bool group = WidgetsConfig.IsGroup(theme);
         foreach (var (caption, text) in _placement)
         {
@@ -430,7 +456,7 @@ public sealed class SettingsForm : Form
         rows.AddPlacement("Position", BuildAnchorPicker());
         rows.AddPlacement("Margin X", Spinner(0, 2000, _config.Clock.MarginX, v => { _config.Clock.MarginX = v; ApplyClock(); }, "px"));
         rows.AddPlacement("Margin Y", Spinner(0, 2000, _config.Clock.MarginY, v => { _config.Clock.MarginY = v; ApplyClock(); }, "px"));
-        rows.AddRow("Font size", Spinner(24, 400, (int)_config.Clock.FontSize, v => { _config.Clock.FontSize = v; ApplyClock(); }, "px"));
+        _clockFontSizeCaption = rows.AddRowLabel("Font size", Spinner(24, 400, (int)_config.Clock.FontSize, v => { _config.Clock.FontSize = v; ApplyClock(); }, "px"));
         rows.AddClassicOnly("Font", BuildFontPicker());
         rows.AddClassicOnly("Colour", BuildColorPicker());
         rows.AddClassicOnly("Opacity", Spinner(10, 100, (int)Math.Round(CurrentAlpha() / 2.55), v =>
@@ -1212,6 +1238,8 @@ public sealed class SettingsForm : Form
         }
 
         public void AddRow(string label, Control control) => Add(label, control);
+
+        public Label AddRowLabel(string label, Control control) => Add(label, control);
 
         /// <summary>A setting only the Classic theme reads. It stays editable under another
         /// theme — it is Classic's value for when Classic is chosen again — but says so.</summary>
