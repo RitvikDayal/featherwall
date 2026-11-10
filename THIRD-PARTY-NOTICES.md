@@ -65,6 +65,6 @@ them will be taken down at the artist's request: open an issue.
 | `live-editorial.*` | Lofi Girl Looking at the Stars | not named by the host | [MoeWalls](https://moewalls.com/anime/lofi-girl-looking-at-the-stars-live-wallpaper/) |
 | `live-glassdock.*` | Anime Girl on a Train | not named by the host | [MoeWalls](https://moewalls.com/anime/anime-girl-on-a-train-live-wallpaper/) |
 | `live-orbit.*` | Girl and Cat Midnight Lofi | not named by the host | [MoeWalls](https://moewalls.com/lifestyle/girl-and-cat-midnight-lofi-live-wallpaper/) |
-| `live-poster.*` | Samurai Boss Fight Fantasy Dragon | not named by the host | [MoeWalls](https://moewalls.com/fantasy/samurai-boss-fight-fantasy-dragon-live-wallpaper/) |
+| `live-poster.*`, `widgets-hero.jpg` | Samurai Boss Fight Fantasy Dragon | not named by the host | [MoeWalls](https://moewalls.com/fantasy/samurai-boss-fight-fantasy-dragon-live-wallpaper/) |
 
 None of these are in the built-in gallery, and FeatherWall never downloads them.
