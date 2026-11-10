@@ -190,7 +190,7 @@ public static class BatteryHaloRenderer
                      cy + numberSize.Height / 2f - percentSize.Height);
     }
 
-    private static void PaintBolt(Graphics g, float cx, float cy, float side, Color colour)
+    internal static void PaintBolt(Graphics g, float cx, float cy, float side, Color colour)
     {
         float u = side / 34f;
         PointF[] bolt =

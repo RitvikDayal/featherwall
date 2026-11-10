@@ -28,7 +28,7 @@ public class AccentTests
         var accent = Accent.Sample(image);
         Assert.NotNull(accent);
         Assert.InRange(HueDistance(accent!.Value.GetHue(), 0f), 0f, 15f);
-        Assert.InRange(accent.Value.GetBrightness(), 0.59f, 0.73f);
+        Assert.InRange(accent.Value.GetBrightness(), 0.69f, 0.81f);
     }
 
     [Fact]
@@ -44,6 +44,25 @@ public class AccentTests
         var accent = Accent.Sample(image);
         Assert.NotNull(accent);
         Assert.InRange(accent!.Value.GetHue(), 200f, 240f);
+    }
+
+    [Fact]
+    public void Sample_SparseVividAccent_BeatsTintedGrey()
+    {
+        // The samurai frame: violet in streaks over a large blue-grey sky. A person picks the
+        // violet; averaging the frame down first loses it into the grey.
+        using var image = new Bitmap(256, 256);
+        using (var g = Graphics.FromImage(image))
+        {
+            g.Clear(ColorTranslator.FromHtml("#66788F"));
+            using var vivid = new SolidBrush(ColorTranslator.FromHtml("#8A3CD0"));
+            for (int x = 0; x < 256; x += 8)
+                for (int y = 0; y < 256; y += 8)
+                    g.FillRectangle(vivid, x, y, 2, 2);
+        }
+        var accent = Accent.Sample(image);
+        Assert.NotNull(accent);
+        Assert.InRange(accent!.Value.GetHue(), 260f, 290f);
     }
 
     [Fact]
@@ -65,7 +84,7 @@ public class AccentTests
         using var image = Solid(ColorTranslator.FromHtml("#0A1030"));
         var accent = Accent.Sample(image);
         Assert.NotNull(accent);
-        Assert.True(accent!.Value.GetBrightness() >= 0.59f);
+        Assert.True(accent!.Value.GetBrightness() >= 0.69f);
     }
 
     [Fact]

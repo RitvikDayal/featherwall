@@ -4,11 +4,13 @@ using System.Drawing.Imaging;
 
 namespace FeatherWall.Widgets.Themes;
 
-/// <summary>The one shadow every new theme shares. Matches the mockup's
-/// <c>0 2px 18px rgba(0,0,0,.55)</c> at its 1080p authoring scale.</summary>
-public readonly record struct ShadowRecipe(float OffsetY, int Blur, float Opacity)
+/// <summary>The one shadow every new theme shares: the mockup's
+/// <c>0 2px 18px rgba(0,0,0,.55), 0 0 2px rgba(0,0,0,.35)</c> at its 1080p authoring scale.
+/// The second, tight layer is <see cref="EdgeOpacity"/>, drawn once at each of a glyph's eight
+/// neighbouring pixels.</summary>
+public readonly record struct ShadowRecipe(float OffsetY, int Blur, float Opacity, float EdgeOpacity = 0f)
 {
-    public static ShadowRecipe Default => new(2f, 8, 0.55f);
+    public static ShadowRecipe Default => new(2f, 8, 0.55f, 0.2f);
 
     /// <summary>Room a surface needs on every side so the soft edge reaches zero inside the
     /// bitmap. Clipped, it ends in a hard line — the halo's glow made that mistake once.</summary>
@@ -23,8 +25,12 @@ public readonly record struct ShadowRecipe(float OffsetY, int Blur, float Opacit
 public static class BakedShadow
 {
     /// <summary>Replaces <paramref name="target"/>'s contents with the shadow, then the original
-    /// content over it. <paramref name="scale"/> multiplies the blur and the offset.</summary>
-    public static void DrawBehind(Bitmap target, ShadowRecipe recipe, float scale)
+    /// content over it. <paramref name="scale"/> multiplies the blur and the offset.
+    ///
+    /// <paramref name="solidEllipse"/> is an opaque disc drawn on a layer beneath this one — the
+    /// record's turning face. It casts a shadow like content, but the shadow is cleared inside it,
+    /// because on this layer, above the face, it would darken the artwork.</summary>
+    public static void DrawBehind(Bitmap target, ShadowRecipe recipe, float scale, RectangleF? solidEllipse = null)
     {
         int w = target.Width, h = target.Height;
         if (w <= 0 || h <= 0) return;
@@ -34,6 +40,10 @@ public static class BakedShadow
         int sw = Math.Max(w / factor, 1), sh = Math.Max(h / factor, 1);
 
         using var content = (Bitmap)target.Clone();
+        using var caster = (Bitmap)target.Clone();
+        if (solidEllipse is { } disc)
+            using (var g = Graphics.FromImage(caster))
+                g.FillEllipse(Brushes.Black, disc);
         using var small = new Bitmap(sw, sh, PixelFormat.Format32bppPArgb);
 
         // Black, at the content's alpha times the recipe's opacity.
@@ -52,7 +62,7 @@ public static class BakedShadow
             g.InterpolationMode = InterpolationMode.HighQualityBilinear;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
             attrs.SetColorMatrix(toShadow);
-            g.DrawImage(content, new Rectangle(0, 0, sw, sh), 0, 0, w, h, GraphicsUnit.Pixel, attrs);
+            g.DrawImage(caster, new Rectangle(0, 0, sw, sh), 0, 0, w, h, GraphicsUnit.Pixel, attrs);
         }
 
         using var gt = Graphics.FromImage(target);
@@ -65,6 +75,36 @@ public static class BakedShadow
         gt.PixelOffsetMode = PixelOffsetMode.HighQuality;
         float dy = recipe.OffsetY * Math.Max(scale, 0f);
         gt.DrawImage(small, new Rectangle(0, (int)Math.Round(dy), w, h), 0, 0, sw, sh, GraphicsUnit.Pixel, clamp);
+        if (recipe.EdgeOpacity > 0f)
+        {
+            // The tight layer. The soft one averages a hairline away to nearly nothing; this keeps
+            // small text off a background the same colour as the accent it is set in.
+            var edge = new ColorMatrix(
+            [
+                [0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0],
+                [0, 0, 0, Math.Clamp(recipe.EdgeOpacity, 0f, 1f), 0],
+                [0, 0, 0, 0, 1],
+            ]);
+            using var edgeAttrs = new ImageAttributes();
+            edgeAttrs.SetColorMatrix(edge);
+            int r = Math.Max(1, (int)Math.Round(Math.Max(scale, 0f)));
+            for (int dx = -r; dx <= r; dx += r)
+                for (int dyEdge = -r; dyEdge <= r; dyEdge += r)
+                    if (dx != 0 || dyEdge != 0)
+                        gt.DrawImage(caster, new Rectangle(dx, dyEdge, w, h), 0, 0, w, h, GraphicsUnit.Pixel, edgeAttrs);
+        }
+        if (solidEllipse is { } face)
+        {
+            // Inset a pixel, so the face's own anti-aliased edge still sits on shadow, not on a seam.
+            var inner = RectangleF.Inflate(face, -1f, -1f);
+            var mode = gt.CompositingMode;
+            gt.CompositingMode = CompositingMode.SourceCopy;
+            using (var clear = new SolidBrush(Color.Transparent))
+                gt.FillEllipse(clear, inner);
+            gt.CompositingMode = mode;
+        }
         gt.DrawImage(content, 0, 0, w, h);
     }
 }
