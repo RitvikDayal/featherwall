@@ -51,17 +51,6 @@ public sealed class NowPlayingOverlay : IDisposable
     private bool _covered;     // a window is over the desktop
     private bool _ticking;
 
-    /// <summary>Temporary: true runs the v0.2.0 15 fps timer instead of the compositor, so one
-    /// build can be measured both ways (<c>--spin-timer</c>). Deleted once the measurement picks one.</summary>
-    internal static bool UseTimerSpin;
-
-    // Compositor path: the face on a layer the compositor turns, rim and words on a layer above.
-    private CompositionSurface? _faceLayer;
-    private CompositionSurface? _staticLayer;
-    private CompositorSpin? _spin;
-    private float _heldAngle;
-    private (string? Track, bool Art, bool Playing, int Side)? _presentedFace;
-
     public NowPlayingOverlay(CompositionHost host, InfoConfig config, MonitorInfo monitor,
                              NowPlayingSource source, double dpiScale = 1.0, WidgetStyle? style = null)
     {
@@ -135,11 +124,6 @@ public sealed class NowPlayingOverlay : IDisposable
     /// answer, and it is the only place the timer is armed.</summary>
     private void UpdateTimer()
     {
-        if (!UseTimerSpin)
-        {
-            UpdateSpin();
-            return;
-        }
 
         bool shouldTick;
         lock (_sync)
@@ -165,30 +149,6 @@ public sealed class NowPlayingOverlay : IDisposable
             }
         }
         catch (ObjectDisposedException) { /* raced Dispose */ }
-    }
-
-    /// <summary>The compositor path's UpdateTimer. Decides and acts under one lock, so a second
-    /// caller cannot start the spin between another's decision to stop it and the stop.</summary>
-    private void UpdateSpin()
-    {
-        lock (_sync)
-        {
-            bool shouldTurn = RecordSpin.ShouldTurn(_disposed, _suspended, _covered, _config.Disc.Rotate,
-                                                    _source.Current.IsPlaying, _size.Cx > 0 && _size.Cy > 0);
-            if (shouldTurn == _ticking) return;
-            _ticking = shouldTurn;
-
-            if (shouldTurn)
-            {
-                Log.Info("Now-playing: record turning");
-                _spin?.Start(_heldAngle);
-            }
-            else
-            {
-                Log.Info("Now-playing: record still");
-                if (_spin is { Running: true }) _heldAngle = _spin.Stop();
-            }
-        }
     }
 
     private void Tick()
@@ -222,7 +182,6 @@ public sealed class NowPlayingOverlay : IDisposable
             {
                 Log.Info($"Record: nothing to draw (title={reading.Title ?? "<none>"}, playing={reading.IsPlaying})");
                 _size = default;
-                DropLayers();
                 DisposeFace();
                 try { _host.RemoveOverlay(OverlayKey); } catch { /* host may already be gone */ }
                 return;
@@ -239,12 +198,6 @@ public sealed class NowPlayingOverlay : IDisposable
                 ClockLayout.ScaleMargin(disc.MarginBottom ?? disc.MarginY, _dpiScale));
             int offsetX = screenPos.X - _monitor.Bounds.Left;
             int offsetY = screenPos.Y - _monitor.Bounds.Top;
-
-            if (!UseTimerSpin)
-            {
-                PresentLayered(metrics, reading, size, offsetX, offsetY);
-                return;
-            }
 
             var overlay = _host.GetOverlay(OverlayKey);
             if (overlay is null || size.Cx != _size.Cx || size.Cy != _size.Cy)
@@ -276,79 +229,6 @@ public sealed class NowPlayingOverlay : IDisposable
             if (IsEditorial) BakedShadow.DrawBehind(bmp, ShadowRecipe.Default, ThemeScale);
             overlay.PresentBitmap(bmp);
         }
-    }
-
-    /// <summary>Compositor path. The face is presented only when what it shows changes — track,
-    /// artwork, size, or paused dim — and the compositor turns it in between; the rim and the words
-    /// are repainted on every source event, as before. Caller holds <see cref="_sync"/>.</summary>
-    private void PresentLayered(in NowPlayingRenderer.NowPlayingMetrics metrics, NowPlayingReading reading,
-                                SIZE size, int offsetX, int offsetY)
-    {
-        var disc = metrics.DiscBox;
-        var group = _host.GetOverlayGroup(OverlayKey);
-        if (group is null || _faceLayer is null || _staticLayer is null || size.Cx != _size.Cx || size.Cy != _size.Cy)
-        {
-            DropLayers();
-            _size = size;
-            group = _host.CreateOverlayGroup(OverlayKey, offsetX, offsetY);
-            _faceLayer = group.AddLayer(Math.Max(disc.Width, 1), Math.Max(disc.Height, 1), disc.X, disc.Y);
-            _staticLayer = group.AddLayer(size.Cx, size.Cy, 0, 0);
-            if (_config.Disc.Rotate && !disc.IsEmpty)
-            {
-                _spin = new CompositorSpin(_host, _faceLayer.Visual, disc.Width / 2f, disc.Height / 2f);
-                _spin.Hold(_heldAngle);
-            }
-        }
-        else
-        {
-            group.SetOffset(offsetX, offsetY);
-        }
-
-        if (_face is not null && !disc.IsEmpty)
-        {
-            var key = (_faceTrackId, _faceHasArt, reading.IsPlaying, disc.Width);
-            if (_presentedFace != key)
-            {
-                using var faceBmp = new Bitmap(disc.Width, disc.Height, PixelFormat.Format32bppPArgb);
-                using (var g = Graphics.FromImage(faceBmp))
-                    DiscRenderer.PaintFace(g, new Rectangle(0, 0, disc.Width, disc.Height), _face, 0f, reading.IsPlaying);
-                _faceLayer.PresentBitmap(faceBmp);
-                _presentedFace = key;
-            }
-        }
-
-        using var bmp = new Bitmap(_size.Cx, _size.Cy, PixelFormat.Format32bppPArgb);
-        using (var g = Graphics.FromImage(bmp))
-        {
-            if (IsEditorial)
-                Editorial.PaintRecordStatic(g, metrics, _config.Disc, reading, (float)reading.Progress,
-                                            _style.Accent, ThemeScale);
-            else
-                NowPlayingRenderer.Paint(g, metrics, _config.Disc, reading, _face, 0f, (float)reading.Progress,
-                                         (float)_dpiScale, includeFace: false);
-        }
-        // The face turns on the layer beneath, so its shadow is cast here and cleared inside it.
-        if (IsEditorial)
-            BakedShadow.DrawBehind(bmp, ShadowRecipe.Default, ThemeScale,
-                                   disc.IsEmpty || _face is null ? null : disc);
-        _staticLayer.PresentBitmap(bmp);
-    }
-
-    /// <summary>Forgets the compositor path's layers, keeping the angle so a rebuilt record carries
-    /// on from where it was. Clears <see cref="_ticking"/> so the next UpdateSpin starts the new
-    /// layers turning if it should. Caller holds <see cref="_sync"/>.</summary>
-    private void DropLayers()
-    {
-        if (_spin is not null)
-        {
-            _heldAngle = _spin.Stop();
-            _spin.Dispose();
-            _spin = null;
-        }
-        _ticking = false;
-        _faceLayer = null;
-        _staticLayer = null;
-        _presentedFace = null;
     }
 
     /// <summary>The record's face is composited once per track. Rebuilding it every frame would
@@ -398,7 +278,6 @@ public sealed class NowPlayingOverlay : IDisposable
             _ticking = false;
             _source.Changed -= OnSourceChanged;
             _timer.Dispose();
-            DropLayers();
             DisposeFace();
             try { _host.RemoveOverlay(OverlayKey); } catch { /* host may already be gone */ }
         }
