@@ -61,7 +61,9 @@ public static class GroupThemes
     /// <summary>A text size from the mockup, lifted to 11 px at scale 1 where it would fall under.</summary>
     internal static float Text(float mockupUnits, float scale) => Math.Max(mockupUnits * MockupUnit, 11f) * scale;
 
-    /// <summary>Monitor-relative top-left for a block at an anchor, inset by the margin.</summary>
+    /// <summary>Monitor-relative top-left for a block at an anchor, inset by the margin. The margin gives
+    /// way before the screen edge does: a block too big for its margins is pulled back on screen, and one
+    /// bigger than the screen keeps its top left visible.</summary>
     internal static Point Place(Rectangle work, Size size, ClockAnchor anchor, int margin)
     {
         int col = (int)anchor % 3, row = (int)anchor / 3;
@@ -77,6 +79,8 @@ public static class GroupThemes
             1 => work.Top + (work.Height - size.Height) / 2,
             _ => work.Bottom - margin - size.Height,
         };
+        x = Math.Max(work.Left, Math.Min(x, work.Right - size.Width));
+        y = Math.Max(work.Top, Math.Min(y, work.Bottom - size.Height));
         return new Point(x, y);
     }
 
