@@ -55,6 +55,11 @@ public sealed class ClockPreview : Control
             PaintEditorial(g, style);
             return;
         }
+        if (WidgetsConfig.IsGroup(style.Theme))
+        {
+            PaintGroupClock(g, style);
+            return;
+        }
 
         // Scale the real widget down until it fits with a comfortable inset.
         var full = ClockRenderer.Measure(_config, DateTime.Now);
@@ -114,6 +119,33 @@ public sealed class ClockPreview : Control
         int x = Math.Clamp(pos.X, 0, Math.Max(Width - m.Total.Width, 0));
         int y = Math.Clamp(pos.Y, 0, Math.Max(Height - m.Total.Height, 0));
         g.DrawImageUnscaled(surface, x, y);
+    }
+
+    /// <summary>A group theme's clock alone — the dial, the stacked hours, the dock — through the
+    /// theme's own layout, shrunk until it fits the preview box and centred in it.</summary>
+    private void PaintGroupClock(Graphics g, FeatherWall.Widgets.Themes.WidgetStyle style)
+    {
+        var theme = FeatherWall.Widgets.Themes.GroupThemes.For(style.Theme);
+        var box = new Rectangle(0, 0, Width, Height);
+        IReadOnlyList<FeatherWall.Widgets.Themes.GroupPanel> panels = [];
+        float f = 1f, scale = style.Size;
+        for (int i = 0; i < 14; i++, f *= 0.85f)
+        {
+            scale = style.Size * f;
+            var input = new FeatherWall.Widgets.Themes.GroupInput(DateTime.Now, _config, new DiscConfig(), new HaloConfig(),
+                null, null, style.Accent, scale, f, ClockAnchor.Center, box, 48);
+            panels = theme.Layout(input);
+            if (panels.All(p => box.Contains(p.Bounds))) break;
+        }
+        foreach (var panel in panels)
+        {
+            using var surface = new Bitmap(panel.Bounds.Width, panel.Bounds.Height, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+            using (var sg = Graphics.FromImage(surface)) panel.Paint(sg);
+            FeatherWall.Widgets.Themes.BakedShadow.DrawBehind(surface, FeatherWall.Widgets.Themes.ShadowRecipe.Default, scale);
+            // Centred, whatever corner the theme would choose: this box shows the look, not the place.
+            int x = (Width - surface.Width) / 2, y = (Height - surface.Height) / 2;
+            g.DrawImageUnscaled(surface, x, y);
+        }
     }
 
     private void DrawCentredHint(Graphics g, string text)

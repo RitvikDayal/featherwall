@@ -33,6 +33,12 @@ public sealed class SettingsForm : Form
     private Color _accent;
     private string _accentSource = "default";
     private readonly List<(Label Caption, string Text)> _classicOnly = [];
+
+    /// <summary>Per-widget position rows. A group theme places the whole set from the Style page,
+    /// so these say so while one is active.</summary>
+    private readonly List<(Label Caption, string Text)> _placement = [];
+    private readonly List<Control> _groupRows = [];
+    private Panel? _groupPositionHost;
     private readonly List<ThemeTile> _tiles = [];
     private Label? _styleHint;
     private Button? _accentSwatch;
@@ -234,6 +240,17 @@ public sealed class SettingsForm : Form
 
         rows.AddRow("Accent", BuildAccentPicker());
 
+        // Orbit, Poster and Glass dock place the whole set at one position on one monitor.
+        _groupPositionHost = new Panel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Theme.Colors.Card,
+            Margin = new Padding(0),
+        };
+        rows.AddGroupOnly("Position", _groupPositionHost);
+        rows.AddGroupOnly("Monitor", BuildGroupMonitorChoice());
+
         _styleHint = new Label
         {
             Text = "Turn on the Info widget, with Now playing and Battery, to see the full set.",
@@ -262,6 +279,36 @@ public sealed class SettingsForm : Form
             Common.Log.Warn($"Style page backdrop unavailable: {ex.Message}");
             return null;
         }
+    }
+
+    private Control BuildGroupMonitorChoice()
+    {
+        var monitors = Desktop.MonitorTracker.Enumerate();
+        var items = new List<string> { "Primary" };
+        items.AddRange(monitors.Select(m => $"{m.Device.Replace(@"\\.\", "")}  {m.Bounds.Width}×{m.Bounds.Height}"));
+        int selected = 0;
+        for (int i = 0; i < monitors.Count; i++)
+            if (string.Equals(monitors[i].Device, _config.Widgets.Monitor, StringComparison.OrdinalIgnoreCase)) selected = i + 1;
+        return Choice([.. items], selected, i =>
+        {
+            if (_loading) return;
+            _config.Widgets.Monitor = i == 0 ? "*" : monitors[i - 1].Device;
+            _engine.RefreshWidgets();
+        });
+    }
+
+    /// <summary>Rebuilt on every theme change, so a theme with no stored position shows its own
+    /// default — Orbit's top left, Poster's top right, Glass dock's bottom.</summary>
+    private void RebuildGroupPosition(WidgetTheme theme)
+    {
+        if (_groupPositionHost is null) return;
+        _groupPositionHost.Controls.Clear();
+        if (!WidgetsConfig.IsGroup(theme)) return;
+        var picker = BuildAnchorPicker(
+            () => _config.Widgets.Position ?? GroupThemes.For(theme).DefaultPosition,
+            v => _config.Widgets.Position = v,
+            () => { if (!_loading) _engine.RefreshWidgets(); });
+        _groupPositionHost.Controls.Add(picker);
     }
 
     private Control BuildAccentPicker()
@@ -328,11 +375,15 @@ public sealed class SettingsForm : Form
         if (_accentSwatch is not null) _accentSwatch.BackColor = _accent;
         if (_accentHex is not null)
             _accentHex.Text = $"#{_accent.R:X2}{_accent.G:X2}{_accent.B:X2}  {_accentSource}";
+        bool group = WidgetsConfig.IsGroup(theme);
+        foreach (var control in _groupRows) control.Visible = group;
+        RebuildGroupPosition(theme);
         if (_styleHint is not null)
             _styleHint.Visible = theme != WidgetTheme.Classic
                 && !(_config.Info.Enabled && HasSource("nowPlaying") && HasSource("battery"));
         RefreshClassicOnly();
         _preview.Invalidate();
+        ResizeToActivePage();
     }
 
     private void OnAccentChanged()
@@ -350,11 +401,18 @@ public sealed class SettingsForm : Form
     /// when Classic is back.</summary>
     private void RefreshClassicOnly()
     {
-        bool other = _config.Widgets.ResolveTheme() != WidgetTheme.Classic;
+        var theme = _config.Widgets.ResolveTheme();
+        bool other = theme != WidgetTheme.Classic;
         foreach (var (caption, text) in _classicOnly)
         {
             caption.Text = other ? $"{text}  · Classic only" : text;
             caption.ForeColor = other ? Theme.Colors.Subtle : Theme.Colors.Text;
+        }
+        bool group = WidgetsConfig.IsGroup(theme);
+        foreach (var (caption, text) in _placement)
+        {
+            caption.Text = group ? $"{text}  · set on Style page" : text;
+            caption.ForeColor = group ? Theme.Colors.Subtle : Theme.Colors.Text;
         }
     }
 
@@ -369,9 +427,9 @@ public sealed class SettingsForm : Form
         // "Show date" and "Separator rule" live on the Date page — two controls bound to one
         // property desync the moment either is used.
         rows.AddClassicOnly("Drop shadow", Check(_config.Clock.Shadow, v => { _config.Clock.Shadow = v; ApplyClock(); }));
-        rows.AddRow("Position", BuildAnchorPicker());
-        rows.AddRow("Margin X", Spinner(0, 2000, _config.Clock.MarginX, v => { _config.Clock.MarginX = v; ApplyClock(); }, "px"));
-        rows.AddRow("Margin Y", Spinner(0, 2000, _config.Clock.MarginY, v => { _config.Clock.MarginY = v; ApplyClock(); }, "px"));
+        rows.AddPlacement("Position", BuildAnchorPicker());
+        rows.AddPlacement("Margin X", Spinner(0, 2000, _config.Clock.MarginX, v => { _config.Clock.MarginX = v; ApplyClock(); }, "px"));
+        rows.AddPlacement("Margin Y", Spinner(0, 2000, _config.Clock.MarginY, v => { _config.Clock.MarginY = v; ApplyClock(); }, "px"));
         rows.AddRow("Font size", Spinner(24, 400, (int)_config.Clock.FontSize, v => { _config.Clock.FontSize = v; ApplyClock(); }, "px"));
         rows.AddClassicOnly("Font", BuildFontPicker());
         rows.AddClassicOnly("Colour", BuildColorPicker());
@@ -510,9 +568,9 @@ public sealed class SettingsForm : Form
         rows.AddRow("Max characters", Spinner(10, 200, info.MaxCharacters,
             v => { info.MaxCharacters = v; ApplyInfo(); }, "chars"));
         rows.AddClassicOnly("Drop shadow", Check(info.Shadow, v => { info.Shadow = v; ApplyInfo(); }));
-        rows.AddRow("Position", BuildAnchorPicker(() => info.Anchor, v => info.Anchor = v, ApplyInfo));
-        rows.AddRow("Margin X", Spinner(0, 2000, info.MarginX, v => { info.MarginX = v; ApplyInfo(); }, "px"));
-        rows.AddRow("Margin Y", Spinner(0, 2000, info.MarginY, v => { info.MarginY = v; ApplyInfo(); }, "px"));
+        rows.AddPlacement("Position", BuildAnchorPicker(() => info.Anchor, v => info.Anchor = v, ApplyInfo));
+        rows.AddPlacement("Margin X", Spinner(0, 2000, info.MarginX, v => { info.MarginX = v; ApplyInfo(); }, "px"));
+        rows.AddPlacement("Margin Y", Spinner(0, 2000, info.MarginY, v => { info.MarginY = v; ApplyInfo(); }, "px"));
         rows.AddClassicOnly("Font size", Spinner(10, 200, (int)info.FontSize, v => { info.FontSize = v; ApplyInfo(); }, "px"));
         rows.AddClassicOnly("Font", BuildFontPicker(() => info.FontFamily, v => info.FontFamily = v, apply: ApplyInfo));
         rows.AddClassicOnly("Colour", BuildInfoColorPicker());
@@ -581,7 +639,7 @@ public sealed class SettingsForm : Form
         rows.AddRow("Low up to", Spinner(1, 99, halo.LowThreshold, v => { halo.LowThreshold = v; ApplyInfo(); }, "%"));
         rows.AddRow("Mid up to", Spinner(1, 99, halo.MidThreshold, v => { halo.MidThreshold = v; ApplyInfo(); }, "%"));
 
-        rows.AddRow("Detach from text", Check(halo.Detached, v =>
+        rows.AddPlacement("Detach from text", Check(halo.Detached, v =>
         {
             halo.Detached = v;
             UpdateHaloPlacementControls();
@@ -597,9 +655,9 @@ public sealed class SettingsForm : Form
         var marginX = Spinner(0, 2000, halo.MarginX, v => { halo.MarginX = v; ApplyInfo(); }, "px");
         var marginY = Spinner(0, 2000, halo.MarginY, v => { halo.MarginY = v; ApplyInfo(); }, "px");
         _haloDetachedOnly.AddRange([anchor, marginX, marginY]);
-        rows.AddRow("Position", anchor);
-        rows.AddRow("Margin X", marginX);
-        rows.AddRow("Margin Y", marginY);
+        rows.AddPlacement("Position", anchor);
+        rows.AddPlacement("Margin X", marginX);
+        rows.AddPlacement("Margin Y", marginY);
 
         UpdateHaloPlacementControls();
         return card;
@@ -734,9 +792,9 @@ public sealed class SettingsForm : Form
         rows.AddClassicOnly("Artist opacity", Spinner(10, 100, (int)Math.Round(disc.ArtistOpacity * 100),
             v => { disc.ArtistOpacity = v / 100f; ApplyInfo(); }, "%"));
 
-        rows.AddRow("Position", BuildAnchorPicker(() => disc.Anchor, v => disc.Anchor = v, ApplyInfo));
-        rows.AddRow("Margin X", Spinner(0, 2000, disc.MarginX, v => { disc.MarginX = v; ApplyInfo(); }, "px"));
-        rows.AddRow("Margin Y", Spinner(0, 2000, disc.MarginY, v => { disc.MarginY = v; ApplyInfo(); }, "px"));
+        rows.AddPlacement("Position", BuildAnchorPicker(() => disc.Anchor, v => disc.Anchor = v, ApplyInfo));
+        rows.AddPlacement("Margin X", Spinner(0, 2000, disc.MarginX, v => { disc.MarginX = v; ApplyInfo(); }, "px"));
+        rows.AddPlacement("Margin Y", Spinner(0, 2000, disc.MarginY, v => { disc.MarginY = v; ApplyInfo(); }, "px"));
 
         return card;
     }
@@ -1159,6 +1217,17 @@ public sealed class SettingsForm : Form
         /// theme — it is Classic's value for when Classic is chosen again — but says so.</summary>
         public void AddClassicOnly(string label, Control control) =>
             _owner._classicOnly.Add((Add(label, control), label));
+
+        /// <summary>A per-widget position: unused while a group theme places the set.</summary>
+        public void AddPlacement(string label, Control control) =>
+            _owner._placement.Add((Add(label, control), label));
+
+        /// <summary>A row that only applies to the group themes; hidden otherwise.</summary>
+        public void AddGroupOnly(string label, Control control)
+        {
+            _owner._groupRows.Add(Add(label, control));
+            _owner._groupRows.Add(control);
+        }
 
         private Label Add(string label, Control control)
         {
