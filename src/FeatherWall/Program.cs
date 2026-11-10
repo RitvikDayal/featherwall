@@ -51,7 +51,10 @@ internal static class Program
             }
         }
 
-        var config = ConfigStore.Load(ConfigStore.ConfigPath, out bool configUnreadable);
+        // Every earlier version writes this on start, before anything else could have: its presence
+        // means FeatherWall has run here before, whether or not a config.json was ever saved.
+        bool ranBefore = File.Exists(Path.Combine(Log.Directory, "original-wallpaper.txt"));
+        var config = ConfigStore.Load(ConfigStore.ConfigPath, out bool configUnreadable, ranBefore);
 
         // --no-shortcut keeps a dev build from repointing the Start menu entry at bin\.
         if (!args.Contains("--no-shortcut") && Environment.ProcessPath is { } exe && StartMenuShortcut.IsOwnExe(exe))

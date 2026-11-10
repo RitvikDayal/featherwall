@@ -124,3 +124,18 @@ public class WidgetSizeTests
     public void Set_IsClampedToWhatFitsAScreen(int size, float expected) =>
         Assert.Equal(expected, new WidgetsConfig { Size = size }.ScaleFor(new ClockConfig()), 3);
 }
+
+public class UpgradeDetectionTests
+{
+    [Fact]
+    public void NoConfig_ButRanBefore_IsAnUpgrade_AndKeepsClassic()
+    {
+        // v0.2.0 wrote config.json only when something was changed, so someone who only ever ran
+        // it with the default clock has no file — and is still upgrading (review, Important #2).
+        var path = Path.Combine(Directory.CreateTempSubdirectory("fw-config-").FullName, "config.json");
+        var config = ConfigStore.Load(path, out _, ranBefore: true);
+        Assert.False(config.IsFreshInstall);
+        Assert.Equal(WidgetTheme.Classic, config.Widgets.ResolveTheme());
+        Assert.False(config.Info.Enabled);
+    }
+}
