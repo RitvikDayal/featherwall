@@ -1,0 +1,90 @@
+﻿[
+    {
+        "Label":  "Still image + info widget",
+        "Refused":  "DISCARDED: the wallpaper changed pause state during the \u0027Still image + info widget\u0027 window, so this number is an average of two different states and means nothing.",
+        "ExpectedState":  "Playing"
+    },
+    {
+        "App":  "featherwall",
+        "Label":  "Video playing + info widget",
+        "SampledSeconds":  34.8,
+        "Processes":  1,
+        "Threads":  64,
+        "Handles":  1155,
+        "WorkingSetMB":  328.1,
+        "PrivateMB":  252.1,
+        "GpuDedicatedMB":  0,
+        "GpuSharedMB":  38546.3,
+        "CpuPercentMachine":  1.206,
+        "CpuPercentOneCore":  28.9,
+        "BusiestGpuEngine":  "videoprocessing",
+        "BusiestGpuPercent":  49.5,
+        "GpuCounters":  "all read",
+        "ProcessReadErrors":  0,
+        "Cores":  24,
+        "PauseState":  "Playing, verified for the full window on 2 monitor(s): \\\\.\\DISPLAY1, \\\\.\\DISPLAY5",
+        "RecordState":  "turning, verified for the full window",
+        "Extra":  {
+                      "dwm":  {
+                                  "CpuPercentMachine":  1.077,
+                                  "BusiestGpuPercent":  16,
+                                  "BusiestGpuEngine":  "3d"
+                              }
+                  },
+        "Combined":  {
+                         "CpuPercentMachine":  2.283,
+                         "BusiestGpuPercent":  49.5,
+                         "BusiestGpuEngine":  "videoprocessing"
+                     },
+        "MeasuredAtUtc":  "2026-11-10T13:26:50Z"
+    },
+    {
+        "Label":  "Still image + info widget",
+        "Refused":  "DISCARDED: the wallpaper changed pause state during the \u0027Still image + info widget\u0027 window, so this number is an average of two different states and means nothing.",
+        "ExpectedState":  "Playing"
+    },
+    {
+        "App":  "featherwall",
+        "Label":  "Video playing + info widget",
+        "SampledSeconds":  35.7,
+        "Processes":  1,
+        "Threads":  67,
+        "Handles":  1176,
+        "WorkingSetMB":  346.4,
+        "PrivateMB":  272.7,
+        "GpuDedicatedMB":  0,
+        "GpuSharedMB":  24922.1,
+        "CpuPercentMachine":  0.69,
+        "CpuPercentOneCore":  16.6,
+        "BusiestGpuEngine":  "videoprocessing",
+        "BusiestGpuPercent":  45.7,
+        "GpuCounters":  "GPU Process Memory counters read on 5/6 samples",
+        "ProcessReadErrors":  0,
+        "Cores":  24,
+        "PauseState":  "Playing, verified for the full window on 2 monitor(s): \\\\.\\DISPLAY1, \\\\.\\DISPLAY5",
+        "RecordState":  "turning, verified for the full window",
+        "Extra":  {
+                      "dwm":  {
+                                  "CpuPercentMachine":  0.583,
+                                  "BusiestGpuPercent":  10.8,
+                                  "BusiestGpuEngine":  "3d"
+                              }
+                  },
+        "Combined":  {
+                         "CpuPercentMachine":  1.273,
+                         "BusiestGpuPercent":  45.7,
+                         "BusiestGpuEngine":  "videoprocessing"
+                     },
+        "MeasuredAtUtc":  "2026-11-10T13:28:31Z"
+    },
+    {
+        "Label":  "Still image + info widget",
+        "Refused":  "DISCARDED: the wallpaper changed pause state during the \u0027Still image + info widget\u0027 window, so this number is an average of two different states and means nothing.",
+        "ExpectedState":  "Playing"
+    },
+    {
+        "Label":  "Video playing + info widget",
+        "Refused":  "DISCARDED: not every monitor was \u0027Playing\u0027 for the whole \u0027Video playing + info widget\u0027 window. \\\\.\\DISPLAY1 was \u0027Paused\u0027",
+        "ExpectedState":  "Playing"
+    }
+]

@@ -43,11 +43,17 @@ Track titles and artists in any script now draw correctly: Hindi, Thai, Chinese,
 Korean use a Windows font that has the letters, and channel names written in Unicode's decorative
 "bold" letters (𝐋𝐎𝐅𝐈 𝐎𝐍 𝐅𝐈𝐑𝐄) show as plain text instead of empty boxes.
 
-## The record turns on the compositor
+## The record still turns on its timer, and here is why
 
-<!-- FILL AFTER THE GATE: the measured verdict and the numbers, each traced to a committed result
-file in scripts/bench/results/. If the compositor path did not pass, this section says the record
-still turns on the 15 fps timer and why. Do not publish before this is filled. -->
+This release tried turning the record on the compositor instead of redrawing it 15 times a second,
+and measured both ways with DWM's own cost included. On a 240 Hz display over a still image, the
+compositor version used less than half the CPU (0.13 % against 0.56 %), but the GPU went from 1.2 % to
+11 %, because Windows recomposed the turning record 240 times a second. FeatherWall's rule was that a
+change ships only if it is no more expensive on any measure, so the record keeps its 15 fps timer.
+The numbers and the method are in `docs/benchmark.md`.
+
+What did change: in Glass dock, Orbit and Poster, only the small record itself is redrawn while it
+turns, not the whole widget.
 
 ## Start menu
 
