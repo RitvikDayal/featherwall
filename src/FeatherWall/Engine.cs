@@ -713,10 +713,7 @@ public sealed class Engine : IDisposable
         }
         if (cmd >= CmdThemeBase && cmd < CmdThemeBase + 10)
         {
-            var theme = (WidgetTheme)(cmd - CmdThemeBase);
-            _config.Widgets.Theme = WidgetsConfig.ConfigName(theme);
-            Log.Info($"Widget style: {_config.Widgets.Theme} (tray)");
-            SaveAndRefreshWidgets();
+            SetWidgetTheme((WidgetTheme)(cmd - CmdThemeBase), "tray");
             return;
         }
         if (cmd >= CmdGalleryBase && cmd < CmdGalleryBase + (uint)_gallery.Manifest.Entries.Count)
@@ -813,6 +810,44 @@ public sealed class Engine : IDisposable
 
     /// <summary>Clock appearance changed: persist and rebuild the overlay (cheap).</summary>
     public void RefreshWidgets() => SaveAndRefreshWidgets();
+
+    /// <summary>The one way a theme is chosen, from the tray or the Style page. Applies at once.</summary>
+    public void SetWidgetTheme(WidgetTheme theme, string from = "settings")
+    {
+        _config.Widgets.Theme = WidgetsConfig.ConfigName(theme);
+        Log.Info($"Widget style: {_config.Widgets.Theme} ({from})");
+        SaveAndRefreshWidgets();
+    }
+
+    /// <summary>"auto" or #RRGGBB, as the config takes it.</summary>
+    public void SetWidgetAccent(string accent)
+    {
+        _config.Widgets.Accent = accent;
+        Log.Info($"Widget accent: {accent}");
+        SaveAndRefreshWidgets();
+    }
+
+    /// <summary>The accent the themes would use on the clock's monitor, whichever theme is active,
+    /// so the Style page's swatch and tiles show the colour a theme will actually get.</summary>
+    public System.Drawing.Color CurrentAccent() =>
+        Accent.Resolve(_config.Widgets.Accent, _accents.For(PreviewDevice()));
+
+    /// <summary>The static frame of the clock's monitor, for the Style page's tiles. Null before
+    /// any frame has been written.</summary>
+    public string? PreviewBackdropPath()
+    {
+        var path = StaticPath(PreviewDevice());
+        return File.Exists(path) ? path : null;
+    }
+
+    private string PreviewDevice()
+    {
+        var monitors = MonitorTracker.Enumerate();
+        var target = monitors.FirstOrDefault(m =>
+                string.Equals(m.Device, _config.Clock.Monitor, StringComparison.OrdinalIgnoreCase))
+            ?? monitors.FirstOrDefault(m => m.Primary) ?? monitors.FirstOrDefault();
+        return target?.Device ?? "";
+    }
 
     /// <summary>For the settings panel's clock and date pages.</summary>
     public void RefreshClock() => SaveAndRefreshClockOnly();
