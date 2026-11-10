@@ -348,11 +348,29 @@ public static class ConfigStore
         return config;
     }
 
-    public static void Save(AppConfig config)
+    public static void Save(AppConfig config) => Save(config, ConfigPath);
+
+    public static void Save(AppConfig config, string path)
     {
-        Directory.CreateDirectory(ConfigDirectory);
-        var tmp = ConfigPath + ".tmp";
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var tmp = path + ".tmp";
         File.WriteAllText(tmp, JsonSerializer.Serialize(config, ConfigJsonContext.Default.AppConfig));
-        File.Move(tmp, ConfigPath, overwrite: true);
+        File.Move(tmp, path, overwrite: true);
+    }
+
+    /// <summary>Whether FeatherWall has run on this machine before: its log survives a clean exit,
+    /// which deletes original-wallpaper.txt. Check it before this run's Log.Init writes the log.</summary>
+    public static bool RanBefore(string appDataDirectory) =>
+        File.Exists(Path.Combine(appDataDirectory, "featherwall.log"))
+        || File.Exists(Path.Combine(appDataDirectory, "original-wallpaper.txt"));
+
+    /// <summary>The start-up load. A fresh install is saved straight away, so its starting style
+    /// sticks: otherwise its own log would make the second start look like an upgrade and turn it
+    /// back to Classic.</summary>
+    public static AppConfig LoadAtStartup(string configPath, bool ranBefore, out bool unreadable)
+    {
+        var config = Load(configPath, out unreadable, ranBefore);
+        if (config.IsFreshInstall) Save(config, configPath);
+        return config;
     }
 }
