@@ -94,7 +94,7 @@ public static class ThemePreview
     {
         var disc = config.Info.Disc;
         var halo = config.Info.Halo;
-        float unit = Editorial.Scale(config.Clock, 1.0);
+        float unit = config.Widgets.ScaleFor(config.Clock);
         float scale = unit * Fit(Editorial.MeasureClock(config.Clock, SampleTime, unit).Total,
                                  Editorial.MeasureRecord(disc, SampleTrack, unit).Total,
                                  Editorial.MeasureHalo(halo, SampleBattery, unit));
@@ -120,7 +120,7 @@ public static class ThemePreview
     /// drawn above it where the compositor would turn it.</summary>
     private static void DrawGroup(Graphics g, IGroupTheme theme, Color accent, AppConfig config)
     {
-        float unit = Editorial.Scale(config.Clock, 1.0);
+        float unit = config.Widgets.ScaleFor(config.Clock);
         IReadOnlyList<GroupPanel> panels = [];
         float f = WidgetScale;
         for (int attempt = 0; attempt < 12; attempt++, f *= 0.85f)

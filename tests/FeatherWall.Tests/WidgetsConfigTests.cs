@@ -107,3 +107,20 @@ public class GroupThemeConfigTests
         Assert.False(config.Info.Enabled);
     }
 }
+
+public class WidgetSizeTests
+{
+    [Fact]
+    public void Unset_FollowsTheClocksFontSize() =>
+        Assert.Equal(150f / 110f, new WidgetsConfig().ScaleFor(new ClockConfig { FontSize = 150 }), 3);
+
+    [Fact]
+    public void Set_IsAPercentage_AndIgnoresTheFontSize() =>
+        Assert.Equal(2f, new WidgetsConfig { Size = 200 }.ScaleFor(new ClockConfig { FontSize = 150 }), 3);
+
+    [Theory]
+    [InlineData(5, 0.5f)]
+    [InlineData(900, 3f)]
+    public void Set_IsClampedToWhatFitsAScreen(int size, float expected) =>
+        Assert.Equal(expected, new WidgetsConfig { Size = size }.ScaleFor(new ClockConfig()), 3);
+}
