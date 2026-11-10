@@ -268,8 +268,8 @@ Take `featherwall-v0.2.0-win-x64.zip` from the
 [latest release](https://github.com/RitvikDayal/featherwall/releases/latest). It unzips to a
 single `featherwall.exe`, so there is no installer. Run it and you are done — the first run adds
 FeatherWall to your Start menu, so you can find it again after quitting from the tray. Remove that
-entry and it stays removed. To uninstall, quit it from the tray, delete the folder and the
-`FeatherWall` Start menu entry, and turn off "Run at startup" first if you had it on.
+entry and it stays removed. To uninstall, turn off "Run at startup" if you had it on, quit from
+the tray, then delete the folder and the `FeatherWall` Start menu entry.
 
 You need the [.NET 10 desktop runtime](https://dotnet.microsoft.com/download/dotnet/10.0), which
 is a much smaller download than the SDK. Keeping the build framework-dependent is what holds the
@@ -448,9 +448,13 @@ The tray menu and settings panel cover the common cases. Everything lives in
       "artistOpacity": 0.62
     }
   },
-  "pause": { "onFullscreen": true, "onBatterySaver": true, "onRemoteSession": true }
+  "pause": { "onFullscreen": true, "onBatterySaver": true, "onRemoteSession": true },
+  "startMenuShortcutAdded": true
 }
 ```
+
+`startMenuShortcutAdded` records that the Start menu entry has been created once, which is what
+keeps a deleted entry deleted. Set it to `false` to get the entry back on the next start.
 
 `sources` is ordered, and the order is the display order. A name this version does not know is
 logged and skipped rather than refused, so a config written by a later one still starts. Long

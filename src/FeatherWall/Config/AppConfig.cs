@@ -233,15 +233,21 @@ public static class ConfigStore
 
     public static string ConfigPath { get; } = Path.Combine(ConfigDirectory, "config.json");
 
-    public static AppConfig Load()
+    public static AppConfig Load() => Load(ConfigPath, out _);
+
+    /// <summary><paramref name="unreadable"/> is true when a file exists but could not be parsed,
+    /// so the defaults returned are not the user's settings and must not be saved over it.</summary>
+    public static AppConfig Load(string path, out bool unreadable)
     {
+        unreadable = false;
         try
         {
-            if (File.Exists(ConfigPath))
-                return JsonSerializer.Deserialize(File.ReadAllText(ConfigPath), ConfigJsonContext.Default.AppConfig) ?? new AppConfig();
+            if (File.Exists(path))
+                return JsonSerializer.Deserialize(File.ReadAllText(path), ConfigJsonContext.Default.AppConfig) ?? new AppConfig();
         }
         catch (Exception ex)
         {
+            unreadable = true;
             Common.Log.Warn($"Config unreadable, using defaults ({ex.Message})");
         }
         return new AppConfig();

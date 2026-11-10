@@ -1,3 +1,4 @@
+using FeatherWall.Config;
 using FeatherWall.Desktop;
 
 namespace FeatherWall.Tests;
@@ -72,6 +73,47 @@ public class StartMenuShortcutTests : IDisposable
     public void IsOwnExe_OnlyForFeatherWallItself(string path, bool expected)
     {
         Assert.Equal(expected, StartMenuShortcut.IsOwnExe(path));
+    }
+
+    [Fact]
+    public void Reconcile_UnreadableConfig_TouchesNothing()
+    {
+        // Load fell back to defaults, so the flag reads false whatever the user's file said: acting
+        // on it would recreate a deleted entry, and saving would write defaults over their settings.
+        var config = new AppConfig();
+
+        var (change, markAdded) = StartMenuShortcut.Reconcile(@"C:\Apps\FeatherWall\featherwall.exe", config,
+                                                              configUnreadable: true, Lnk);
+
+        Assert.Equal(ShortcutChange.None, change);
+        Assert.False(markAdded);
+        Assert.False(File.Exists(Lnk));
+    }
+
+    [Fact]
+    public void Reconcile_ShortcutFromAnOlderBuild_IsMarkedAdded()
+    {
+        var exe = @"C:\Apps\FeatherWall\featherwall.exe";
+        StartMenuShortcut.Ensure(exe, alreadyAdded: false, Lnk);
+        var config = new AppConfig { StartMenuShortcutAdded = false };
+
+        var (change, markAdded) = StartMenuShortcut.Reconcile(exe, config, configUnreadable: false, Lnk);
+
+        Assert.Equal(ShortcutChange.None, change);
+        Assert.True(markAdded);
+        Assert.True(config.StartMenuShortcutAdded);
+    }
+
+    [Fact]
+    public void Reconcile_AlreadyMarked_DoesNotAskForASave()
+    {
+        var exe = @"C:\Apps\FeatherWall\featherwall.exe";
+        StartMenuShortcut.Ensure(exe, alreadyAdded: false, Lnk);
+
+        var (_, markAdded) = StartMenuShortcut.Reconcile(exe, new AppConfig { StartMenuShortcutAdded = true },
+                                                         configUnreadable: false, Lnk);
+
+        Assert.False(markAdded);
     }
 
     [Fact]
