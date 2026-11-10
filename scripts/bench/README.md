@@ -36,6 +36,23 @@ the log showed three pause/resume transitions inside the sampling window.
 Both halves of the check are load-bearing. Checking only for transitions passes a wallpaper that
 was paused for the entire window, which is the more common failure.
 
+`-RequireRecordTurning` does the same for the now-playing record: the row is refused unless the
+record was turning for the whole window. Only lines from the measured process count — a run whose
+record never turns logs nothing, and the first version of this check accepted a row with nothing
+playing on the strength of a "turning" line from a FeatherWall that had exited two weeks earlier.
+
+## Measuring the compositor too
+
+`-WithDwm` (`-AlsoMeasure dwm` on `Measure-App.ps1`) adds `dwm.exe` and reports a combined CPU
+figure and a combined busiest GPU engine. A DirectComposition animation moves work out of
+FeatherWall and into DWM, so a harness that measures only FeatherWall would report that change as
+free. DWM's CPU time comes from the `% Processor Time` counter, because an unelevated shell cannot
+open `dwm.exe` for its process times and PowerShell returns `$null` rather than failing.
+
+Other selectors for focused runs: `-States` picks rows by label, `-Runs N` reports each row as
+the median of its accepted runs, `-InfoMonitor \\.\DISPLAYn` places the info widget, and
+`-ExtraArgs` is passed to `featherwall.exe`.
+
 ## What is measured, and why that way
 
 **The whole process tree**, walked from every process matching the name. A tool that runs a
