@@ -40,7 +40,14 @@ param(
     [Parameter(Mandatory)][string] $Image,
     [int] $Seconds = 30,
     [switch] $Widgets,
-    [string] $Exe = "$PSScriptRoot\..\..\src\FeatherWall\bin\Release\net10.0-windows10.0.19041.0\featherwall.exe"
+    [string] $Exe = "$PSScriptRoot\..\..\src\FeatherWall\bin\Release\net10.0-windows10.0.19041.0\featherwall.exe",
+    [ValidateSet('Still image', 'Video playing', 'Video auto-paused', 'Settings panel open')]
+    [string[]] $States = @('Still image', 'Video playing', 'Video auto-paused', 'Settings panel open'),
+    [ValidateRange(1, 20)][int] $Runs = 1,
+    [switch] $WithDwm,
+    [string] $InfoMonitor,
+    [switch] $RequireRecordTurning,
+    [string[]] $ExtraArgs = @()
 )
 
 Set-StrictMode -Version Latest
@@ -55,6 +62,13 @@ Add-Type -AssemblyName System.Windows.Forms
 foreach ($p in @($Video, $Image, $Exe, $measure)) {
     if (-not (Test-Path $p)) { throw "Not found: $p" }
 }
+# The two paused rows measure the video wallpaper that 'Video playing' left running. Selecting
+# them alone would measure whatever happened to be on the desktop.
+if (($States -contains 'Video auto-paused' -or $States -contains 'Settings panel open') -and $States -notcontains 'Video playing') {
+    throw "-States: the paused rows need 'Video playing' selected too; they pause the video it starts."
+}
+if ($InfoMonitor -and -not $Widgets) { throw "-InfoMonitor places the info widget, so it needs -Widgets." }
+if ($RequireRecordTurning -and -not $Widgets) { throw "-RequireRecordTurning checks the info widget's record, so it needs -Widgets." }
 
 function Stop-FeatherWall {
     & $Exe --exit 2>$null | Out-Null
@@ -89,6 +103,7 @@ function Set-Wallpaper {
             disc = @{ enabled = $true; size = 112; rotate = $true; showProgress = $true
                       anchor = 'BottomRight'; marginX = 48; marginY = 48 }
         }
+        if ($InfoMonitor) { $config.info.monitor = $InfoMonitor }
     }
     $config | ConvertTo-Json -Depth 6 | Set-Content -Path $configPath -Encoding UTF8
 }
@@ -295,7 +310,10 @@ function Measure-State {
     try {
         & $Setup
         $tagged = if ($Widgets) { "$Label + info widget" } else { $Label }
-        return (& $measure -ProcessName featherwall -Seconds $Seconds -Label $tagged -ExpectState $Expect)
+        $extra = @{}
+        if ($WithDwm) { $extra.AlsoMeasure = @('dwm') }
+        if ($RequireRecordTurning) { $extra.RequireRecordTurning = $true }
+        return (& $measure -ProcessName featherwall -Seconds $Seconds -Label $tagged -ExpectState $Expect @extra)
     }
     catch {
         # Trim each line: a Windows exception carries \r that -split "`n" leaves behind, and those
@@ -309,7 +327,7 @@ function Measure-State {
 }
 
 function Start-AndSettle {
-    Start-Process $Exe
+    if ($ExtraArgs.Count -gt 0) { Start-Process $Exe -ArgumentList $ExtraArgs } else { Start-Process $Exe }
     # First frame, first static-fallback capture and the initial pause evaluation all happen in
     # the first few seconds. Measuring through them records startup, not steady state.
     Start-Sleep -Seconds 12
@@ -356,22 +374,30 @@ try {
     }
     Write-Host "Windows minimised. Do not touch the machine until this finishes." -ForegroundColor Yellow
 
+    for ($run = 1; $run -le $Runs; $run++) {
+    $suffix = if ($Runs -gt 1) { " (run $run/$Runs)" } else { "" }
+
     # --- still image -----------------------------------------------------------------------
-    Write-Host "[1/4] still image" -ForegroundColor Cyan
+    if ($States -contains 'Still image') {
+    Write-Host "[1/4] still image$suffix" -ForegroundColor Cyan
     [void]$results.Add((Measure-State -Label 'Still image' -Expect Playing -Setup {
         Stop-FeatherWall; Set-Wallpaper -Path $Image; Start-AndSettle
     }))
+    }
 
     # --- video playing ---------------------------------------------------------------------
-    Write-Host "[2/4] video playing (desktop visible)" -ForegroundColor Cyan
+    if ($States -contains 'Video playing') {
+    Write-Host "[2/4] video playing (desktop visible)$suffix" -ForegroundColor Cyan
     [void]$results.Add((Measure-State -Label 'Video playing' -Expect Playing -Setup {
         Stop-FeatherWall; Set-Wallpaper -Path $Video; Start-AndSettle
     }))
+    }
 
     # --- video paused ----------------------------------------------------------------------
     # A maximised window is what actually triggers the pause, so one is opened rather than the
     # pause being simulated. Measuring "paused" by trusting a config flag would measure nothing.
-    Write-Host "[3/4] video auto-paused (maximised window over the desktop)" -ForegroundColor Cyan
+    if ($States -contains 'Video auto-paused') {
+    Write-Host "[3/4] video auto-paused (maximised window over the desktop)$suffix" -ForegroundColor Cyan
     [void]$results.Add((Measure-State -Label 'Video auto-paused' -Expect Paused -Setup {
         $since = Get-LastPauseEvent
         [void](Open-Blocker)
@@ -379,16 +405,20 @@ try {
     }))
     Close-Blocker
     Start-Sleep -Seconds 2
+    }
 
     # --- settings panel open ---------------------------------------------------------------
     # The settings panel is the one place a UI toolkit is used, and it is loaded on demand. This
     # row is what that claim costs when the claim is being exercised.
-    Write-Host "[4/4] settings panel open" -ForegroundColor Cyan
+    if ($States -contains 'Settings panel open') {
+    Write-Host "[4/4] settings panel open$suffix" -ForegroundColor Cyan
     [void]$results.Add((Measure-State -Label 'Settings panel open' -Expect Paused -Setup {
         $since = Get-LastPauseEvent
         Start-Process $Exe -ArgumentList '--settings'
         Wait-ForPauseState -Expected 'Paused' -Because 'the settings panel opening over the desktop' -Since $since
     }))
+    }
+    }
 }
 finally {
     Close-Blocker
@@ -417,25 +447,69 @@ $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMdd-HHmmss')
 $outDir = Join-Path $PSScriptRoot 'results'
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 $json = Join-Path $outDir "featherwall-$stamp.json"
-$results | ConvertTo-Json -Depth 4 | Set-Content -Path $json -Encoding UTF8
+$results | ConvertTo-Json -Depth 6 | Set-Content -Path $json -Encoding UTF8
+
+function Get-Median([double[]] $Values) {
+    $v = @($Values | Sort-Object)
+    if ($v.Count -eq 0) { return $null }
+    $mid = [math]::Floor($v.Count / 2)
+    if ($v.Count % 2) { return $v[$mid] } else { return ($v[$mid - 1] + $v[$mid]) / 2 }
+}
+
+# With -Runs N each state is reported once, as the median of its ACCEPTED runs, and says how many
+# that was. A refused run is not averaged in as a zero; it shrinks the count, visibly.
+$rows = [System.Collections.ArrayList]::new()
+foreach ($label in @($results | ForEach-Object { $_.Label } | Select-Object -Unique)) {
+    $all = @($results | Where-Object { $_.Label -eq $label })
+    $ok = @($all | Where-Object { $_.PSObject.Properties.Name -notcontains 'Refused' })
+    if ($ok.Count -eq 0) { [void]$rows.Add($all[-1]); continue }
+    if ($Runs -eq 1) { [void]$rows.Add($ok[0]); continue }
+    $row = $ok[0].PSObject.Copy()
+    foreach ($field in 'Processes', 'PrivateMB', 'WorkingSetMB', 'GpuDedicatedMB', 'GpuSharedMB',
+                       'CpuPercentMachine', 'CpuPercentOneCore', 'BusiestGpuPercent') {
+        $vals = @($ok | ForEach-Object { $_.$field } | Where-Object { $null -ne $_ })
+        $row.$field = if ($vals.Count) { Get-Median $vals } else { $null }
+    }
+    if ($WithDwm) {
+        $row.Extra = [ordered]@{ dwm = [pscustomobject]@{
+            CpuPercentMachine = Get-Median @($ok | ForEach-Object { $_.Extra.dwm.CpuPercentMachine })
+            BusiestGpuPercent = Get-Median @($ok | ForEach-Object { $_.Extra.dwm.BusiestGpuPercent } | Where-Object { $null -ne $_ })
+            BusiestGpuEngine  = $ok[0].Extra.dwm.BusiestGpuEngine } }
+        $row.Combined = [pscustomobject]@{
+            CpuPercentMachine = Get-Median @($ok | ForEach-Object { $_.Combined.CpuPercentMachine })
+            BusiestGpuPercent = Get-Median @($ok | ForEach-Object { $_.Combined.BusiestGpuPercent } | Where-Object { $null -ne $_ })
+            BusiestGpuEngine  = $ok[0].Combined.BusiestGpuEngine }
+    }
+    $row.PauseState = "$($row.PauseState); median of $($ok.Count)/$($all.Count) accepted runs"
+    [void]$rows.Add($row)
+}
 
 Write-Host ""
 # Ten columns including Verified, matching the schema in docs/benchmark.md — this output is meant
 # to be pasted straight in, and a row with nine cells silently shifts every value left of it.
-Write-Host "| State | Processes | Private MB | Working set MB | GPU dedicated MB | GPU shared MB | CPU (machine) | CPU (one core) | Busiest GPU engine | Verified |"
-Write-Host "|---|---|---|---|---|---|---|---|---|---|"
-foreach ($r in $results) {
+$dwmHead = if ($WithDwm) { " DWM CPU | Combined CPU | Combined GPU |" } else { "" }
+$dwmRule = if ($WithDwm) { "---|---|---|" } else { "" }
+Write-Host "| State | Processes | Private MB | Working set MB | GPU dedicated MB | GPU shared MB | CPU (machine) | CPU (one core) | Busiest GPU engine |$dwmHead Verified |"
+Write-Host "|---|---|---|---|---|---|---|---|---|$($dwmRule)---|"
+foreach ($r in $rows) {
     if ($r.PSObject.Properties.Name -contains 'Refused') {
         # Blank cells, not zeroes. docs/benchmark.md already reads an empty cell as "nobody
         # measured it", and a refused row is exactly that plus a reason.
-        "| {0} | | | | | | | | | REFUSED |" -f $r.Label
+        $blank = if ($WithDwm) { " | | |" } else { "" }
+        "| {0} | | | | | | | | |{1} REFUSED |" -f $r.Label, $blank
     } else {
         # No engine name when nothing was busy — "0 % ()" is a stray empty bracket in a table
         # that gets pasted straight into docs/benchmark.md.
         $engine = if ($r.BusiestGpuEngine) { " ($($r.BusiestGpuEngine))" } else { "" }
-        "| {0} | {1} | {2} | {3} | {4} | {5} | {6} % | {7} % | {8} %{9} | {10} |" -f `
+        $dwmCells = ""
+        if ($WithDwm) {
+            $cEngine = if ($r.Combined.BusiestGpuEngine) { " ($($r.Combined.BusiestGpuEngine))" } else { "" }
+            $dwmCells = " {0} % | {1} % | {2} %{3} |" -f $r.Extra.dwm.CpuPercentMachine, $r.Combined.CpuPercentMachine,
+                        $r.Combined.BusiestGpuPercent, $cEngine
+        }
+        "| {0} | {1} | {2} | {3} | {4} | {5} | {6} % | {7} % | {8} %{9} |{10} {11} |" -f `
             $r.Label, $r.Processes, $r.PrivateMB, $r.WorkingSetMB, $r.GpuDedicatedMB, $r.GpuSharedMB,
-            $r.CpuPercentMachine, $r.CpuPercentOneCore, $r.BusiestGpuPercent, $engine, $r.PauseState
+            $r.CpuPercentMachine, $r.CpuPercentOneCore, $r.BusiestGpuPercent, $engine, $dwmCells, $r.PauseState
     }
 }
 

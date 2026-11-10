@@ -74,7 +74,9 @@ param(
     [ValidateRange(1, 86400)][int] $Seconds = 30,
     [string] $Label = "",
     [ValidateSet('Playing', 'Paused', 'Any')][string] $ExpectState = 'Any',
-    [string] $LogPath = "$env:LOCALAPPDATA\FeatherWall\featherwall.log"
+    [string] $LogPath = "$env:LOCALAPPDATA\FeatherWall\featherwall.log",
+    [string[]] $AlsoMeasure = @(),
+    [switch] $RequireRecordTurning
 )
 
 Set-StrictMode -Version Latest
@@ -127,7 +129,9 @@ function Get-ProcessTree {
 }
 
 function Get-GpuSample {
-    param([int[]] $Pids)
+    # $ExtraPids buckets other processes (dwm) from the SAME counter read: Get-Counter takes a
+    # second or more per call, and a second read per extra would stretch every sampling tick.
+    param([int[]] $Pids, [hashtable] $ExtraPids = @{})
 
     # Instance names look like: pid_1234_luid_0x..._phys_0_eng_3_engtype_VideoDecode
     #
@@ -136,6 +140,8 @@ function Get-GpuSample {
     # cannot be compared with Task Manager and can exceed 100%. Summing across pids within one
     # engine is correct, because that is this process tree's share of that one engine.
     $engines = @{}
+    $extraEngines = @{}
+    foreach ($name in $ExtraPids.Keys) { $extraEngines[$name] = @{} }
     $dedicated = 0.0
     $shared = 0.0
     $enginesOk = $false
@@ -146,12 +152,18 @@ function Get-GpuSample {
         foreach ($s in $util) {
             $m = [regex]::Match($s.InstanceName, '^pid_(\d+)_luid_(.+?)_phys_(\d+)_eng_(\d+)_engtype_(.+)$')
             if (-not $m.Success) { continue }
-            if ($Pids -notcontains [int]$m.Groups[1].Value) { continue }
-            $key = "$($m.Groups[2].Value)|$($m.Groups[3].Value)|$($m.Groups[4].Value)"
-            if (-not $engines.ContainsKey($key)) {
-                $engines[$key] = [pscustomobject]@{ Name = $m.Groups[5].Value; Value = 0.0 }
+            $owner = [int]$m.Groups[1].Value
+            $target = if ($Pids -contains $owner) { $engines } else {
+                $hit = $null
+                foreach ($name in $ExtraPids.Keys) { if ($ExtraPids[$name] -contains $owner) { $hit = $extraEngines[$name]; break } }
+                $hit
             }
-            $engines[$key].Value += $s.CookedValue
+            if ($null -eq $target) { continue }
+            $key = "$($m.Groups[2].Value)|$($m.Groups[3].Value)|$($m.Groups[4].Value)"
+            if (-not $target.ContainsKey($key)) {
+                $target[$key] = [pscustomobject]@{ Name = $m.Groups[5].Value; Value = 0.0 }
+            }
+            $target[$key].Value += $s.CookedValue
         }
         $enginesOk = $true
     } catch {
@@ -177,7 +189,7 @@ function Get-GpuSample {
     # and on a localised Windows these counter paths do not resolve at all — which would have
     # published a flawless-looking 0 MB / 0 %% GPU row for a video wallpaper engine.
     return [pscustomobject]@{
-        Engines = $engines; EnginesOk = $enginesOk
+        Engines = $engines; EnginesOk = $enginesOk; ExtraEngines = $extraEngines
         DedicatedBytes = $dedicated; SharedBytes = $shared; MemoryOk = $memoryOk
     }
 }
@@ -217,6 +229,20 @@ function Get-PauseEvents {
     return ,@($events.ToArray())
 }
 
+function Get-CounterCpuSeconds {
+    <#
+      Lifetime CPU seconds for every instance of a named process, from the '% Processor Time'
+      counter's raw value (100 ns ticks). Not Process.TotalProcessorTime: an unelevated shell
+      cannot open dwm.exe for that, and PowerShell hands back $null rather than an error, which
+      would have summed to a confident 0. The counter is readable without elevation.
+    #>
+    param([string] $Name)
+    $samples = @((Get-Counter "\Process($Name*)\% Processor Time" -ErrorAction Stop).CounterSamples |
+                 Where-Object { $_.InstanceName -match "^$([regex]::Escape($Name))(#\d+)?$" })
+    if ($samples.Count -eq 0) { throw "-AlsoMeasure: no '% Processor Time' counter instance for '$Name'. An unreadable column is not zero." }
+    return ($samples | Measure-Object -Property RawValue -Sum).Sum / 1e7
+}
+
 # ---- measure -----------------------------------------------------------------------------
 
 $cores = [Environment]::ProcessorCount
@@ -250,6 +276,18 @@ foreach ($p in $tree) {
         $cpuBaseline[$p.Id] = $t
         $cpuLast[$p.Id] = $t
     } catch { $readErrors++ }
+}
+
+# Extras (dwm) are named processes, not trees, and they are what a compositor-driven animation
+# moves cost INTO: measuring only $ProcessName would report that change as free. A missing or
+# unreadable extra refuses the row, because an empty column must never read as zero.
+$extraPids = @{}
+$extraCpuStart = @{}
+foreach ($name in $AlsoMeasure) {
+    $procs = @(Get-Process -Name $name -ErrorAction SilentlyContinue)
+    if ($procs.Count -eq 0) { throw "-AlsoMeasure: no process named '$name' is running." }
+    $extraPids[$name] = [int[]]@($procs | ForEach-Object { $_.Id })
+    $extraCpuStart[$name] = Get-CounterCpuSeconds -Name $name
 }
 
 # GPU and memory are instantaneous, so they are averaged across the window rather than read once.
@@ -287,7 +325,7 @@ while ((Get-Date) -lt $deadline) {
         Processes = $now.Count; WorkingSet = $ws; Private = $pws; Threads = $threads; Handles = $handles
     })
 
-    [void]$gpuSamples.Add((Get-GpuSample -Pids @($now | ForEach-Object { $_.Id })))
+    [void]$gpuSamples.Add((Get-GpuSample -Pids @($now | ForEach-Object { $_.Id }) -ExtraPids $extraPids))
 
     # Only sleep if the counter reads were quicker than the sampling cadence.
     $remaining = ($deadline - (Get-Date)).TotalSeconds
@@ -303,6 +341,10 @@ foreach ($p in $endTree) {
         }
         $cpuLast[$p.Id] = $t
     } catch { $readErrors++ }
+}
+$extraCpuEnd = @{}
+foreach ($name in $AlsoMeasure) {
+    $extraCpuEnd[$name] = Get-CounterCpuSeconds -Name $name
 }
 # AFTER the final CPU snapshot, not before it. Get-ProcessTree runs a CIM query that takes real
 # time on a machine with many processes, and CPU burned during it landed in $cpuLast while being
@@ -383,6 +425,43 @@ it again on an otherwise idle machine.
     $stateNote = "$ExpectState, verified for the full window on $($devices.Count) monitor(s): $($devices -join ', ')"
 }
 
+# The record only costs anything while it turns, and it turns only while something is playing.
+# A row measured with the music paused is a still record wearing a "turning" label.
+$recordNote = 'not checked'
+if ($RequireRecordTurning) {
+    if ($ProcessName -ine 'featherwall') { throw "-RequireRecordTurning reads FeatherWall's own log; it means nothing for '$ProcessName'." }
+    # Only this process's lines count. A run whose record never turns logs neither state, so the
+    # newest "turning" line in the file can belong to a FeatherWall that exited weeks ago — which
+    # is exactly how the first version of this check accepted a row with nothing playing.
+    $measuredPids = @($tree | ForEach-Object { [int]$_.Id })
+    $recordEvents = [System.Collections.ArrayList]::new()
+    $sawStart = $false
+    if (Test-Path $LogPath) {
+        foreach ($line in Get-Content $LogPath) {
+            $start = [regex]::Match($line, '\[INF\] FeatherWall starting \(pid (\d+)\)')
+            if ($start.Success) {
+                if ($measuredPids -contains [int]$start.Groups[1].Value) { $recordEvents.Clear(); $sawStart = $true }
+                continue
+            }
+            $m = [regex]::Match($line, '^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}) \[INF\] Now-playing: record (turning|still)')
+            if (-not $m.Success) { continue }
+            [void]$recordEvents.Add([pscustomobject]@{
+                At    = [datetime]::ParseExact($m.Groups[1].Value, 'yyyy-MM-dd HH:mm:ss.fff', [Globalization.CultureInfo]::InvariantCulture)
+                State = $m.Groups[2].Value
+            })
+        }
+    }
+    if (-not $sawStart) { throw "DISCARDED: record was not turning for the whole window (no 'FeatherWall starting' line for pid $($measuredPids -join ', ') in $LogPath, so its record state is unknown)." }
+    $before = @($recordEvents | Where-Object { $_.At -lt $wallStart })
+    $entering = if ($before.Count -gt 0) { $before[-1].State } else { 'still since start' }
+    $stopped = @($recordEvents | Where-Object { $_.At -ge $wallStart -and $_.At -le $wallEnd -and $_.State -eq 'still' })
+    if ($entering -ne 'turning' -or $stopped.Count -gt 0) {
+        $why = if ($entering -ne 'turning') { "it was '$entering' going in" } else { "it stopped at $($stopped[0].At.ToString('HH:mm:ss.fff'))" }
+        throw "DISCARDED: record was not turning for the whole window ($why). Play something that shows in the Windows media flyout and run again."
+    }
+    $recordNote = 'turning, verified for the full window'
+}
+
 # Average each engine across the window, then report the busiest one. Summing engines would
 # produce a number that means nothing.
 $engineTotals = @{}
@@ -416,6 +495,57 @@ if ($memoryOkSamples.Count -eq 0) { [void]$counterNotes.Add('GPU Process Memory 
 elseif ($memoryOkSamples.Count -lt $gpuSamples.Count) { [void]$counterNotes.Add("GPU Process Memory counters read on $($memoryOkSamples.Count)/$($gpuSamples.Count) samples") }
 $counterNote = if ($counterNotes.Count -eq 0) { 'all read' } else { $counterNotes -join '; ' }
 
+# Per physical engine, averaged over the samples whose counters read. $Pick chooses the bucket.
+function Get-EngineAverages([scriptblock] $Pick) {
+    $totals = @{}
+    foreach ($s in $engineOkSamples) {
+        $bucket = & $Pick $s
+        foreach ($k in $bucket.Keys) {
+            if (-not $totals.ContainsKey($k)) { $totals[$k] = [pscustomobject]@{ Name = $bucket[$k].Name; Avg = 0.0 } }
+            $totals[$k].Avg += $bucket[$k].Value / $engineOkSamples.Count
+        }
+    }
+    return $totals
+}
+
+function Get-Busiest($averages) {
+    if ($engineOkSamples.Count -eq 0) { return [pscustomobject]@{ Percent = $null; Engine = $null } }
+    $top = @($averages.Values | Sort-Object Avg -Descending | Select-Object -First 1)
+    if ($top.Count -eq 0) { return [pscustomobject]@{ Percent = 0.0; Engine = $null } }
+    return [pscustomobject]@{ Percent = [math]::Round($top[0].Avg, 1); Engine = $top[0].Name }
+}
+
+# Combined sums each physical engine across FeatherWall and the extras before taking the busiest,
+# because that is the share of one piece of hardware both are spending.
+$extra = $null
+$combined = $null
+if ($AlsoMeasure.Count -gt 0) {
+    $extra = [ordered]@{}
+    $combinedEngines = Get-EngineAverages { param($s) $s.Engines }
+    $combinedCpuSeconds = $cpuSeconds
+    foreach ($name in $AlsoMeasure) {
+        $seconds = [math]::Max($extraCpuEnd[$name] - $extraCpuStart[$name], 0)
+        $combinedCpuSeconds += $seconds
+        $averages = Get-EngineAverages { param($s) $s.ExtraEngines[$name] }
+        $top = Get-Busiest $averages
+        $extra[$name] = [pscustomobject]@{
+            CpuPercentMachine = [math]::Round(100 * $seconds / ($elapsed * $cores), 3)
+            BusiestGpuPercent = $top.Percent
+            BusiestGpuEngine  = $top.Engine
+        }
+        foreach ($k in $averages.Keys) {
+            if (-not $combinedEngines.ContainsKey($k)) { $combinedEngines[$k] = [pscustomobject]@{ Name = $averages[$k].Name; Avg = 0.0 } }
+            $combinedEngines[$k].Avg += $averages[$k].Avg
+        }
+    }
+    $top = Get-Busiest $combinedEngines
+    $combined = [pscustomobject]@{
+        CpuPercentMachine = [math]::Round(100 * $combinedCpuSeconds / ($elapsed * $cores), 3)
+        BusiestGpuPercent = $top.Percent
+        BusiestGpuEngine  = $top.Engine
+    }
+}
+
 # @() before .Count: a pipeline that yields exactly one value is unrolled to a bare scalar, which
 # has no .Count and dies under StrictMode. One sample happens whenever the window is short or the
 # tree is big enough that a single pass fills it — found measuring a 57-process tree, which is
@@ -444,5 +574,8 @@ function Avg($values) { $v = @($values); if ($v.Count -eq 0) { 0 } else { ($v | 
     ProcessReadErrors = $readErrors
     Cores             = $cores
     PauseState        = $stateNote
+    RecordState       = $recordNote
+    Extra             = $extra
+    Combined          = $combined
     MeasuredAtUtc     = $wallStart.ToUniversalTime().ToString('s') + 'Z'
 }
