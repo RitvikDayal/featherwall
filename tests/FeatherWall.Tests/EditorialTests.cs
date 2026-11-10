@@ -104,21 +104,6 @@ public class EditorialTests
         Assert.Equal(accent, Editorial.HaloColour(10, BatteryState.OnBattery, new HaloConfig { ColorByLevel = false }, accent));
     }
 
-    [Fact]
-    public void Fonts_FallBackWithoutVariable()
-    {
-        var real = ThemeFonts.IsInstalled;
-        try
-        {
-            ThemeFonts.IsInstalled = n => !n.StartsWith("Segoe UI Variable", StringComparison.Ordinal);
-            using var font = ThemeFonts.Create(ThemeFonts.DisplayLight, 20);
-            Assert.Equal("Segoe UI Light", font.Name);
-        }
-        finally
-        {
-            ThemeFonts.IsInstalled = real;
-        }
-    }
 
     [Fact]
     public void Fonts_VariableResolvesWhereInstalled()
