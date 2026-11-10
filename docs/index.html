@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FeatherWall — live wallpapers for Windows</title>
-<meta name="description" content="An open-source live wallpaper engine for Windows 10 and 11. Video and image wallpapers with clock, battery and now-playing widgets, in a single process. MIT licensed, no account and no telemetry.">
+<meta name="description" content="An open-source live wallpaper engine for Windows 10 and 11. Video and image wallpapers with clock, battery and now-playing widgets in five styles, in a single process. MIT licensed, no account and no telemetry.">
 <meta property="og:title" content="FeatherWall">
-<meta property="og:description" content="Live wallpapers for Windows that don't eat your laptop. One process, 7.2 MB, MIT.">
+<meta property="og:description" content="Live wallpapers for Windows that don't eat your laptop. Five widget styles, one process, MIT. winget install RitvikDayal.FeatherWall">
 <meta property="og:image" content="https://raw.githubusercontent.com/RitvikDayal/featherwall/main/docs/social-preview.jpg">
 <meta property="og:url" content="https://ritvikdayal.github.io/featherwall/">
 <meta name="twitter:card" content="summary_large_image">
@@ -335,7 +335,26 @@ section{padding:clamp(3.4rem,8vw,6.4rem) 0;scroll-margin-top:56px}
 .intro{max-width:56ch;color:var(--slate);font-size:1rem;margin-bottom:clamp(1.8rem,4vw,2.6rem)}
 .intro strong{color:var(--ink);font-weight:500}
 
-/* 01 topology */
+/* 01 styles. The list of styles is also the switch: picking one plays it on the slab. */
+.styles{display:grid;gap:clamp(1.6rem,4vw,3rem);grid-template-columns:1fr;margin-bottom:clamp(1.8rem,4vw,2.6rem)}
+@media(min-width:900px){.styles{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr)}}
+.styles .slab video{width:100%;height:auto;display:block;aspect-ratio:16/9}
+.picks{border-top:1px solid var(--rule);margin:0;padding:0;list-style:none}
+.picks button{
+  display:grid;grid-template-columns:2.2rem 1fr;gap:.2rem .6rem;width:100%;min-height:48px;text-align:left;
+  padding:.95rem .9rem .95rem 0;border:0;border-bottom:1px solid var(--rule-soft);background:transparent;color:inherit;
+  cursor:pointer;font:inherit;transition:background .14s linear,color .14s linear;
+}
+.picks button:hover{background:rgba(18,17,16,.05)}
+.picks .n{font:500 .66rem/1.6 var(--mono);color:var(--slate);padding-left:.6rem}
+.picks b{font:500 .74rem/1.5 var(--mono);letter-spacing:.16em;text-transform:uppercase}
+.picks span.d{grid-column:2;color:var(--slate);font-size:.88rem;line-height:1.45}
+.picks button[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-bottom-color:var(--ink)}
+.picks button[aria-pressed="true"] .n{color:#E0703F}
+.picks button[aria-pressed="true"] span.d{color:#A9A296}
+.picks button:focus-visible{outline-offset:-2px}
+
+/* 02 topology */
 .split{display:grid;gap:clamp(1.6rem,4vw,3rem);grid-template-columns:1fr}
 @media(min-width:900px){.split{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)}}
 .slab{border:1px solid var(--rule);background:var(--ink);position:relative;margin:0}
@@ -349,7 +368,7 @@ section{padding:clamp(3.4rem,8vw,6.4rem) 0;scroll-margin-top:56px}
 .note h3{font:500 .72rem/1.4 var(--mono);letter-spacing:.16em;text-transform:uppercase;margin-bottom:.4rem}
 .note p{margin:0;color:var(--slate);font-size:.9rem}
 
-/* 02 measured */
+/* 03 measured */
 .table{border-top:1px solid var(--rule)}
 .row{display:grid;grid-template-columns:1fr;gap:.35rem;padding:1.1rem 0;border-bottom:1px solid var(--rule-soft)}
 @media(min-width:760px){.row{grid-template-columns:14rem 1fr 7.5rem 6.5rem;align-items:center;gap:1.2rem}}
@@ -360,7 +379,7 @@ section{padding:clamp(3.4rem,8vw,6.4rem) 0;scroll-margin-top:56px}
 .track i{position:absolute;inset:0 auto 0 0;width:0;background:var(--signal);transition:width 1s cubic-bezier(.2,.75,.2,1)}
 .foot-note{margin:1.4rem 0 0;color:var(--slate);font-size:.86rem;max-width:70ch}
 
-/* 02 the Task Manager view. A real system surface pinned onto the paper page:
+/* 03 the Task Manager view. A real system surface pinned onto the paper page:
    the numbers read as something you could check yourself, not as a chart I drew. */
 .tm-switch{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--rule);margin-bottom:1.4rem}
 .tm-tab{
@@ -412,7 +431,7 @@ section{padding:clamp(3.4rem,8vw,6.4rem) 0;scroll-margin-top:56px}
 .tm-adapters .tm-bar i{background:#7FA7D8}
 @media(max-width:560px){.tm-eng-row{grid-template-columns:minmax(0,8rem) 1fr 3.6rem;gap:.6rem}}
 
-/* 03 gallery */
+/* 04 gallery */
 .gallery{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);grid-template-columns:1fr}
 @media(min-width:700px){.gallery{grid-template-columns:repeat(3,1fr)}}
 .gallery figure{margin:0;background:var(--paper);display:flex;flex-direction:column}
@@ -427,9 +446,9 @@ section{padding:clamp(3.4rem,8vw,6.4rem) 0;scroll-margin-top:56px}
 .showcase .fig-body.dim{font-size:.76rem;opacity:.72;margin-top:-.35rem}
 .showcase figure:last-child figcaption{border-bottom:1px solid var(--rule-soft)}
 
-/* 04 install */
-.routes{display:grid;gap:0;border-top:1px solid var(--rule)}
-@media(min-width:900px){.routes{grid-template-columns:repeat(3,1fr)}}
+/* 05 download */
+.routes{display:grid;gap:0;border-top:1px solid var(--rule);grid-template-columns:minmax(0,1fr)}
+@media(min-width:900px){.routes{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .route{padding:1.6rem 0;border-bottom:1px solid var(--rule-soft)}
 @media(min-width:900px){
   .route{padding:1.7rem 1.6rem;border-left:1px solid var(--rule-soft);border-bottom:0}
@@ -458,7 +477,7 @@ section{padding:clamp(3.4rem,8vw,6.4rem) 0;scroll-margin-top:56px}
 .hash{margin:.75rem 0 0;font:400 .66rem/1.6 var(--mono);color:var(--slate);overflow-wrap:anywhere}
 .pending{margin-top:1.6rem;padding:.9rem 1.1rem;border:1px solid var(--rule-soft);color:var(--slate);font-size:.86rem}
 
-/* 05 contribute */
+/* 06 contribute */
 .contrib{display:grid;gap:clamp(2rem,5vw,3.4rem);grid-template-columns:1fr}
 @media(min-width:900px){.contrib{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}}
 .issues{list-style:none;margin:0;padding:0;border-top:1px solid var(--rule)}
@@ -584,7 +603,7 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
               <a class="btn btn-light" href="https://github.com/RitvikDayal/featherwall">Read the source</a>
             </div>
           </div>
-          <p class="aside">Video or image wallpapers, with clock, battery and now-playing widgets. One process. No browser engine, no launcher, no account, no telemetry. Needs the <a href="https://dotnet.microsoft.com/download/dotnet/10.0">.NET 10 desktop runtime</a>.</p>
+          <p class="aside">Video or image wallpapers, with clock, battery and now-playing widgets in five styles. One process. No browser engine, no launcher, no account, no telemetry. Needs the <a href="https://dotnet.microsoft.com/download/dotnet/10.0">.NET 10 desktop runtime</a>.</p>
         </div>
 
         <div class="hero-foot">
@@ -612,9 +631,60 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
   <main>
 
   <!-- 01 -->
+  <section class="shell rev" id="styles">
+    <div class="rule-head">
+      <span class="meta idx">01</span><span class="meta">Styles</span>
+      <h2>Five looks, one click in the tray</h2>
+    </div>
+    <p class="intro">Pick a style from the tray or the <strong>Style page</strong> in settings, which previews each one with your own settings. The accent colour comes from your wallpaper, or you choose it. Size runs from 50 to 300%.</p>
+
+    <div class="styles">
+      <figure class="slab">
+        <video id="style-video" src="media/live-orbit.mp4" poster="media/live-orbit.jpg" width="1280" height="720" autoplay loop muted playsinline preload="metadata" aria-label="FeatherWall's Orbit style over a looping anime wallpaper, the record turning"></video>
+        <figcaption id="style-cap">Live / Orbit over Girl and Cat Midnight Lofi</figcaption>
+      </figure>
+      <ul class="picks" aria-label="Widget styles">
+        <li><button type="button" data-style="classic" data-wall="Anime Girl Moonlight Balcony" aria-pressed="false" aria-controls="style-video"><span class="n">01</span><b>Classic</b><span class="d">The look FeatherWall has always had. Upgrading keeps it.</span></button></li>
+        <li><button type="button" data-style="editorial" data-wall="Lofi Girl Looking at the Stars" aria-pressed="false" aria-controls="style-video"><span class="n">02</span><b>Editorial</b><span class="d">The date in small accent capitals over a light clock, a short accent rule, a quiet battery ring.</span></button></li>
+        <li><button type="button" data-style="glassdock" data-wall="Anime Girl on a Train" aria-pressed="false" aria-controls="style-video"><span class="n">03</span><b>Glass dock</b><span class="d">One capsule on the top or bottom edge: record, track and progress, time and day, battery.</span></button></li>
+        <li><button type="button" data-style="orbit" data-wall="Girl and Cat Midnight Lofi" aria-pressed="true" aria-controls="style-video"><span class="n">04</span><b>Orbit</b><span class="d">Everything is a ring: a dial that fills as the hour passes, with the record and battery beneath.</span></button></li>
+        <li><button type="button" data-style="poster" data-wall="Samurai Boss Fight Fantasy Dragon" aria-pressed="false" aria-controls="style-video"><span class="n">05</span><b>Poster</b><span class="d">A big stacked clock, outlined hours over accent minutes, the date running down the side.</span></button></li>
+      </ul>
+    </div>
+
+    <div class="gallery">
+      <figure>
+        <img src="media/style-classic.jpg" alt="Classic over a red-eyed swordswoman" loading="lazy">
+        <figcaption>Classic / art by Mago</figcaption>
+      </figure>
+      <figure>
+        <img src="media/style-editorial.jpg" alt="Editorial over a girl on a balcony at dusk" loading="lazy">
+        <figcaption>Editorial / art by Rella</figcaption>
+      </figure>
+      <figure>
+        <img src="media/style-glassdock.jpg" alt="The Glass dock capsule at the bottom edge, over a portrait" loading="lazy">
+        <figcaption>Glass dock / art by Apphely</figcaption>
+      </figure>
+      <figure>
+        <img src="media/style-orbit.jpg" alt="Orbit's dial and two small rings over a rain-soaked warrior" loading="lazy">
+        <figcaption>Orbit / art via ArtStation</figcaption>
+      </figure>
+      <figure>
+        <img src="media/style-poster.jpg" alt="Poster's outlined 12 over pink 30 on a cyan and red illustration" loading="lazy">
+        <figcaption>Poster / art by 未早</figcaption>
+      </figure>
+      <figure>
+        <img src="media/style-poster-night.jpg" alt="Poster over the balcony at dusk, its minutes in the wallpaper's blue" loading="lazy">
+        <figcaption>Poster / art by Rella</figcaption>
+      </figure>
+    </div>
+    <p class="foot-note">Every frame is drawn by FeatherWall's own widget renderers over the wallpaper, at 1920&times;1080, with the record turning at the app's 15 fps step and the accent sampled from the wallpaper. The wallpapers are other artists' work, credited at the foot of the page.</p>
+  </section>
+
+  <!-- 02 -->
   <section class="shell rev" id="composition">
     <div class="rule-head">
-      <span class="meta idx">01</span><span class="meta">Composition</span>
+      <span class="meta idx">02</span><span class="meta">Composition</span>
       <h2>Inside the stack, not on top of it</h2>
     </div>
     <p class="intro">Most tools park a borderless window behind your icons. FeatherWall inserts a real visual into the desktop's own composition tree, so icons, right-click and window order keep working.</p>
@@ -641,10 +711,10 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
     </div>
   </section>
 
-  <!-- 02 -->
+  <!-- 03 -->
   <section class="shell rev" id="measured">
     <div class="rule-head">
-      <span class="meta idx">02</span><span class="meta">Measured</span>
+      <span class="meta idx">03</span><span class="meta">Measured</span>
       <h2>What it actually costs</h2>
     </div>
     <p class="intro">From <span class="mono-inline">scripts/bench/Run-Bench.ps1</span>, which <strong>refuses to report a row</strong> whose pause state changed mid-sample &mdash; a silently paused wallpaper is the easiest flattering lie. <strong>Pick a state.</strong></p>
@@ -694,10 +764,10 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
     <p class="foot-note"><strong>What the widgets cost.</strong> Still image: <strong>0.026% &rarr; 0.135%</strong> CPU &mdash; five times baseline, and that is the record's frame clock. Turn off spin to get it back. 4K60: <strong>0.721% &rarr; 0.988%</strong>, GPU unchanged.</p>
   </section>
 
-  <!-- 03 -->
+  <!-- 04 -->
   <section class="shell rev" id="widget">
     <div class="rule-head">
-      <span class="meta idx">03</span><span class="meta">The widgets</span>
+      <span class="meta idx">04</span><span class="meta">The widgets</span>
       <h2>A clock, a charge, a record</h2>
     </div>
     <p class="intro">Any typeface you own, at nine positions, previewed live in the panel. Beside it a <strong>battery halo</strong> and a <strong>record</strong> carrying the real album artwork.</p>
@@ -742,32 +812,33 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
     </div>
   </section>
 
-  <!-- 04 -->
+  <!-- 05 -->
   <section class="shell rev" id="install">
     <div class="rule-head">
-      <span class="meta idx">04</span><span class="meta">Install</span>
-      <h2>Get it, check it, or build it</h2>
+      <span class="meta idx">05</span><span class="meta">Download</span>
+      <h2>One line in a terminal</h2>
     </div>
-    <p class="intro">Releases are unsigned, so SmartScreen will warn you the first time. Verify the archive against the published hash, or skip the binary entirely and build it yourself.</p>
+    <p class="intro">FeatherWall is on winget, the package manager built into Windows 10 and 11. It installs per user, needs no admin rights, and <span class="mono-inline">winget upgrade</span> keeps it current. Releases are unsigned, so SmartScreen may warn the first time you run the ZIP.</p>
 
     <div class="routes">
       <div class="route pick">
-        <h3>Download <em>Fastest</em></h3>
-        <p>Unzip anywhere and run <span class="mono-inline">FeatherWall.exe</span>. It lives in the tray.</p>
+        <h3>winget <em>Fastest</em></h3>
+        <p>Paste into PowerShell or Terminal. FeatherWall starts in the tray and adds itself to the Start menu.</p>
+        <div class="code" tabindex="0" role="group" aria-label="winget install command"><button class="copy" data-copy="winget install RitvikDayal.FeatherWall" aria-label="Copy the winget install command">Copy</button><span class="tok">winget install</span> RitvikDayal.FeatherWall</div>
+        <p class="hash">Update later with <span class="mono-inline">winget upgrade RitvikDayal.FeatherWall</span>. Needs the <a href="https://dotnet.microsoft.com/download/dotnet/10.0">.NET 10 desktop runtime</a>.</p>
+      </div>
+
+      <div class="route">
+        <h3>ZIP <em>No installer</em></h3>
+        <p>Unzip anywhere and run <span class="mono-inline">FeatherWall.exe</span>. Check the archive first if you like: PowerShell, no extra tools.</p>
         <a class="btn btn-solid" href="https://github.com/RitvikDayal/featherwall/releases/download/v0.3.0/featherwall-v0.3.0-win-x64.zip" style="width:100%">Get the ZIP <span class="sz">7.2 MB</span></a>
-        <p class="hash">SHA-256<br>088e26bbcc391b6e734a080e0dbc29a0da7a73192e5bb6be1873c095e2fbc172</p>
-      </div>
-
-      <div class="route">
-        <h3>Verify <em>Then</em></h3>
-        <p>Check what you downloaded before you run it. PowerShell, no extra tools.</p>
-        <div class="code" tabindex="0" role="group" aria-label="PowerShell command to check the archive hash"><button class="copy" data-copy="Get-FileHash .\featherwall-v0.3.0-win-x64.zip -Algorithm SHA256" aria-label="Copy the hash-check command">Copy</button><span class="tok">Get-FileHash</span> .\featherwall-v0.3.0-win-x64.zip `
+        <div class="code" tabindex="0" role="group" aria-label="PowerShell command to check the archive hash" style="margin-top:.9rem"><button class="copy" data-copy="Get-FileHash .\featherwall-v0.3.0-win-x64.zip -Algorithm SHA256" aria-label="Copy the hash-check command">Copy</button><span class="tok">Get-FileHash</span> .\featherwall-v0.3.0-win-x64.zip `
   <span class="tok">-Algorithm</span> SHA256</div>
-        <p class="hash">Should match the hash on the left, character for character.</p>
+        <p class="hash">Should read<br>088e26bbcc391b6e734a080e0dbc29a0da7a73192e5bb6be1873c095e2fbc172</p>
       </div>
 
       <div class="route">
-        <h3>Build it <em>Or, instead</em></h3>
+        <h3>Build it <em>From source</em></h3>
         <p>Needs the .NET 10 SDK. About a minute on a cold clone.</p>
         <div class="code" tabindex="0" role="group" aria-label="Commands to clone and build from source"><button class="copy" data-copy="git clone https://github.com/RitvikDayal/featherwall &amp;&amp; cd featherwall &amp;&amp; dotnet publish src/FeatherWall -c Release" aria-label="Copy the clone and build commands">Copy</button>git clone https://github.com/RitvikDayal/featherwall
 <span class="tok">cd</span> featherwall
@@ -775,14 +846,12 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
         <p class="hash">Run <span class="mono-inline">dotnet test</span> first if you want to check the suite yourself.</p>
       </div>
     </div>
-
-    <p class="pending">Or with winget: <span class="mono-inline">winget install RitvikDayal.FeatherWall</span>. winget carries v0.2.0 today; v0.3.0 arrives there once its update is merged in the <a href="https://github.com/microsoft/winget-pkgs">community repository</a>.</p>
   </section>
 
-  <!-- 05 -->
+  <!-- 06 -->
   <section class="shell rev" id="contribute">
     <div class="rule-head">
-      <span class="meta idx">05</span><span class="meta">Contribute</span>
+      <span class="meta idx">06</span><span class="meta">Contribute</span>
       <h2>Five things need doing</h2>
     </div>
     <p class="intro">Built by one person on one monitor. Several code paths are unit-tested but have never run on real hardware. Every issue below is open and labelled.</p>
@@ -805,7 +874,7 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
         <dl class="kv">
           <dt>Runtime</dt><dd>.NET 10</dd>
           <dt>Graphics</dt><dd>D3D11 / DComp</dd>
-          <dt>Released</dt><dd>29 Aug 2026</dd>
+          <dt>Released</dt><dd>10 Nov 2026</dd>
           <dt>Author</dt><dd><a href="https://github.com/RitvikDayal">@RitvikDayal</a></dd>
         </dl>
       </div>
@@ -816,7 +885,7 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
 
   <section class="finale">
     <div class="shell">
-      <span class="meta">06 / Get it</span>
+      <span class="meta">07 / Get it</span>
       <h2>Put something alive behind your work.</h2>
       <div class="cta">
         <a class="btn btn-solid" href="https://github.com/RitvikDayal/featherwall/releases/download/v0.3.0/featherwall-v0.3.0-win-x64.zip">Download for Windows <span class="sz">ZIP 7.2 MB</span></a>
@@ -836,6 +905,9 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
       </nav>
       <p class="credits">
         Wallpapers: Marmolada, Dolomites by Marco Bonomo (CC0); Alone in the Unspoilt Wilderness by David Marcu (CC0); Hubble Ultra Deep Field, NASA and the European Space Agency (public domain). Demo footage: <em>Big Buck Bunny</em>, &copy; 2008 Blender Foundation, <a href="https://peach.blender.org">peach.blender.org</a>, <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>. Set in Archivo and JetBrains Mono.
+      </p>
+      <p class="credits">
+        Style samples, shown with credit and not under a licence, and taken down on request: stills by <a href="https://www.pixiv.net/en/artworks/78962838">Mago</a>, <a href="https://www.pixiv.net/en/artworks/64495434">Rella</a>, <a href="https://www.pixiv.net/en/artworks/83285677">未早</a>, Apphely and an <a href="https://www.artstation.com/artwork/0nJE45">ArtStation artist</a>, found on wallhaven; live wallpapers from <a href="https://moewalls.com">MoeWalls</a>. Full list in <a href="https://github.com/RitvikDayal/featherwall/blob/main/THIRD-PARTY-NOTICES.md">the notices</a>.
       </p>
     </div>
   </footer>
@@ -977,6 +1049,23 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
   /* 4K60 is the heaviest state that has actually been measured. Defaulting to 1080p60 now shows
      dashes, which reads as broken rather than as honest. */
   showState('p4k');
+
+  /* the style list swaps the clip on the slab */
+  var sv = document.getElementById('style-video'), sc = document.getElementById('style-cap');
+  var picks = document.querySelectorAll('.picks button');
+  picks.forEach(function(b){
+    b.addEventListener('click', function(){
+      if (b.getAttribute('aria-pressed') === 'true') return;
+      picks.forEach(function(o){ o.setAttribute('aria-pressed', o === b ? 'true' : 'false'); });
+      var k = b.dataset.style, name = b.querySelector('b').textContent;
+      sv.poster = 'media/live-' + k + '.jpg';
+      sv.src = 'media/live-' + k + '.mp4';
+      sv.setAttribute('aria-label', 'FeatherWall\'s ' + name + ' style over a looping anime wallpaper, the record turning');
+      sc.textContent = 'Live / ' + name + ' over ' + b.dataset.wall;
+      if (!reduce) { var p = sv.play(); if (p && p.catch) p.catch(function(){}); }
+    });
+  });
+  if (reduce) { sv.removeAttribute('autoplay'); sv.pause(); sv.controls = true; }
 
   /* copy buttons on the install commands */
   document.querySelectorAll('.copy').forEach(function(btn){

@@ -22,7 +22,8 @@ FeatherWall downloads gallery media directly from the original host at the user'
 
 The screenshots in [docs/media/](docs/media) are real captures of FeatherWall running, so they
 contain gallery media. Those images **are** redistributed as part of this repository. Every one
-is CC0 or public domain and permits it:
+in this table is CC0, public domain or CC BY and permits it. The widget style samples are not, and
+are listed separately [below](#widget-style-samples).
 
 | Screenshot | Media shown | Author | License | Source |
 |---|---|---|---|---|
@@ -45,3 +46,25 @@ NASA imagery carries "Courtesy NASA" attribution and implies no endorsement.
 
 None of this media is in the built-in gallery, which remains CC0 and public domain only. These
 files exist solely as documentation screenshots.
+
+## Widget style samples
+
+The `style-*.jpg` stills and `live-*.mp4` clips on the website show FeatherWall's widget styles
+over anime wallpapers. The widgets are drawn by FeatherWall's own renderers; the wallpapers are
+other artists' work. **They are not used under a licence.** They are shown with credit, and any of
+them will be taken down at the artist's request: open an issue.
+
+| File | Artwork | Artist | Found on |
+|---|---|---|---|
+| `style-classic.jpg` | 厚涂黑历史 | Mago | [pixiv 78962838](https://www.pixiv.net/en/artworks/78962838), via [wallhaven g8g6re](https://wallhaven.cc/w/g8g6re) |
+| `style-editorial.jpg`, `style-poster-night.jpg` | Hotaru | Rella | [pixiv 64495434](https://www.pixiv.net/en/artworks/64495434), via [wallhaven gjyoq7](https://wallhaven.cc/w/gjyoq7) |
+| `style-glassdock.jpg` | untitled portrait | Apphely (signed on the image) | [wallhaven 72pgxv](https://wallhaven.cc/w/72pgxv) |
+| `style-orbit.jpg` | rain warrior | ArtStation artist, unnamed on the source | [ArtStation 0nJE45](https://www.artstation.com/artwork/0nJE45), via [wallhaven j3mk8y](https://wallhaven.cc/w/j3mk8y) |
+| `style-poster.jpg` | fronTeira | 未早 | [pixiv 83285677](https://www.pixiv.net/en/artworks/83285677), via [wallhaven 281d5y](https://wallhaven.cc/w/281d5y) |
+| `live-classic.*` | Anime Girl Moonlight Balcony | not named by the host | [MoeWalls](https://moewalls.com/anime/anime-girl-moonlight-balcony-live-wallpaper/) |
+| `live-editorial.*` | Lofi Girl Looking at the Stars | not named by the host | [MoeWalls](https://moewalls.com/anime/lofi-girl-looking-at-the-stars-live-wallpaper/) |
+| `live-glassdock.*` | Anime Girl on a Train | not named by the host | [MoeWalls](https://moewalls.com/anime/anime-girl-on-a-train-live-wallpaper/) |
+| `live-orbit.*` | Girl and Cat Midnight Lofi | not named by the host | [MoeWalls](https://moewalls.com/lifestyle/girl-and-cat-midnight-lofi-live-wallpaper/) |
+| `live-poster.*` | Samurai Boss Fight Fantasy Dragon | not named by the host | [MoeWalls](https://moewalls.com/fantasy/samurai-boss-fight-fantasy-dragon-live-wallpaper/) |
+
+None of these are in the built-in gallery, and FeatherWall never downloads them.
