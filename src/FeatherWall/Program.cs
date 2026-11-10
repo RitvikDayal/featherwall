@@ -44,13 +44,23 @@ internal static class Program
             }
         }
 
+        var config = ConfigStore.Load();
+
         // --no-shortcut keeps a dev build from repointing the Start menu entry at bin\.
-        if (!args.Contains("--no-shortcut") && Environment.ProcessPath is { } exe)
+        if (!args.Contains("--no-shortcut") && Environment.ProcessPath is { } exe && StartMenuShortcut.IsOwnExe(exe))
         {
             try
             {
-                if (StartMenuShortcut.Ensure(exe))
-                    Log.Info($"Start menu shortcut now points at {exe}");
+                var change = StartMenuShortcut.Ensure(exe, config.StartMenuShortcutAdded);
+                if (change != ShortcutChange.None)
+                    Log.Info($"Start menu shortcut {change.ToString().ToLowerInvariant()}: {exe}");
+                // Recorded once a shortcut exists, however it got there — including one made by a
+                // build from before this flag — so deleting it afterwards sticks.
+                if (!config.StartMenuShortcutAdded && File.Exists(StartMenuShortcut.DefaultPath))
+                {
+                    config.StartMenuShortcutAdded = true;
+                    ConfigStore.Save(config);
+                }
             }
             catch (Exception ex)
             {
@@ -70,7 +80,7 @@ internal static class Program
 
         try
         {
-            engine = new Engine(ConfigStore.Load());
+            engine = new Engine(config);
             engine.Start();
 
             if (args.Contains("--settings"))

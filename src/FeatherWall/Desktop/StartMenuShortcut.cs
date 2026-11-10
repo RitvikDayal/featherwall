@@ -6,9 +6,15 @@ namespace FeatherWall.Desktop;
 
 /// <summary>Keeps a FeatherWall entry in the user's own Start menu. Neither the release zip nor
 /// winget's portable install creates one, so once the app was quit from the tray there was no
-/// way back to it short of knowing where the exe lives. Written on every start and pointed at
-/// whichever exe is running, so a moved folder or a different copy repairs it the next launch —
-/// the same last-run-wins rule as <see cref="Autostart"/>.</summary>
+/// way back to it short of knowing where the exe lives.
+///
+/// Created once, on the first run. After that it is only kept pointing at whichever exe is
+/// running, so a moved folder or a different copy repairs it the next launch — but an entry the
+/// user deleted stays deleted. The first version recreated it on every start, which overrode
+/// that choice at every sign-in.</summary>
+/// <summary>What <see cref="StartMenuShortcut.Ensure"/> did.</summary>
+public enum ShortcutChange { None, Created, Repointed }
+
 public static class StartMenuShortcut
 {
     private const uint SLGP_RAWPATH = 0x4;
@@ -16,13 +22,36 @@ public static class StartMenuShortcut
     public static string DefaultPath =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "FeatherWall.lnk");
 
-    /// <summary>Writes the shortcut unless one already points at <paramref name="exePath"/>.
-    /// Returns whether it wrote.</summary>
-    public static bool Ensure(string exePath, string? lnkPath = null)
+    /// <summary>Only featherwall.exe gets a shortcut. Run as <c>dotnet featherwall.dll</c>, the
+    /// process path is dotnet.exe, and a "FeatherWall" entry would launch that with no arguments.</summary>
+    public static bool IsOwnExe(string path) =>
+        string.Equals(Path.GetFileName(path), "featherwall.exe", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Creates the shortcut if it has never been added, repoints one that points
+    /// elsewhere or cannot be read, and otherwise leaves things alone — including a shortcut the
+    /// user has deleted after <paramref name="alreadyAdded"/> was recorded.</summary>
+    public static ShortcutChange Ensure(string exePath, bool alreadyAdded, string? lnkPath = null)
     {
         lnkPath ??= DefaultPath;
-        if (string.Equals(ReadTarget(lnkPath), exePath, StringComparison.OrdinalIgnoreCase))
-            return false;
+        if (!File.Exists(lnkPath))
+        {
+            if (alreadyAdded) return ShortcutChange.None;
+            Write(exePath, lnkPath);
+            return ShortcutChange.Created;
+        }
+
+        string? existing;
+        try { existing = ReadTarget(lnkPath); }
+        catch (COMException) { existing = null; } // corrupt .lnk: rewrite it rather than warn forever
+
+        if (string.Equals(existing, exePath, StringComparison.OrdinalIgnoreCase))
+            return ShortcutChange.None;
+        Write(exePath, lnkPath);
+        return ShortcutChange.Repointed;
+    }
+
+    private static void Write(string exePath, string lnkPath)
+    {
 
         var link = (IShellLinkW)new ShellLink();
         try
@@ -38,7 +67,6 @@ public static class StartMenuShortcut
         {
             Marshal.ReleaseComObject(link);
         }
-        return true;
     }
 
     /// <summary>The exe a shortcut points at, or null when there is no shortcut there.</summary>

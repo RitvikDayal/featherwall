@@ -18,7 +18,9 @@ a confusing YAML scanner error.
 
 The release is a zip containing a single `featherwall.exe`, so it is packaged as
 `InstallerType: zip` with `NestedInstallerType: portable`. winget puts `featherwall` on the PATH
-through its portable link directory, and uninstall removes it cleanly.
+through its portable link directory, and uninstall removes the exe and that link. It does not
+remove the Start menu entry FeatherWall adds on its first run, because winget did not create it;
+that one has to be deleted by hand.
 
 `Microsoft.DotNet.DesktopRuntime.10` is declared as a package dependency because the build is
 framework-dependent, which is what keeps the download at 7 MB. winget will offer to install the

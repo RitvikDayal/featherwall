@@ -198,6 +198,10 @@ public sealed class AppConfig
     public InfoConfig Info { get; set; } = new();
     public PauseConfig Pause { get; set; } = new();
 
+    /// <summary>Set once a Start menu shortcut exists. From then on it is only repointed, never
+    /// recreated, so deleting it from the Start menu sticks. Set back to false to get it again.</summary>
+    public bool StartMenuShortcutAdded { get; set; }
+
     public string? WallpaperFor(string monitorDevice)
     {
         var exact = Wallpapers.FirstOrDefault(w => string.Equals(w.Monitor, monitorDevice, StringComparison.OrdinalIgnoreCase));

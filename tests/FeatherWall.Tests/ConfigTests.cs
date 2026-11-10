@@ -23,6 +23,7 @@ public class ConfigTests
                 Color = "#80FF0000",
             },
             Pause = new PauseConfig { OnFullscreen = false },
+            StartMenuShortcutAdded = true,
         };
         config.Assign(@"\\.\DISPLAY1", @"C:\wallpapers\loop.mp4");
 
@@ -37,6 +38,7 @@ public class ConfigTests
         Assert.Equal(96, back.Clock.FontSize);
         Assert.Equal("#80FF0000", back.Clock.Color);
         Assert.False(back.Pause.OnFullscreen);
+        Assert.True(back.StartMenuShortcutAdded);
         Assert.Equal(@"C:\wallpapers\loop.mp4", back.WallpaperFor(@"\\.\DISPLAY1"));
     }
 
