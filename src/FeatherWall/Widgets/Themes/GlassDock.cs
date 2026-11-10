@@ -40,6 +40,7 @@ public sealed class GlassDock : IGroupTheme
 
         string title = "", artist = "", time = "", day = "", date = "";
         SizeF titleSize = SizeF.Empty, artistSize = SizeF.Empty, timeSize = SizeF.Empty, daySize = SizeF.Empty, dateSize = SizeF.Empty;
+        float actualTimeWidth = 0f;
         float maxTrack = GroupThemes.U(MaxTrack, s), bar = GroupThemes.U(BarWidth, s);
         using (var mg = Graphics.FromHwnd(IntPtr.Zero))
         {
@@ -53,7 +54,19 @@ public sealed class GlassDock : IGroupTheme
             if (clock)
             {
                 time = ClockLayout.TimeText(input.Now, input.Clock.TwentyFourHour, input.Clock.ShowSeconds);
-                timeSize = ThemeFonts.MeasureTracked(mg, time, timeFont, -0.01f * timeFont.Size);
+                // The slot is sized from the widest digit, not the time on show: proportional digits
+                // made the capsule change width most minutes, and each change rebuilt the panel.
+                // The widest a time can be: two hour digits, and whichever of AM and PM is wider.
+                char widest = WidestDigit(mg, timeFont);
+                foreach (int hour in new[] { 0, 12 })
+                {
+                    string reference = ClockLayout.TimeText(new DateTime(2000, 1, 1, hour == 0 ? 10 : 22, 58, 58),
+                                                            input.Clock.TwentyFourHour, input.Clock.ShowSeconds);
+                    string slot = new(reference.Select(c => char.IsDigit(c) ? widest : c).ToArray());
+                    var slotSize = ThemeFonts.MeasureTracked(mg, slot, timeFont, -0.01f * timeFont.Size);
+                    if (slotSize.Width > timeSize.Width) timeSize = slotSize;
+                }
+                actualTimeWidth = ThemeFonts.MeasureTracked(mg, time, timeFont, -0.01f * timeFont.Size).Width;
                 if (input.Clock.ShowDate)
                 {
                     day = input.Now.ToString("ddd", CultureInfo.CurrentCulture).ToUpper(CultureInfo.CurrentCulture);
@@ -150,7 +163,8 @@ public sealed class GlassDock : IGroupTheme
                         break;
                     case Kind.Time:
                         using (var ink = new SolidBrush(Color.FromArgb(245, 255, 255, 255)))
-                            ThemeFonts.DrawTracked(g, time, timeFont, ink, box.X, box.Y, -0.01f * timeFont.Size);
+                            ThemeFonts.DrawTracked(g, time, timeFont, ink, box.X + (box.Width - actualTimeWidth) / 2f, box.Y,
+                                                   -0.01f * timeFont.Size);
                         break;
                     case Kind.Date:
                         using (var accent = new SolidBrush(input.Accent))
@@ -166,6 +180,18 @@ public sealed class GlassDock : IGroupTheme
         }
 
         return [new GroupPanel("dock", new Rectangle(origin, size), faceBox, Paint)];
+    }
+
+    private static char WidestDigit(Graphics g, Font font)
+    {
+        char widest = '0';
+        float best = 0f;
+        foreach (char d in "0123456789")
+        {
+            float w = g.MeasureString(d.ToString(), font, PointF.Empty, ThemeFonts.Tight).Width;
+            if (w > best) { best = w; widest = d; }
+        }
+        return widest;
     }
 
     private static void PaintCapsule(Graphics g, RectangleF r)

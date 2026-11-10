@@ -143,7 +143,9 @@ public sealed class GroupOverlay : IDisposable
 
     private void Tick()
     {
-        try { Render(); }
+        // UpdateSpin as well: a tick can rebuild a panel (a new size), which drops the spin, and
+        // nothing else would start it again until the next track or cover change.
+        try { Render(); UpdateSpin(); }
         catch (Exception ex) { Log.Error("Group widget tick failed", ex); }
         finally { Arm(); }
     }
@@ -218,7 +220,10 @@ public sealed class GroupOverlay : IDisposable
             DropFace();
             _faceLayer = layers.Face;
             if (_config.Info.Disc.Rotate && !NowPlayingOverlay.UseTimerSpin)
+            {
                 _spin = new CompositorSpin(_host, layers.Face.Visual, panel.FaceBox.Width / 2f, panel.FaceBox.Height / 2f);
+                _spin.Hold(_heldAngle);
+            }
         }
         _panels[panel.Key] = layers;
         return layers;

@@ -53,6 +53,15 @@ public sealed class CompositorSpin : IDisposable
         _animation = animation;
     }
 
+    /// <summary>Sets a still angle on a spin that is not turning. A rebuilt record — new size, new
+    /// layers — starts at 0° otherwise, so a paused one jumped back each time its panel was rebuilt.</summary>
+    public void Hold(float degrees)
+    {
+        if (Running) return;
+        _host.MutateTree(() => _rotate.SetAngle(degrees));
+        _from = degrees;
+    }
+
     /// <summary>Holds the record where it has got to and returns that angle, so the next Start
     /// carries on from it rather than snapping back to 0°.</summary>
     public float Stop()
