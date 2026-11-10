@@ -56,15 +56,15 @@ them will be taken down at the artist's request: open an issue.
 
 | File | Artwork | Artist | Found on |
 |---|---|---|---|
-| `style-classic.jpg` | 厚涂黑历史 | Mago | [pixiv 78962838](https://www.pixiv.net/en/artworks/78962838), via [wallhaven g8g6re](https://wallhaven.cc/w/g8g6re) |
-| `style-editorial.jpg`, `style-poster-night.jpg` | Hotaru | Rella | [pixiv 64495434](https://www.pixiv.net/en/artworks/64495434), via [wallhaven gjyoq7](https://wallhaven.cc/w/gjyoq7) |
+| `style-classic.jpg`, `style-tiles.jpg` | 厚涂黑历史 | Mago | [pixiv 78962838](https://www.pixiv.net/en/artworks/78962838), via [wallhaven g8g6re](https://wallhaven.cc/w/g8g6re) |
+| `style-editorial.jpg`, `style-poster-night.jpg`, `style-monolith.jpg` | Hotaru | Rella | [pixiv 64495434](https://www.pixiv.net/en/artworks/64495434), via [wallhaven gjyoq7](https://wallhaven.cc/w/gjyoq7) |
 | `style-glassdock.jpg` | untitled portrait | Apphely (signed on the image) | [wallhaven 72pgxv](https://wallhaven.cc/w/72pgxv) |
 | `style-orbit.jpg` | rain warrior | ArtStation artist, unnamed on the source | [ArtStation 0nJE45](https://www.artstation.com/artwork/0nJE45), via [wallhaven j3mk8y](https://wallhaven.cc/w/j3mk8y) |
 | `style-poster.jpg` | fronTeira | 未早 | [pixiv 83285677](https://www.pixiv.net/en/artworks/83285677), via [wallhaven 281d5y](https://wallhaven.cc/w/281d5y) |
 | `live-classic.*` | Anime Girl Moonlight Balcony | not named by the host | [MoeWalls](https://moewalls.com/anime/anime-girl-moonlight-balcony-live-wallpaper/) |
 | `live-editorial.*` | Lofi Girl Looking at the Stars | not named by the host | [MoeWalls](https://moewalls.com/anime/lofi-girl-looking-at-the-stars-live-wallpaper/) |
 | `live-glassdock.*` | Anime Girl on a Train | not named by the host | [MoeWalls](https://moewalls.com/anime/anime-girl-on-a-train-live-wallpaper/) |
-| `live-orbit.*` | Girl and Cat Midnight Lofi | not named by the host | [MoeWalls](https://moewalls.com/lifestyle/girl-and-cat-midnight-lofi-live-wallpaper/) |
-| `live-poster.*`, `widgets-hero.jpg` | Samurai Boss Fight Fantasy Dragon | not named by the host | [MoeWalls](https://moewalls.com/fantasy/samurai-boss-fight-fantasy-dragon-live-wallpaper/) |
+| `live-orbit.*`, `live-monolith.*` | Girl and Cat Midnight Lofi | not named by the host | [MoeWalls](https://moewalls.com/lifestyle/girl-and-cat-midnight-lofi-live-wallpaper/) |
+| `live-poster.*`, `live-tiles.*`, `widgets-hero.jpg` | Samurai Boss Fight Fantasy Dragon | not named by the host | [MoeWalls](https://moewalls.com/fantasy/samurai-boss-fight-fantasy-dragon-live-wallpaper/) |
 
 None of these are in the built-in gallery, and FeatherWall never downloads them.

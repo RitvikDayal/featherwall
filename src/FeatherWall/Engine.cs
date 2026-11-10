@@ -49,7 +49,7 @@ public sealed class Engine : IDisposable
     private HaloOverlay? _halo;
     private NowPlayingOverlay? _record;
 
-    /// <summary>Orbit, Poster or Glass dock: one overlay for the whole set, in place of the four
+    /// <summary>A group theme: one overlay for the whole set, in place of the four
     /// above. Exactly one of the two arrangements exists at a time.</summary>
     private GroupOverlay? _group;
 

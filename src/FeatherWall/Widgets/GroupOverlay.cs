@@ -9,7 +9,7 @@ using FeatherWall.Widgets.Themes;
 
 namespace FeatherWall.Widgets;
 
-/// <summary>Orbit, Poster and Glass dock on the desktop: the theme's panels, each an ordered layer
+/// <summary>The group themes on the desktop: the theme's panels, each an ordered layer
 /// group of a static layer and, for the panel holding the record, a face layer above it. Only that
 /// small face is re-presented while the record turns, at the same 15 fps as the classic record —
 /// the compositor-driven spin was measured and lost on GPU (docs/benchmark.md, 2026-11-10).

@@ -94,7 +94,7 @@ public sealed class WidgetsConfig
     /// <summary>"auto" samples the wallpaper; #RRGGBB fixes it. Classic ignores it.</summary>
     public string Accent { get; set; } = "auto";
 
-    /// <summary>Where Orbit, Poster and Glass dock put the set. Null is the theme's own default.
+    /// <summary>Where the group themes put the set. Null is the theme's own default.
     /// Glass dock reads only the top or bottom half.</summary>
     public ClockAnchor? Position { get; set; }
 
