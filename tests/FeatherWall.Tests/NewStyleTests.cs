@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Drawing;
 using FeatherWall.Config;
 using FeatherWall.Widgets.Themes;
@@ -84,6 +85,46 @@ public class MonolithTests
             using var bmp = new Bitmap(panel.Bounds.Width, panel.Bounds.Height);
             using var g = Graphics.FromImage(bmp);
             panel.Paint(g);
+        }
+    }
+
+    /// <summary>The review's case: Portuguese "QUARTA-FEIRA" at size 300%, and English "WEDNESDAY"
+    /// larger still, ran the weekday off the screen at every anchor.</summary>
+    [Theory]
+    [InlineData("pt-BR", 3f)]
+    [InlineData("en-US", 4.5f)]
+    public void LongWeekday_StaysOnScreen_AtEveryPosition(string cultureName, float scale)
+    {
+        var saved = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = new CultureInfo(cultureName);
+        try
+        {
+            var wednesday = new DateTime(2026, 11, 11, 12, 30, 0);
+            var laptop = new Rectangle(0, 0, 1920, 1032);
+            foreach (var anchor in Enum.GetValues<ClockAnchor>())
+            {
+                var day = Theme.Layout(Group.Input(position: anchor, scale: scale) with { Now = wednesday, WorkArea = laptop })
+                    .Single(p => p.Key == "monolith-day");
+                Assert.True(day.Bounds.Left >= laptop.Left && day.Bounds.Right <= laptop.Right,
+                    $"{anchor}: {day.Bounds}");
+            }
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = saved;
+        }
+    }
+
+    [Fact]
+    public void LongTitle_StaysWithinTheScreen_AtLargeSizes()
+    {
+        foreach (var anchor in Enum.GetValues<ClockAnchor>())
+        {
+            var strip = Theme.Layout(Group.Input(position: anchor, title: new string('W', 200), scale: 4.5f))
+                .Single(p => p.Key == "monolith-strip");
+            Assert.True(strip.Bounds.Left >= Group.Work.Left && strip.Bounds.Right <= Group.Work.Right,
+                $"{anchor}: {strip.Bounds}");
+            Assert.True(strip.Bounds.Width <= Group.Work.Width / 2, $"{anchor}: {strip.Bounds.Width}");
         }
     }
 }
