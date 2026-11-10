@@ -6,6 +6,7 @@
 <title>FeatherWall: free, open-source live wallpapers for Windows 10 and 11</title>
 <meta name="description" content="Free, open-source live wallpapers for Windows 10 and 11. Video and image wallpapers with clock, battery and music widgets in five styles. One process.">
 <link rel="canonical" href="https://ritvikdayal.github.io/featherwall/">
+<meta name="google-site-verification" content="RCUdybG64YvR6gwsPziLD1mzQed_7U8GWCUUNvf6VpA">
 <meta name="theme-color" content="#121110">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="FeatherWall">
@@ -40,7 +41,92 @@
   "isAccessibleForFree": true,
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
   "author": { "@type": "Person", "name": "Ritvik Dayal", "url": "https://github.com/RitvikDayal" },
-  "sameAs": ["https://github.com/RitvikDayal/featherwall"]
+  "sameAs": ["https://github.com/RitvikDayal/featherwall"],
+  "softwareRequirements": ".NET 10 Desktop Runtime",
+  "screenshot": "https://ritvikdayal.github.io/featherwall/media/widgets-hero.jpg",
+  "keywords": "live wallpaper, animated wallpaper, video wallpaper, Windows 11, Windows 10, desktop widgets, clock widget, open source, winget, Wallpaper Engine alternative, Lively Wallpaper alternative",
+  "featureList": [
+    "Video wallpapers: MP4, MOV, AVI, WMV and WebM, hardware decoded with seamless loops",
+    "Image wallpapers: PNG, JPEG, BMP, TIFF and animated GIF",
+    "Five widget styles: Classic, Editorial, Glass dock, Orbit and Poster",
+    "Clock, battery halo and now-playing record widgets",
+    "Accent colour taken from the wallpaper",
+    "Pauses for fullscreen apps, the lock screen, remote sessions and battery saver",
+    "Works on the Windows 11 24H2 desktop and the classic WorkerW desktop",
+    "One process, no browser engine, no account, no telemetry"
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is FeatherWall?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "A free, open-source live wallpaper app for Windows 10 and 11. It plays a video or an image as your desktop wallpaper and adds clock, battery and now-playing widgets in five styles."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is FeatherWall free?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. It is MIT licensed, with no paid tier, no account and no telemetry. It only goes online when you download something from its gallery."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I install FeatherWall?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Run winget install RitvikDayal.FeatherWall in PowerShell or Terminal, or download the ZIP from GitHub and run featherwall.exe. It needs the .NET 10 desktop runtime."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does it work on Windows 11 24H2?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Windows 11 24H2 broke the WorkerW trick many wallpaper tools rely on. FeatherWall detects the 24H2 desktop and the classic one and draws inside either."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How much CPU and memory does it use?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "On the test machine a still image used 0.008% CPU and about 110 MB of memory, and a 4K60 video used 0.3% to 0.5% CPU. Playback stops for fullscreen apps, the lock screen, remote sessions and battery saver."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is it an alternative to Wallpaper Engine or Lively Wallpaper?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "For video and image wallpapers, yes. FeatherWall is a single process with no browser engine, so it does not run web or interactive wallpapers. A side-by-side measurement against those apps has not been run yet."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Which video and image formats does it play?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "MP4 and H.264 everywhere, plus MOV, AVI, WMV and WebM. HEVC, VP9 and AV1 need the matching Microsoft Store extensions. Images can be PNG, JPEG, BMP, TIFF or animated GIF."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does it support multiple monitors?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "It sets a wallpaper per monitor and sizes widgets per display. Multi-monitor layouts have not yet been verified on real hardware, and help with that is welcome."
+      }
+    }
+  ]
 }
 </script>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23121110'/><rect x='6' y='6' width='20' height='6' fill='%23B22F0F'/><rect x='6' y='15' width='20' height='2' fill='%23EDE9E1'/><rect x='6' y='20' width='13' height='2' fill='%23EDE9E1'/></svg>">
@@ -586,6 +672,19 @@ section{padding:clamp(2.8rem,6vw,4.6rem) 0;scroll-margin-top:56px}
 .kv dt{color:var(--slate);letter-spacing:.12em;text-transform:uppercase}
 .kv dd{margin:0;text-align:right}
 
+/* 07 faq: questions as rows, answers open in place */
+.faq{max-width:900px;margin-top:-1rem}
+.faq details{border-bottom:1px solid var(--rule-soft)}
+.faq summary{
+  cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:1rem;align-items:baseline;
+  padding:1.05rem 0;font-weight:500;font-size:1.05rem;line-height:1.35;min-height:48px;
+}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";font:500 1.1rem/1 var(--mono);color:var(--signal);flex:none}
+.faq details[open] summary::after{content:"\2212"}
+.faq summary:hover{color:var(--signal)}
+.faq p{margin:0 0 1.1rem;color:var(--slate);max-width:68ch}
+
 /* finale + footer */
 .finale{background:var(--ink);color:var(--paper);padding:clamp(3.4rem,8vw,6rem) 0}
 .finale .meta{color:#E0703F}
@@ -680,7 +779,7 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
 
     <div class="hero-ui">
       <div class="hero-inner shell">
-        <h1 class="wordmark">FEATHER<br>WALL</h1>
+        <h1 class="wordmark" aria-label="FeatherWall">FEATHER<br>WALL</h1>
 
         <div class="hero-row">
           <div>
@@ -700,7 +799,7 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
           <div class="hero-side">
           <ul class="hero-stats" aria-label="Project numbers from GitHub">
             <li><a href="https://github.com/RitvikDayal/featherwall/stargazers"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg><b data-stat="stars">18</b> <span>stars<i class="wide"> on GitHub</i></span></a></li>
-            <li><a href="https://github.com/RitvikDayal/featherwall/releases"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14ZM7.25 7.689V2a.75.75 0 0 1 1.5 0v5.689l1.97-1.969a.749.749 0 1 1 1.06 1.06l-3.25 3.25a.749.749 0 0 1-1.06 0L4.22 6.78a.749.749 0 1 1 1.06-1.06l1.97 1.969Z"/></svg><b data-stat="downloads">783</b> <span>downloads</span></a></li>
+            <li><a href="https://github.com/RitvikDayal/featherwall/releases"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14ZM7.25 7.689V2a.75.75 0 0 1 1.5 0v5.689l1.97-1.969a.749.749 0 1 1 1.06 1.06l-3.25 3.25a.749.749 0 0 1-1.06 0L4.22 6.78a.749.749 0 1 1 1.06-1.06l1.97 1.969Z"/></svg><b data-stat="downloads">786</b> <span>downloads</span></a></li>
           </ul>
           <p class="aside">Video and image wallpapers, with clock, battery and music widgets in five styles. One process, no browser engine, no account, no telemetry. Needs the <a href="https://dotnet.microsoft.com/download/dotnet/10.0">.NET 10 desktop runtime</a>.</p>
           </div>
@@ -721,12 +820,12 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
 
   <div class="figures">
     <div class="shell">
-      <div class="fig"><b data-to="1">0</b><span>Process, not five</span></div>
-      <div class="fig hot"><b data-to="110">0</b><span>MB for a still wallpaper</span></div>
-      <div class="fig"><b data-to="0.008" data-dec="3">0</b><span>Percent CPU at rest</span></div>
+      <div class="fig"><b data-to="1">1</b><span>Process, not five</span></div>
+      <div class="fig hot"><b data-to="110">110</b><span>MB for a still wallpaper</span></div>
+      <div class="fig"><b data-to="0.008" data-dec="3">0.008</b><span>Percent CPU at rest</span></div>
       <div class="fig"><b data-to="0">0</b><span>Accounts or trackers</span></div>
-      <div class="fig"><b data-to="18" data-stat="stars">0</b><span>Stars on GitHub</span></div>
-      <div class="fig"><b data-to="783" data-stat="downloads">0</b><span>Downloads</span></div>
+      <div class="fig"><b data-to="18" data-stat="stars">18</b><span>Stars on GitHub</span></div>
+      <div class="fig"><b data-to="786" data-stat="downloads">786</b><span>Downloads</span></div>
     </div>
   </div>
 
@@ -981,11 +1080,53 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
     </div>
   </section>
 
+  <!-- 07 -->
+  <section class="shell rev" id="faq">
+    <div class="rule-head">
+      <span class="meta idx">07</span><span class="meta">FAQ</span>
+      <h2>Questions, answered</h2>
+    </div>
+    <div class="faq">
+      <details>
+        <summary>What is FeatherWall?</summary>
+        <p>A free, open-source live wallpaper app for Windows 10 and 11. It plays a video or an image as your desktop wallpaper and adds clock, battery and now-playing widgets in five styles.</p>
+      </details>
+      <details>
+        <summary>Is FeatherWall free?</summary>
+        <p>Yes. It is MIT licensed, with no paid tier, no account and no telemetry. It only goes online when you download something from its gallery.</p>
+      </details>
+      <details>
+        <summary>How do I install FeatherWall?</summary>
+        <p>Run <span class="mono-inline">winget install RitvikDayal.FeatherWall</span> in PowerShell or Terminal, or download the ZIP from GitHub and run <span class="mono-inline">featherwall.exe</span>. It needs the .NET 10 desktop runtime.</p>
+      </details>
+      <details>
+        <summary>Does it work on Windows 11 24H2?</summary>
+        <p>Yes. Windows 11 24H2 broke the WorkerW trick many wallpaper tools rely on. FeatherWall detects the 24H2 desktop and the classic one and draws inside either.</p>
+      </details>
+      <details>
+        <summary>How much CPU and memory does it use?</summary>
+        <p>On the test machine a still image used 0.008% CPU and about 110 MB of memory, and a 4K60 video used 0.3% to 0.5% CPU. Playback stops for fullscreen apps, the lock screen, remote sessions and battery saver.</p>
+      </details>
+      <details>
+        <summary>Is it an alternative to Wallpaper Engine or Lively Wallpaper?</summary>
+        <p>For video and image wallpapers, yes. FeatherWall is a single process with no browser engine, so it does not run web or interactive wallpapers. A side-by-side measurement against those apps has not been run yet.</p>
+      </details>
+      <details>
+        <summary>Which video and image formats does it play?</summary>
+        <p>MP4 and H.264 everywhere, plus MOV, AVI, WMV and WebM. HEVC, VP9 and AV1 need the matching Microsoft Store extensions. Images can be PNG, JPEG, BMP, TIFF or animated GIF.</p>
+      </details>
+      <details>
+        <summary>Does it support multiple monitors?</summary>
+        <p>It sets a wallpaper per monitor and sizes widgets per display. Multi-monitor layouts have not yet been verified on real hardware, and help with that is welcome.</p>
+      </details>
+    </div>
+  </section>
+
   </main>
 
   <section class="finale">
     <div class="shell">
-      <span class="meta">07 / Get it</span>
+      <span class="meta">08 / Get it</span>
       <h2>Put something alive behind your work.</h2>
       <div class="cta">
         <a class="btn btn-solid pc-only" href="https://github.com/RitvikDayal/featherwall/releases/download/v0.3.0/featherwall-v0.3.0-win-x64.zip">Download for Windows <span class="sz">ZIP 7.3 MB</span></a>
@@ -1019,6 +1160,8 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
 <script>
 (function(){
   var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /* the markup holds the real figures for anything reading the HTML; count them up from zero */
+  if (!reduce) document.querySelectorAll('.figures [data-to]').forEach(function(el){ el.textContent = '0'; });
   var root = document.documentElement;
 
   /* the widget on layer 01 shows the visitor's own time, in their own format */
