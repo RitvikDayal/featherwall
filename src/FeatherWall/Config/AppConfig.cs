@@ -317,14 +317,17 @@ public static class ConfigStore
 
     /// <summary><paramref name="unreadable"/> is true when a file exists but could not be parsed,
     /// so the defaults returned are not the user's settings and must not be saved over it.</summary>
-    public static AppConfig Load(string path, out bool unreadable)
+    /// <param name="ranBefore">An earlier FeatherWall has run on this machine. v0.2.0 wrote
+    /// config.json only when a setting changed, so a missing file alone does not make a fresh
+    /// install — someone who only ever used the default clock is still upgrading, and keeps Classic.</param>
+    public static AppConfig Load(string path, out bool unreadable, bool ranBefore = false)
     {
         unreadable = false;
         try
         {
             if (File.Exists(path))
                 return JsonSerializer.Deserialize(File.ReadAllText(path), ConfigJsonContext.Default.AppConfig) ?? new AppConfig();
-            return FreshInstall();
+            return ranBefore ? new AppConfig() : FreshInstall();
         }
         catch (Exception ex)
         {
