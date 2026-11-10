@@ -99,6 +99,9 @@ public static partial class User32
     public static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint processId);
 
     [DllImport("user32.dll")]
+    public static extern bool AllowSetForegroundWindow(uint processId);
+
+    [DllImport("user32.dll")]
     public static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
 
     // Styles / position

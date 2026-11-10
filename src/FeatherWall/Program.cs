@@ -35,10 +35,18 @@ internal static class Program
         {
             // Launching it again, from the Start menu or with --settings, opens the running copy's
             // settings, as a double-click on its tray icon does.
+            // This process has the foreground; hand it over so the settings window comes to the front
+            // instead of flashing in the taskbar.
             var running = User32.FindWindowW("FeatherWallMessage", null);
+            bool posted = false;
             if (running != IntPtr.Zero)
-                User32.PostMessageW(running, Tray.TrayIcon.CallbackMessage, IntPtr.Zero, (IntPtr)Win32Constants.WM_LBUTTONDBLCLK);
-            else
+            {
+                User32.GetWindowThreadProcessId(running, out uint runningPid);
+                User32.AllowSetForegroundWindow(runningPid);
+                posted = User32.PostMessageW(running, Tray.TrayIcon.CallbackMessage, IntPtr.Zero, (IntPtr)Win32Constants.WM_LBUTTONDBLCLK);
+            }
+            // Not found, or refused (an elevated copy will not take messages from this one).
+            if (!posted)
                 User32.MessageBoxW(IntPtr.Zero, "FeatherWall is already running — look for the feather icon in the tray.",
                     "FeatherWall", 0x40);
             return 0;
