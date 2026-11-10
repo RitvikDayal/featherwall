@@ -39,10 +39,10 @@
 }
 
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;font-size:112.5%}
 body{
   margin:0;background:var(--paper);color:var(--ink);
-  font:400 16px/1.55 var(--sans);
+  font:400 1rem/1.6 var(--sans);
   -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
   overflow-x:hidden;
 }
@@ -61,7 +61,7 @@ main a:hover,footer a:hover{color:var(--signal)}
 
 .shell{max-width:var(--max);margin:0 auto;padding-left:var(--gut);padding-right:var(--gut)}
 .meta{
-  font:500 .68rem/1.4 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--slate);
+  font:500 .72rem/1.4 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--slate);
 }
 .meta b{font-weight:500;color:var(--ink)}
 
@@ -84,16 +84,16 @@ main a:hover,footer a:hover{color:var(--signal)}
 .masthead .shell{display:flex;align-items:center;height:46px;justify-content:space-between;gap:1rem}
 .mh-left{display:flex;align-items:center;gap:1.1rem;min-width:0}
 .mark{font:800 .92rem/1 var(--sans);letter-spacing:-.02em;text-transform:uppercase;text-decoration:none;white-space:nowrap}
-.mh-spec{display:none;font:500 .68rem/1.4 var(--mono);letter-spacing:.18em;text-transform:uppercase;opacity:.62}
+.mh-spec{display:none;font:500 .72rem/1.4 var(--mono);letter-spacing:.18em;text-transform:uppercase;opacity:.62}
 @media(min-width:760px){.mh-spec{display:block}}
 .mh-right{display:flex;align-items:center;gap:1.4rem;flex:0 0 auto}
 /* standalone controls need a 24px pointer target; the type alone is ~10px tall */
 .mh-right a,.mark{display:inline-flex;align-items:center;min-height:34px}
-.mh-right a{font:500 .68rem/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;text-decoration:none;white-space:nowrap}
+.mh-right a{font:500 .72rem/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;text-decoration:none;white-space:nowrap}
 .masthead.landed .mh-right .dl{color:var(--signal)}
 @media(max-width:560px){
   .mh-right a:not(.dl){display:none}   /* the bar keeps the one action that matters */
-  .mh-right a{font-size:.62rem;letter-spacing:.12em}
+  .mh-right a{font-size:.72rem;letter-spacing:.12em}
   .mark{font-size:.84rem}
 }
 
@@ -192,7 +192,7 @@ main a:hover,footer a:hover{color:var(--signal)}
   font-variant-numeric:tabular-nums;letter-spacing:-.015em;
 }
 .wclock hr{border:0;height:1px;background:rgba(255,255,255,.72);width:34%;margin:.6rem auto}
-.wclock small{font:500 .66rem/1 var(--mono);letter-spacing:.16em;text-transform:uppercase}
+.wclock small{font:500 .72rem/1 var(--mono);letter-spacing:.16em;text-transform:uppercase}
 
 
 /* The v0.2.0 widgets, on the same plane as the clock. These are the real widgets --
@@ -257,13 +257,36 @@ main a:hover,footer a:hover{color:var(--signal)}
 .btn-solid:hover{background:#8E2409;border-color:#8E2409;color:#FBF7F1}
 .btn-light{border-color:rgba(242,238,230,.55);color:#F2EEE6}
 .btn-light:hover{background:#F2EEE6;color:var(--ink);border-color:#F2EEE6}
-.btn .sz{font:500 .68rem/1 var(--mono);opacity:.75}
+.btn .sz{font:500 .72rem/1 var(--mono);opacity:.75}
+.gh{width:1.15em;height:1.15em;flex:none}
+.mh-right .src{gap:.5rem}
+.mh-right .src .gh{width:15px;height:15px}
+
+/* winget in the hero: the same code block as the Download section, sized for the stage */
+.hero-cmd{margin-top:1rem;max-width:31rem;pointer-events:auto}
+.hero-cmd-label{display:block;margin-bottom:.45rem;font:500 .72rem/1.4 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:#A9A296;text-shadow:0 1px 10px rgba(9,8,8,.9)}
+.hero-cmd .code{font-size:.92rem;padding:.85rem 4.2rem .85rem 1rem;background:rgba(12,11,10,.82);border-color:rgba(237,233,225,.32)}
+.hero-cmd .copy{width:3.6rem;font-size:.72rem}
+
+/* stars and downloads, read from GitHub on load; the numbers in the markup are the fallback */
+.hero-side{display:grid;gap:1rem;pointer-events:auto}
+.hero-stats{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.5rem}
+.hero-stats a{
+  display:inline-flex;align-items:center;gap:.55rem;min-height:44px;padding:0 1rem;
+  border:1px solid rgba(237,233,225,.3);background:rgba(12,11,10,.6);color:#F2EEE6;text-decoration:none;
+  font-size:.86rem;transition:border-color .14s linear,background .14s linear;
+}
+.hero-stats a:hover{border-color:#F2EEE6;background:rgba(12,11,10,.85)}
+.hero-stats svg{width:16px;height:16px;flex:none;color:#E0703F}
+.hero-stats b{font:500 1.05rem/1 var(--mono);font-variant-numeric:tabular-nums}
+.hero-stats span{color:#CFC9BF}
+.hero-stats i{font-style:normal}
 
 .hero-foot{
   display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;
   margin-top:clamp(1.1rem,3vh,1.9rem);padding-top:.8rem;
   border-top:1px solid rgba(237,233,225,.22);
-  font:500 .64rem/1.4 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:#A9A296;
+  font:500 .72rem/1.4 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:#A9A296;
 }
 .hero-foot b{color:#F2EEE6;font-weight:500}
 .hero-foot .hint{opacity:calc(1 - var(--p) * 3)}
@@ -278,7 +301,13 @@ main a:hover,footer a:hover{color:var(--signal)}
   .hero-row .aside{font-size:.82rem}
   .cta{width:100%}
   .cta .btn{width:100%}
-  .hero-foot{flex-direction:column;align-items:flex-start;gap:.5rem;font-size:.58rem;letter-spacing:.12em}
+  .hero-cmd{max-width:none}
+  .hero-row .aside,.hero-foot .hint{display:none}
+  .hero-stats{flex-wrap:nowrap}
+  .hero-stats a{padding:0 .8rem;font-size:.8rem}
+  .hero-stats .wide{display:none}
+  .hero-cmd .code{font-size:.8rem}
+  .hero-foot{flex-direction:column;align-items:flex-start;gap:.5rem;font-size:.72rem;letter-spacing:.12em}
 }
 @media(max-width:820px) and (max-height:730px){
   .hero-row .aside{display:none}
@@ -320,19 +349,20 @@ main a:hover,footer a:hover{color:var(--signal)}
   letter-spacing:-.04em;font-variant-numeric:tabular-nums;
 }
 .fig span{display:block;margin-top:.6rem;max-width:16ch;color:#A9A296;
-  font:500 .66rem/1.45 var(--mono);letter-spacing:.16em;text-transform:uppercase}
+  font:500 .72rem/1.45 var(--mono);letter-spacing:.16em;text-transform:uppercase}
 
-section{padding:clamp(3.4rem,8vw,6.4rem) 0;scroll-margin-top:56px}
+section{padding:clamp(2.8rem,6vw,4.6rem) 0;scroll-margin-top:56px}
 .rule-head{
-  display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap;
-  padding-bottom:.7rem;border-bottom:1px solid var(--rule);margin-bottom:clamp(1.8rem,4vw,3rem);
+  display:flex;align-items:baseline;gap:.6rem 1rem;flex-wrap:wrap;
+  padding-bottom:1rem;border-bottom:1px solid var(--rule);margin-bottom:clamp(1.4rem,3vw,2.2rem);
 }
 .rule-head .idx{color:var(--signal)}
 .rule-head h2{
-  font-size:clamp(1.5rem,3.4vw,2.3rem);letter-spacing:-.03em;margin-left:auto;
-  text-align:right;max-width:15ch;text-wrap:balance;
+  flex-basis:100%;font-size:clamp(1.9rem,4.2vw,3rem);letter-spacing:-.03em;
+  max-width:22ch;text-wrap:balance;
 }
-.intro{max-width:56ch;color:var(--slate);font-size:1rem;margin-bottom:clamp(1.8rem,4vw,2.6rem)}
+.intro{max-width:64ch;color:var(--slate);font-size:1.05rem;margin-bottom:clamp(1.4rem,3vw,2.2rem)}
+.intro + .intro{margin-top:-.6rem}
 .intro strong{color:var(--ink);font-weight:500}
 
 /* 01 styles. The list of styles is also the switch: picking one plays it on the slab. */
@@ -346,7 +376,7 @@ section{padding:clamp(3.4rem,8vw,6.4rem) 0;scroll-margin-top:56px}
   cursor:pointer;font:inherit;transition:background .14s linear,color .14s linear;
 }
 .picks button:hover{background:rgba(18,17,16,.05)}
-.picks .n{font:500 .66rem/1.6 var(--mono);color:var(--slate);padding-left:.6rem}
+.picks .n{font:500 .72rem/1.6 var(--mono);color:var(--slate);padding-left:.6rem}
 .picks b{font:500 .74rem/1.5 var(--mono);letter-spacing:.16em;text-transform:uppercase}
 .picks span.d{grid-column:2;color:var(--slate);font-size:.88rem;line-height:1.45}
 .picks button[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-bottom-color:var(--ink)}
@@ -361,7 +391,7 @@ section{padding:clamp(3.4rem,8vw,6.4rem) 0;scroll-margin-top:56px}
 .slab img{width:100%}
 .slab figcaption{
   position:absolute;left:0;bottom:0;padding:.45rem .7rem;background:var(--ink);
-  font:500 .62rem/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:#B8B2A6;
+  font:500 .72rem/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:#B8B2A6;
 }
 .notes{border-top:1px solid var(--rule)}
 .note{padding:1.1rem 0;border-bottom:1px solid var(--rule-soft)}
@@ -377,7 +407,10 @@ section{padding:clamp(3.4rem,8vw,6.4rem) 0;scroll-margin-top:56px}
 @media(min-width:760px){.row .num{text-align:right}}
 .track{height:9px;background:rgba(18,17,16,.09);position:relative;overflow:hidden}
 .track i{position:absolute;inset:0 auto 0 0;width:0;background:var(--signal);transition:width 1s cubic-bezier(.2,.75,.2,1)}
-.foot-note{margin:1.4rem 0 0;color:var(--slate);font-size:.86rem;max-width:70ch}
+.foot-note{margin:1.4rem 0 0;color:var(--slate);font-size:.9rem;max-width:70ch}
+.findings{display:grid;gap:0 clamp(1.4rem,3vw,2.6rem);grid-template-columns:minmax(0,1fr);margin-top:1.6rem;border-top:1px solid var(--rule)}
+@media(min-width:820px){.findings{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.findings .foot-note{margin:0;padding:1rem 0;border-bottom:1px solid var(--rule-soft);max-width:none}
 
 /* 03 the Task Manager view. A real system surface pinned onto the paper page:
    the numbers read as something you could check yourself, not as a chart I drew. */
@@ -385,7 +418,7 @@ section{padding:clamp(3.4rem,8vw,6.4rem) 0;scroll-margin-top:56px}
 .tm-tab{
   flex:1 1 auto;min-height:48px;padding:.8rem 1rem;border:0;border-left:1px solid var(--rule-soft);
   background:transparent;color:var(--slate);cursor:pointer;
-  font:500 .68rem/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;
+  font:500 .72rem/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;
   transition:background .14s linear,color .14s linear;
 }
 .tm-tab:first-child{border-left:0}
@@ -396,11 +429,11 @@ section{padding:clamp(3.4rem,8vw,6.4rem) 0;scroll-margin-top:56px}
 .tm-chrome{
   display:flex;align-items:center;gap:.6rem;padding:.65rem .9rem;background:#232120;
   border-bottom:1px solid rgba(237,233,225,.13);
-  font:500 .68rem/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:#A9A296;
+  font:500 .72rem/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:#A9A296;
 }
 .tm-dot{width:9px;height:9px;background:var(--signal);display:block;flex:0 0 auto}
 .tm-nav{display:flex;gap:1.4rem;padding:.7rem .9rem;border-bottom:1px solid rgba(237,233,225,.13)}
-.tm-nav span{font:500 .66rem/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:#6F6A61}
+.tm-nav span{font:500 .72rem/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:#6F6A61}
 .tm-nav span.on{color:#E8E4DC;box-shadow:inset 0 -2px 0 var(--signal);padding-bottom:.35rem}
 
 .tm-grid{
@@ -436,12 +469,13 @@ section{padding:clamp(3.4rem,8vw,6.4rem) 0;scroll-margin-top:56px}
 @media(min-width:700px){.gallery{grid-template-columns:repeat(3,1fr)}}
 .gallery figure{margin:0;background:var(--paper);display:flex;flex-direction:column}
 .gallery img{width:100%;aspect-ratio:16/10;object-fit:cover}
-.gallery figcaption{padding:.7rem .85rem;font:500 .64rem/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--slate)}
+.gallery img[src*="settings-"]{object-position:top left}
+.gallery figcaption{padding:.7rem .85rem;font:500 .72rem/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--slate)}
 .showcase{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);margin-bottom:1px}
 @media(min-width:820px){.showcase{grid-template-columns:5fr 7fr}}
 .showcase figure{margin:0;background:var(--paper);display:flex;flex-direction:column}
 .showcase video,.showcase img{width:100%;height:auto;display:block}
-.showcase figcaption{padding:.7rem .85rem;font:500 .64rem/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--slate)}
+.showcase figcaption{padding:.7rem .85rem;font:500 .72rem/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--slate)}
 .showcase .fig-body{padding:0 .95rem 1rem;font-size:.83rem;line-height:1.55;color:var(--slate);max-width:56ch}
 .showcase .fig-body.dim{font-size:.76rem;opacity:.72;margin-top:-.35rem}
 .showcase figure:last-child figcaption{border-bottom:1px solid var(--rule-soft)}
@@ -464,17 +498,17 @@ section{padding:clamp(3.4rem,8vw,6.4rem) 0;scroll-margin-top:56px}
 .mono-inline{font-family:var(--mono);font-size:.86em}
 .code{
   position:relative;border:1px solid var(--rule);background:var(--ink);color:#E8E3DA;
-  font:400 .74rem/1.7 var(--mono);padding:.8rem 3.2rem .8rem .85rem;overflow-x:auto;white-space:pre;
+  font:400 .8rem/1.7 var(--mono);padding:.8rem 4rem .8rem .85rem;white-space:pre-wrap;overflow-wrap:anywhere;
 }
 .route.pick .code{border-color:rgba(237,233,225,.3)}
 .code .tok{color:#E5A66B}
 .copy{
-  position:absolute;top:0;right:0;width:2.8rem;height:100%;min-height:44px;
+  position:absolute;top:0;right:0;width:3.4rem;height:100%;min-height:44px;
   border:0;border-left:1px solid rgba(237,233,225,.24);background:transparent;
-  color:#E8E3DA;cursor:pointer;font:500 .56rem/1 var(--mono);letter-spacing:.08em;
+  color:#E8E3DA;cursor:pointer;font:500 .72rem/1 var(--mono);letter-spacing:.08em;
 }
 .copy:hover,.copy[data-done="1"]{background:var(--signal);color:#FBF7F1}
-.hash{margin:.75rem 0 0;font:400 .66rem/1.6 var(--mono);color:var(--slate);overflow-wrap:anywhere}
+.hash{margin:.75rem 0 0;font:400 .72rem/1.6 var(--mono);color:var(--slate);overflow-wrap:anywhere}
 
 /* 06 contribute */
 .contrib{display:grid;gap:clamp(2rem,5vw,3.4rem);grid-template-columns:1fr}
@@ -486,8 +520,8 @@ section{padding:clamp(3.4rem,8vw,6.4rem) 0;scroll-margin-top:56px}
 .issues .id{font:500 .74rem/1.5 var(--mono);color:var(--signal)}
 .issues .ti{font-weight:500;font-size:.98rem;line-height:1.35}
 .issues .lb{grid-column:2;display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.15rem}
-.issues .lb span{font:500 .58rem/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--rule-soft);padding:.3rem .45rem;color:var(--slate)}
-.panel{border:1px solid var(--rule);padding:1.5rem;background:var(--paper)}
+.issues .lb span{font:500 .72rem/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--rule-soft);padding:.3rem .45rem;color:var(--slate)}
+.panel{border:1px solid var(--rule);padding:1.5rem;background:var(--paper);align-self:start}
 .panel h3{font-size:1.05rem;margin-bottom:.7rem}
 .panel p{font-size:.9rem;color:var(--slate)}
 .panel p:last-of-type{margin-bottom:0}
@@ -506,9 +540,10 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
 .foot{display:grid;gap:1.2rem;grid-template-columns:1fr}
 @media(min-width:820px){.foot{grid-template-columns:1fr 1fr;align-items:start}}
 .foot nav{display:flex;flex-wrap:wrap;gap:.4rem 1.4rem}
-.foot nav a{display:inline-flex;align-items:center;min-height:30px;font:500 .68rem/1.6 var(--mono);letter-spacing:.14em;text-transform:uppercase;text-decoration:none;color:#EDE9E1}
+.foot nav a{display:inline-flex;align-items:center;min-height:30px;font:500 .72rem/1.6 var(--mono);letter-spacing:.14em;text-transform:uppercase;text-decoration:none;color:#EDE9E1}
 .foot nav a:hover{color:#E0703F}
-.credits{font-size:.78rem;line-height:1.6;max-width:62ch}
+.credits{font-size:.8rem;line-height:1.6;max-width:62ch;display:grid;gap:.8rem}
+.credits p{margin:0}
 @media(min-width:820px){.credits{text-align:right;justify-self:end}}
 .credits a{color:#C3BCB1}
 
@@ -535,7 +570,7 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
       <span class="mh-spec">v0.3.0 &nbsp;/&nbsp; MIT &nbsp;/&nbsp; Windows 10 &amp; 11</span>
     </div>
     <div class="mh-right">
-      <a href="https://github.com/RitvikDayal/featherwall">Source</a>
+      <a class="src" href="https://github.com/RitvikDayal/featherwall"><svg class="gh" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>Source</a>
       <a class="dl" href="#install">Download</a>
     </div>
   </div>
@@ -599,10 +634,20 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
               <a class="btn btn-solid" href="https://github.com/RitvikDayal/featherwall/releases/download/v0.3.0/featherwall-v0.3.0-win-x64.zip">
                 Download for Windows <span class="sz">ZIP 7.2 MB</span>
               </a>
-              <a class="btn btn-light" href="https://github.com/RitvikDayal/featherwall">Read the source</a>
+              <a class="btn btn-light" href="https://github.com/RitvikDayal/featherwall"><svg class="gh" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>Read the source</a>
+            </div>
+            <div class="hero-cmd">
+              <span class="hero-cmd-label">Or install with winget</span>
+              <div class="code" tabindex="0" role="group" aria-label="winget install command"><button class="copy" data-copy="winget install RitvikDayal.FeatherWall" aria-label="Copy the winget install command">Copy</button><span class="tok">winget install</span> RitvikDayal.FeatherWall</div>
             </div>
           </div>
+          <div class="hero-side">
+          <ul class="hero-stats" aria-label="Project numbers from GitHub">
+            <li><a href="https://github.com/RitvikDayal/featherwall/stargazers"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg><b data-stat="stars">18</b> <span>stars<i class="wide"> on GitHub</i></span></a></li>
+            <li><a href="https://github.com/RitvikDayal/featherwall/releases"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14ZM7.25 7.689V2a.75.75 0 0 1 1.5 0v5.689l1.97-1.969a.749.749 0 1 1 1.06 1.06l-3.25 3.25a.749.749 0 0 1-1.06 0L4.22 6.78a.749.749 0 1 1 1.06-1.06l1.97 1.969Z"/></svg><b data-stat="downloads">783</b> <span>downloads</span></a></li>
+          </ul>
           <p class="aside">Video or image wallpapers, with clock, battery and now-playing widgets in five styles. One process. No browser engine, no launcher, no account, no telemetry. Needs the <a href="https://dotnet.microsoft.com/download/dotnet/10.0">.NET 10 desktop runtime</a>.</p>
+          </div>
         </div>
 
         <div class="hero-foot">
@@ -753,14 +798,13 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
       </div>
     </div>
 
+    <div class="findings">
     <p class="foot-note"><strong>It all lands on the integrated GPU.</strong> <span class="mono-inline">nvidia-smi</span> shows nothing on the RTX 5090. The compositor lives on whichever adapter drives your display, so it never competes with a game.</p>
     <p class="foot-note">GPU percentages are <em>per engine</em> and do not sum, so the table shows the busiest. Graphics memory is separate from the working set. Paused holds the most &mdash; buffers are kept so resuming is instant.</p>
-
     <p class="foot-note"><strong>Two corrections.</strong> This page said dedicated VRAM reads 0&nbsp;MB; Windows actually attributes <strong>232&nbsp;MB</strong>. It published <strong>0.004%</strong> paused CPU; the harness measures <strong>0.034%</strong>. Both go against us.</p>
-
     <p class="foot-note"><strong>1080p60 has never been measured</strong> &mdash; the dashes mean nobody ran it, not zero. CPU moves two- to threefold between runs, so treat any figure as one sample.</p>
-
     <p class="foot-note"><strong>What the widgets cost.</strong> Still image: <strong>0.026% &rarr; 0.135%</strong> CPU &mdash; five times baseline, and that is the record's frame clock. Turn off spin to get it back. 4K60: <strong>0.721% &rarr; 0.988%</strong>, GPU unchanged.</p>
+    </div>
   </section>
 
   <!-- 04 -->
@@ -902,12 +946,14 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
         <a href="https://github.com/RitvikDayal/featherwall/blob/main/CONTRIBUTING.md">Contributing</a>
         <a href="https://github.com/RitvikDayal/featherwall/blob/main/THIRD-PARTY-NOTICES.md">Credits</a>
       </nav>
-      <p class="credits">
+      <div class="credits">
+      <p>
         Wallpapers: Marmolada, Dolomites by Marco Bonomo (CC0); Alone in the Unspoilt Wilderness by David Marcu (CC0); Hubble Ultra Deep Field, NASA and the European Space Agency (public domain). Demo footage: <em>Big Buck Bunny</em>, &copy; 2008 Blender Foundation, <a href="https://peach.blender.org">peach.blender.org</a>, <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>. Set in Archivo and JetBrains Mono.
       </p>
-      <p class="credits">
+      <p>
         Style samples, shown with credit and not under a licence, and taken down on request: stills by <a href="https://www.pixiv.net/en/artworks/78962838">Mago</a>, <a href="https://www.pixiv.net/en/artworks/64495434">Rella</a>, <a href="https://www.pixiv.net/en/artworks/83285677">未早</a>, Apphely and an <a href="https://www.artstation.com/artwork/0nJE45">ArtStation artist</a>, found on wallhaven; live wallpapers from <a href="https://moewalls.com">MoeWalls</a>. Full list in <a href="https://github.com/RitvikDayal/featherwall/blob/main/THIRD-PARTY-NOTICES.md">the notices</a>.
       </p>
+      </div>
     </div>
   </footer>
 
@@ -1048,6 +1094,30 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
   /* 4K60 is the heaviest state that has actually been measured. Defaulting to 1080p60 now shows
      dashes, which reads as broken rather than as honest. */
   showState('p4k');
+
+  /* stars and downloads straight from GitHub; the markup's numbers stay if the API says no */
+  (function(){
+    var repo = 'https://api.github.com/repos/RitvikDayal/featherwall';
+    function show(stats){
+      Object.keys(stats).forEach(function(k){
+        var el = document.querySelector('[data-stat="' + k + '"]');
+        if (el && typeof stats[k] === 'number') el.textContent = stats[k].toLocaleString();
+      });
+    }
+    try { var cached = JSON.parse(sessionStorage.getItem('fw-stats') || 'null'); if (cached) { show(cached); return; } } catch (e) {}
+    Promise.all([
+      fetch(repo).then(function(r){ return r.ok ? r.json() : null; }),
+      fetch(repo + '/releases?per_page=100').then(function(r){ return r.ok ? r.json() : null; })
+    ]).then(function(res){
+      var stats = {};
+      if (res[0]) stats.stars = res[0].stargazers_count;
+      if (Array.isArray(res[1])) stats.downloads = res[1].reduce(function(sum, rel){
+        return sum + (rel.assets || []).reduce(function(a, x){ return a + (x.download_count || 0); }, 0);
+      }, 0);
+      show(stats);
+      try { sessionStorage.setItem('fw-stats', JSON.stringify(stats)); } catch (e) {}
+    }).catch(function(){});
+  })();
 
   /* the style list swaps the clip on the slab */
   var sv = document.getElementById('style-video'), sc = document.getElementById('style-cap');
