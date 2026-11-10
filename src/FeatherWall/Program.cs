@@ -44,27 +44,23 @@ internal static class Program
             }
         }
 
-        var config = ConfigStore.Load();
+        var config = ConfigStore.Load(ConfigStore.ConfigPath, out bool configUnreadable);
 
         // --no-shortcut keeps a dev build from repointing the Start menu entry at bin\.
         if (!args.Contains("--no-shortcut") && Environment.ProcessPath is { } exe && StartMenuShortcut.IsOwnExe(exe))
         {
             try
             {
-                var change = StartMenuShortcut.Ensure(exe, config.StartMenuShortcutAdded);
+                if (configUnreadable)
+                    Log.Info("Config unreadable: leaving the Start menu entry and config.json as they are");
+                var (change, markAdded) = StartMenuShortcut.Reconcile(exe, config, configUnreadable);
                 if (change != ShortcutChange.None)
                     Log.Info($"Start menu shortcut {change.ToString().ToLowerInvariant()}: {exe}");
-                // Recorded once a shortcut exists, however it got there — including one made by a
-                // build from before this flag — so deleting it afterwards sticks.
-                if (!config.StartMenuShortcutAdded && File.Exists(StartMenuShortcut.DefaultPath))
-                {
-                    config.StartMenuShortcutAdded = true;
-                    ConfigStore.Save(config);
-                }
+                if (markAdded) ConfigStore.Save(config);
             }
             catch (Exception ex)
             {
-                Log.Warn($"Start menu shortcut not written: {ex.Message}");
+                Log.Warn($"Start menu shortcut step failed: {ex.Message}");
             }
         }
 

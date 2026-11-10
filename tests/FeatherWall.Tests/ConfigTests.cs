@@ -194,3 +194,30 @@ public class HaloConfigTests
         Assert.Equal(52, back.Info.Halo.Size);
     }
 }
+
+public class ConfigStoreTests
+{
+    [Fact]
+    public void Load_InvalidJson_ReportsItUnreadable_AndLeavesTheFile()
+    {
+        var path = Path.Combine(Directory.CreateTempSubdirectory("fw-config-").FullName, "config.json");
+        const string typo = "{ \"fit\": \"Fit\", }";
+        File.WriteAllText(path, typo);
+
+        var config = ConfigStore.Load(path, out bool unreadable);
+
+        Assert.True(unreadable);
+        Assert.NotNull(config);
+        Assert.Equal(typo, File.ReadAllText(path));
+    }
+
+    [Fact]
+    public void Load_MissingFile_IsNotUnreadable()
+    {
+        var path = Path.Combine(Directory.CreateTempSubdirectory("fw-config-").FullName, "config.json");
+
+        ConfigStore.Load(path, out bool unreadable);
+
+        Assert.False(unreadable);
+    }
+}

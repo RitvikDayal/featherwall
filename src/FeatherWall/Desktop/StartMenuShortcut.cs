@@ -12,12 +12,24 @@ namespace FeatherWall.Desktop;
 /// running, so a moved folder or a different copy repairs it the next launch — but an entry the
 /// user deleted stays deleted. The first version recreated it on every start, which overrode
 /// that choice at every sign-in.</summary>
-/// <summary>What <see cref="StartMenuShortcut.Ensure"/> did.</summary>
-public enum ShortcutChange { None, Created, Repointed }
-
 public static class StartMenuShortcut
 {
     private const uint SLGP_RAWPATH = 0x4;
+
+    /// <summary>The startup step: brings the shortcut in line and says whether the config needs
+    /// saving because the flag was just set. Does nothing at all when the config could not be read
+    /// — the flag is then a default rather than the user's, and saving would write defaults over a
+    /// file they can still fix.</summary>
+    public static (ShortcutChange Change, bool MarkAdded) Reconcile(string exePath, Config.AppConfig config,
+                                                                    bool configUnreadable, string? lnkPath = null)
+    {
+        if (configUnreadable) return (ShortcutChange.None, false);
+        lnkPath ??= DefaultPath;
+        var change = Ensure(exePath, config.StartMenuShortcutAdded, lnkPath);
+        bool markAdded = !config.StartMenuShortcutAdded && File.Exists(lnkPath);
+        if (markAdded) config.StartMenuShortcutAdded = true;
+        return (change, markAdded);
+    }
 
     public static string DefaultPath =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "FeatherWall.lnk");
@@ -52,7 +64,6 @@ public static class StartMenuShortcut
 
     private static void Write(string exePath, string lnkPath)
     {
-
         var link = (IShellLinkW)new ShellLink();
         try
         {
@@ -116,3 +127,6 @@ internal interface IShellLinkW
     void Resolve(IntPtr hwnd, uint fFlags);
     void SetPath([MarshalAs(UnmanagedType.LPWStr)] string pszFile);
 }
+
+/// <summary>What <see cref="StartMenuShortcut.Ensure"/> did.</summary>
+public enum ShortcutChange { None, Created, Repointed }
