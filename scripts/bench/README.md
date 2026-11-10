@@ -51,7 +51,7 @@ open `dwm.exe` for its process times and PowerShell returns `$null` rather than 
 
 Other selectors for focused runs: `-States` picks rows by label, `-Runs N` reports each row as
 the median of its accepted runs, `-InfoMonitor \\.\DISPLAYn` places the info widget, `-Theme`
-picks the widget theme (`classic`, `editorial`, `glassDock`, `orbit` or `poster`), and `-ExtraArgs` is passed to `featherwall.exe`.
+picks the widget theme (`classic`, `editorial`, `glassDock`, `orbit`, `poster`, `monolith` or `tiles`), and `-ExtraArgs` is passed to `featherwall.exe`.
 
 ## What is measured, and why that way
 

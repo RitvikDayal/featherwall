@@ -265,7 +265,7 @@ public sealed class SettingsForm : Form
         }, "%");
         _themeSizeCaption = rows.AddRowLabel("Size", _themeSize);
 
-        // Orbit, Poster and Glass dock place the whole set at one position on one monitor.
+        // The group themes place the whole set at one position on one monitor.
         _groupPositionHost = new Panel
         {
             AutoSize = true,
@@ -323,7 +323,8 @@ public sealed class SettingsForm : Form
     }
 
     /// <summary>Rebuilt on every theme change, so a theme with no stored position shows its own
-    /// default — Orbit's top left, Poster's top right, Glass dock's bottom.</summary>
+    /// default — Orbit's and Monolith's top left, Poster's top right, Glass dock's bottom, Tiles'
+    /// bottom right.</summary>
     private void RebuildGroupPosition(WidgetTheme theme)
     {
         if (_groupPositionHost is null) return;

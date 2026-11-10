@@ -4,7 +4,7 @@
 
 ### Live wallpapers for Windows that don't eat your laptop.
 
-Any video or image on your desktop, with clock, battery and music widgets in five styles.
+Any video or image on your desktop, with clock, battery and music widgets in seven styles.
 One process. No browser engine, no launcher, no account.
 
 [![Stars](https://img.shields.io/github/stars/RitvikDayal/featherwall?style=flat&color=b22f0f)](https://github.com/RitvikDayal/featherwall/stargazers)
@@ -70,7 +70,7 @@ Double-click it for settings.
 > Releases are unsigned, so SmartScreen may warn: choose *More info*, then *Run anyway*, or build
 > from source. Code signing through SignPath Foundation is on the roadmap.
 
-## Five widget styles
+## Seven widget styles
 
 Pick one from the tray or the **Style page** in settings. The accent comes from your wallpaper,
 or you choose it. Size goes from 50 to 300%.
@@ -84,6 +84,11 @@ or you choose it. Size goes from 50 to 300%.
 |---|---|
 | ![Orbit](docs/media/style-orbit.jpg) | ![Poster](docs/media/style-poster.jpg) |
 | Everything is a ring. The dial fills as the hour passes. | A big stacked clock: outlined hours, accent minutes. |
+
+| Monolith | Tiles |
+|---|---|
+| ![Monolith](docs/media/style-monolith.jpg) | ![Tiles](docs/media/style-tiles.jpg) |
+| The weekday in wide thin capitals; music and battery on one line. | Rounded cards: analog clock, date, record, battery ring. |
 
 <sub>Drawn by FeatherWall's own renderers over wallpapers by other artists, used with credit; see <a href="THIRD-PARTY-NOTICES.md#widget-style-samples">THIRD-PARTY-NOTICES.md</a>. Live versions are on the <a href="https://ritvikdayal.github.io/featherwall/">website</a>.</sub>
 
@@ -264,15 +269,15 @@ The tray and settings panel cover the common cases. Everything lives in
 
 | Key | Values | |
 |---|---|---|
-| `theme` | `classic`, `editorial`, `glassDock`, `orbit`, `poster` | An upgrade keeps `classic`; a fresh install starts on `orbit`. An unknown name falls back to `classic`. |
+| `theme` | `classic`, `editorial`, `glassDock`, `orbit`, `poster`, `monolith`, `tiles` | An upgrade keeps `classic`; a fresh install starts on `orbit`. An unknown name falls back to `classic`. |
 | `accent` | `auto` or `#RRGGBB` | Used by every style but Classic. `auto` samples it once from the wallpaper. |
 | `size` | 50–300, or `null` | Percentage size for every style but Classic. `null` follows `clock.fontSize` against its 110 px default. |
-| `position` | an anchor, or `null` | Where Glass dock, Orbit and Poster place the set. Glass dock reads only top or bottom. |
-| `monitor` | a device name, or `*` | The monitor those three draw on; `*` is the primary. |
+| `position` | an anchor, or `null` | Where Glass dock, Orbit, Poster, Monolith and Tiles place the set. Glass dock reads only top or bottom. |
+| `monitor` | a device name, or `*` | The monitor those five draw on; `*` is the primary. |
 | `themesNoticeShown` | `true`/`false` | Set once the one-time "new widget styles" notice has shown. |
 
-Classic and Editorial keep each widget's own position, monitor and margins. Glass dock, Orbit and
-Poster place the whole set from `position` and `monitor`.
+Classic and Editorial keep each widget's own position, monitor and margins. The other five place
+the whole set from `position` and `monitor`.
 
 - `startMenuShortcutAdded` keeps a deleted Start menu entry deleted. Set it to `false` to get the entry back.
 - `sources` is ordered, and the order is the display order. An unknown name is logged and skipped, so a config from a later version still starts. Long titles are cut at `maxCharacters` rather than scrolled, because scrolling would mean animating.

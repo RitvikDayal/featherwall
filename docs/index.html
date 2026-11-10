@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FeatherWall: free, open-source live wallpapers for Windows 10 and 11</title>
-<meta name="description" content="Free, open-source live wallpapers for Windows 10 and 11. Video and image wallpapers with clock, battery and music widgets in five styles. One process.">
+<meta name="description" content="Free, open-source live wallpapers for Windows 10 and 11. Video and image wallpapers with clock, battery and music widgets in seven styles. One process.">
 <link rel="canonical" href="https://ritvikdayal.github.io/featherwall/">
 <meta name="google-site-verification" content="RCUdybG64YvR6gwsPziLD1mzQed_7U8GWCUUNvf6VpA">
 <meta name="theme-color" content="#121110">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="FeatherWall">
 <meta property="og:title" content="FeatherWall: live wallpapers for Windows that don't eat your laptop">
-<meta property="og:description" content="Five widget styles, one process, MIT licensed. winget install RitvikDayal.FeatherWall">
+<meta property="og:description" content="Seven widget styles, one process, MIT licensed. winget install RitvikDayal.FeatherWall">
 <meta property="og:url" content="https://ritvikdayal.github.io/featherwall/">
 <meta property="og:image" content="https://ritvikdayal.github.io/featherwall/social-preview.jpg">
 <meta property="og:image:width" content="1280">
@@ -19,14 +19,14 @@
 <meta property="og:image:alt" content="FeatherWall: a live wallpaper with clock, battery and music widgets">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="FeatherWall: live wallpapers for Windows">
-<meta name="twitter:description" content="Five widget styles, one process, MIT licensed. winget install RitvikDayal.FeatherWall">
+<meta name="twitter:description" content="Seven widget styles, one process, MIT licensed. winget install RitvikDayal.FeatherWall">
 <meta name="twitter:image" content="https://ritvikdayal.github.io/featherwall/social-preview.jpg">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   "name": "FeatherWall",
-  "description": "Free, open-source live wallpapers for Windows 10 and 11. Video and image wallpapers with clock, battery and music widgets in five styles. One process.",
+  "description": "Free, open-source live wallpapers for Windows 10 and 11. Video and image wallpapers with clock, battery and music widgets in seven styles. One process.",
   "url": "https://ritvikdayal.github.io/featherwall/",
   "image": "https://ritvikdayal.github.io/featherwall/social-preview.jpg",
   "applicationCategory": "DesktopEnhancementApplication",
@@ -48,7 +48,7 @@
   "featureList": [
     "Video wallpapers: MP4, MOV, AVI, WMV and WebM, hardware decoded with seamless loops",
     "Image wallpapers: PNG, JPEG, BMP, TIFF and animated GIF",
-    "Five widget styles: Classic, Editorial, Glass dock, Orbit and Poster",
+    "Seven widget styles: Classic, Editorial, Glass dock, Orbit, Poster, Monolith and Tiles",
     "Clock, battery halo and now-playing record widgets",
     "Accent colour taken from the wallpaper",
     "Pauses for fullscreen apps, the lock screen, remote sessions and battery saver",
@@ -67,7 +67,7 @@
       "name": "What is FeatherWall?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "A free, open-source live wallpaper app for Windows 10 and 11. It plays a video or an image as your desktop wallpaper and adds clock, battery and now-playing widgets in five styles."
+        "text": "A free, open-source live wallpaper app for Windows 10 and 11. It plays a video or an image as your desktop wallpaper and adds clock, battery and now-playing widgets in seven styles."
       }
     },
     {
@@ -508,7 +508,7 @@ section{padding:clamp(2.8rem,6vw,4.6rem) 0;scroll-margin-top:56px}
 
 /* 01 styles. The list of styles is also the switch: picking one plays it on the slab. */
 .styles{display:grid;gap:clamp(1.6rem,4vw,3rem);grid-template-columns:1fr;margin-bottom:clamp(1.8rem,4vw,2.6rem)}
-@media(min-width:900px){.styles{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr)}}
+@media(min-width:900px){.styles{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr)}.styles .slab{align-self:start;position:sticky;top:5rem}}
 .styles .slab video{width:100%;height:auto;display:block;aspect-ratio:16/9}
 .picks{border-top:1px solid var(--rule);margin:0;padding:0;list-style:none}
 .picks button{
@@ -607,7 +607,8 @@ section{padding:clamp(2.8rem,6vw,4.6rem) 0;scroll-margin-top:56px}
 
 /* 04 gallery */
 .gallery{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);grid-template-columns:1fr}
-@media(min-width:700px){.gallery{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:700px){.gallery{grid-template-columns:repeat(3,1fr)}.styles+.gallery{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:1100px){.styles+.gallery{grid-template-columns:repeat(4,1fr)}}
 .gallery figure{margin:0;background:var(--paper);display:flex;flex-direction:column}
 .gallery img{width:100%;aspect-ratio:16/10;object-fit:cover}
 .gallery img[src*="settings-"]{object-position:top left}
@@ -801,7 +802,7 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
             <li><a href="https://github.com/RitvikDayal/featherwall/stargazers"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg><b data-stat="stars">18</b> <span>stars<i class="wide"> on GitHub</i></span></a></li>
             <li><a href="https://github.com/RitvikDayal/featherwall/releases"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14ZM7.25 7.689V2a.75.75 0 0 1 1.5 0v5.689l1.97-1.969a.749.749 0 1 1 1.06 1.06l-3.25 3.25a.749.749 0 0 1-1.06 0L4.22 6.78a.749.749 0 1 1 1.06-1.06l1.97 1.969Z"/></svg><b data-stat="downloads">786</b> <span>downloads</span></a></li>
           </ul>
-          <p class="aside">Video and image wallpapers, with clock, battery and music widgets in five styles. One process, no browser engine, no account, no telemetry. Needs the <a href="https://dotnet.microsoft.com/download/dotnet/10.0">.NET 10 desktop runtime</a>.</p>
+          <p class="aside">Video and image wallpapers, with clock, battery and music widgets in seven styles. One process, no browser engine, no account, no telemetry. Needs the <a href="https://dotnet.microsoft.com/download/dotnet/10.0">.NET 10 desktop runtime</a>.</p>
           </div>
         </div>
 
@@ -835,7 +836,7 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
   <section class="shell rev" id="styles">
     <div class="rule-head">
       <span class="meta idx">01</span><span class="meta">Styles</span>
-      <h2>Five looks, one click in the tray</h2>
+      <h2>Seven looks, one click in the tray</h2>
     </div>
     <p class="intro">Switch from the tray or the <strong>Style page</strong>, which previews each style with your settings. The accent comes from your wallpaper, or you pick it. Size goes from 50 to 300%.</p>
 
@@ -850,6 +851,8 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
         <li><button type="button" data-style="glassdock" data-wall="Anime Girl on a Train" aria-pressed="false" aria-controls="style-video"><span class="n">03</span><b>Glass dock</b><span class="d">Record, time and battery in one capsule on the top or bottom edge.</span></button></li>
         <li><button type="button" data-style="orbit" data-wall="Girl and Cat Midnight Lofi" aria-pressed="true" aria-controls="style-video"><span class="n">04</span><b>Orbit</b><span class="d">Everything is a ring. The dial fills as the hour passes.</span></button></li>
         <li><button type="button" data-style="poster" data-wall="Samurai Boss Fight Fantasy Dragon" aria-pressed="false" aria-controls="style-video"><span class="n">05</span><b>Poster</b><span class="d">A big stacked clock: outlined hours, accent minutes, the date down the side.</span></button></li>
+        <li><button type="button" data-style="monolith" data-wall="Girl and Cat Midnight Lofi" aria-pressed="false" aria-controls="style-video"><span class="n">06</span><b>Monolith</b><span class="d">The weekday in wide thin capitals. Music and battery on one quiet line.</span></button></li>
+        <li><button type="button" data-style="tiles" data-wall="Samurai Boss Fight Fantasy Dragon" aria-pressed="false" aria-controls="style-video"><span class="n">07</span><b>Tiles</b><span class="d">Rounded cards: an analog clock, the date, the record and a battery ring.</span></button></li>
       </ul>
     </div>
 
@@ -877,6 +880,14 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
       <figure>
         <img src="media/style-poster-night.jpg" alt="Poster over the balcony at dusk, its minutes in the wallpaper's blue" loading="lazy">
         <figcaption>Poster / art by Rella</figcaption>
+      </figure>
+      <figure>
+        <img src="media/style-monolith.jpg" alt="Monolith's wide TUESDAY over a girl on a balcony at dusk" loading="lazy">
+        <figcaption>Monolith / art by Rella</figcaption>
+      </figure>
+      <figure>
+        <img src="media/style-tiles.jpg" alt="Tiles' clock, date, music and battery cards beside a red-eyed swordswoman" loading="lazy">
+        <figcaption>Tiles / art by Mago</figcaption>
       </figure>
     </div>
     <p class="foot-note">Drawn by FeatherWall's own renderers at 1920&times;1080; the stills are crops. The wallpapers are other artists' work, credited at the foot of the page.</p>
@@ -1089,7 +1100,7 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
     <div class="faq">
       <details>
         <summary>What is FeatherWall?</summary>
-        <p>A free, open-source live wallpaper app for Windows 10 and 11. It plays a video or an image as your desktop wallpaper and adds clock, battery and now-playing widgets in five styles.</p>
+        <p>A free, open-source live wallpaper app for Windows 10 and 11. It plays a video or an image as your desktop wallpaper and adds clock, battery and now-playing widgets in seven styles.</p>
       </details>
       <details>
         <summary>Is FeatherWall free?</summary>
