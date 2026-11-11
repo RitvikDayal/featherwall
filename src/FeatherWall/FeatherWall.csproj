@@ -14,7 +14,7 @@
     <ApplicationIcon>featherwall.ico</ApplicationIcon>
     <UseWindowsForms>true</UseWindowsForms>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
-    <Version>0.3.0</Version>
+    <Version>0.3.1</Version>
     <Description>A featherweight live-wallpaper engine for Windows.</Description>
   </PropertyGroup>
 
