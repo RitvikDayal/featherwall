@@ -33,15 +33,15 @@ It installs per user without admin rights. `winget upgrade RitvikDayal.FeatherWa
 <details>
 <summary><b>Or take the ZIP, or build it yourself</b></summary>
 
-**ZIP.** Download `featherwall-v0.3.0-win-x64.zip` from the
+**ZIP.** Download `featherwall-v0.3.1-win-x64.zip` from the
 [latest release](https://github.com/RitvikDayal/featherwall/releases/latest). It unzips to a single
 `featherwall.exe`, so there is no installer. The first run adds FeatherWall to your Start menu;
 delete that entry and it stays deleted. To uninstall, turn off "Run at startup", quit from the
 tray, then delete the folder and the Start menu entry. Check the download if you like:
 
 ```powershell
-Get-FileHash .\featherwall-v0.3.0-win-x64.zip -Algorithm SHA256
-# 088e26bbcc391b6e734a080e0dbc29a0da7a73192e5bb6be1873c095e2fbc172
+Get-FileHash .\featherwall-v0.3.1-win-x64.zip -Algorithm SHA256
+# 7b83a00856ae7acc093ee98abf0bbc85e55211049e89357cfe384a80f2a5f5c8
 ```
 
 The build is framework-dependent, which keeps the release at 7 MB instead of shipping .NET with it.

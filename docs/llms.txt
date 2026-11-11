@@ -2,7 +2,7 @@
 
 > FeatherWall is a free, open-source (MIT) live wallpaper app for Windows 10 and 11. It plays a video or an image as the desktop wallpaper and adds clock, battery and now-playing music widgets in seven styles. It runs as one process with no browser engine, no account and no telemetry.
 
-Install with `winget install RitvikDayal.FeatherWall`, or download the ZIP from GitHub Releases. It needs the .NET 10 desktop runtime. Current version: 0.3.0, released 2026-11-10.
+Install with `winget install RitvikDayal.FeatherWall`, or download the ZIP from GitHub Releases. It needs the .NET 10 desktop runtime. Current version: 0.3.1, released 2026-11-11.
 
 ## Key facts
 
