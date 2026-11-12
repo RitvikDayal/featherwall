@@ -3,15 +3,17 @@ using Microsoft.Win32;
 
 namespace FeatherWall.Desktop;
 
-/// <summary>The uninstaller's hook (Setup.exe installs through Velopack). Velopack stops the running
-/// copy and deletes the install folder, but knows nothing of what the app made for itself: the
-/// Start menu entry, the Run-at-sign-in value, and the wallpaper it was drawing. Each is removed
-/// only when it points into this install, so a zip copy elsewhere keeps its own.</summary>
+/// <summary>The uninstaller's hook (Setup.exe installs through Velopack). Velopack force-stops the
+/// running copy and deletes the install folder, but knows nothing of what the app did outside it:
+/// it swapped the user's wallpaper (put back on a normal exit), and may have made a Start menu entry
+/// and a Run-at-sign-in value. Those two are removed only when they point into this install, so a
+/// zip copy elsewhere keeps its own.</summary>
 public static class UninstallCleanup
 {
     public static void Run(string installDir)
     {
         // Velopack has already force-stopped the app, so its own exit path never ran.
+        Try("restore the wallpaper", () => Engine.RestoreSavedWallpaper());
         Try("restore the desktop", DesktopLayerHost.RestoreDesktop);
         Try("remove the Start menu entry", () => RemoveShortcut(installDir));
         Try("remove the sign-in entry", () => RemoveAutostart(installDir));
