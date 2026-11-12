@@ -53,8 +53,8 @@ jobs:
         run: |
           $tag = "${{ github.event.inputs.tag }}"
           if (-not $tag) { $tag = "${{ github.ref_name }}" }
-          dotnet tool install -g vpk --version 1.2.161
-          vpk pack --packId FeatherWallApp --packTitle FeatherWall --packAuthors "Ritvik Dayal" `
+          dotnet tool install vpk --version 1.2.161 --tool-path .tools
+          .tools/vpk pack --packId FeatherWallApp --packTitle FeatherWall --packAuthors "Ritvik Dayal" `
             --packVersion $tag.TrimStart('v') --packDir publish --mainExe featherwall.exe `
             --icon src/FeatherWall/featherwall.ico --framework net10.0-x64-desktop --runtime win-x64 `
             --shortcuts "" -o velopack
