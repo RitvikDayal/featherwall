@@ -83,7 +83,7 @@
       "name": "How do I install FeatherWall?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Run winget install RitvikDayal.FeatherWall in PowerShell or Terminal, or download the ZIP from GitHub and run featherwall.exe. It needs the .NET 10 desktop runtime."
+        "text": "Download FeatherWall-Setup.exe and run it; it installs the .NET 10 desktop runtime too if it is missing. Or run winget install RitvikDayal.FeatherWall in PowerShell or Terminal, or download the ZIP from GitHub and run featherwall.exe. Those two need the .NET 10 desktop runtime installed."
       }
     },
     {
@@ -624,11 +624,12 @@ section{padding:clamp(2.8rem,6vw,4.6rem) 0;scroll-margin-top:56px}
 
 /* 05 download */
 .routes{display:grid;gap:0;border-top:1px solid var(--rule);grid-template-columns:minmax(0,1fr)}
-@media(min-width:900px){.routes{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(min-width:900px){.routes{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .route{padding:1.6rem 0;border-bottom:1px solid var(--rule-soft)}
 @media(min-width:900px){
   .route{padding:1.7rem 1.6rem;border-left:1px solid var(--rule-soft);border-bottom:0}
-  .route:first-child{border-left:0}
+  .route:nth-child(odd){border-left:0}
+  .route:nth-child(-n+2){border-bottom:1px solid var(--rule-soft)}
 }
 .route.pick{background:var(--ink);color:var(--paper);border-left-color:var(--ink)}
 .route.pick p{color:#A9A296}
@@ -786,8 +787,8 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
           <div>
             <h2>Live wallpapers for Windows that don't eat your laptop.</h2>
             <div class="cta">
-              <a class="btn btn-solid pc-only" href="https://github.com/RitvikDayal/featherwall/releases/download/v0.3.1/featherwall-v0.3.1-win-x64.zip">
-                Download for Windows <span class="sz">ZIP 7.3 MB</span>
+              <a class="btn btn-solid pc-only" href="https://github.com/RitvikDayal/featherwall/releases/latest/download/FeatherWall-Setup.exe">
+                Download for Windows <span class="sz">Installer 17.8 MB</span>
               </a>
               <a class="btn btn-light" href="https://github.com/RitvikDayal/featherwall"><svg class="gh" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>Read the source</a>
             </div>
@@ -802,7 +803,7 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
             <li><a href="https://github.com/RitvikDayal/featherwall/stargazers"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg><b data-stat="stars">18</b> <span>stars<i class="wide"> on GitHub</i></span></a></li>
             <li><a href="https://github.com/RitvikDayal/featherwall/releases"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14ZM7.25 7.689V2a.75.75 0 0 1 1.5 0v5.689l1.97-1.969a.749.749 0 1 1 1.06 1.06l-3.25 3.25a.749.749 0 0 1-1.06 0L4.22 6.78a.749.749 0 1 1 1.06-1.06l1.97 1.969Z"/></svg><b data-stat="downloads">786</b> <span>downloads</span></a></li>
           </ul>
-          <p class="aside">Video and image wallpapers, with clock, battery and music widgets in seven styles. One process, no browser engine, no account, no telemetry. Needs the <a href="https://dotnet.microsoft.com/download/dotnet/10.0">.NET 10 desktop runtime</a>.</p>
+          <p class="aside">Video and image wallpapers, with clock, battery and music widgets in seven styles. One process, no browser engine, no account, no telemetry. The installer adds the <a href="https://dotnet.microsoft.com/download/dotnet/10.0">.NET 10 desktop runtime</a> if it's missing.</p>
           </div>
         </div>
 
@@ -1028,7 +1029,7 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
       <span class="meta idx">05</span><span class="meta">Download</span>
       <h2>One line in a terminal</h2>
     </div>
-    <p class="intro">FeatherWall is on winget, which comes with Windows 10 and 11. It installs per user without admin rights, and <span class="mono-inline">winget upgrade</span> keeps it current. Releases are unsigned, so SmartScreen may warn on the ZIP's first run.</p>
+    <p class="intro">FeatherWall is on winget, which comes with Windows 10 and 11. It installs per user without admin rights, and <span class="mono-inline">winget upgrade</span> keeps it current. Or download the installer and double-click it. Releases are unsigned, so SmartScreen may warn the first time you run the installer or the ZIP: choose More info, then Run anyway.</p>
 
     <div class="routes">
       <div class="route pick">
@@ -1036,6 +1037,13 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
         <p>Paste into PowerShell or Terminal. It starts in the tray and adds itself to the Start menu.</p>
         <div class="code" tabindex="0" role="group" aria-label="winget install command"><button class="copy" data-copy="winget install RitvikDayal.FeatherWall" aria-label="Copy the winget install command">Copy</button><span class="tok">winget install</span> RitvikDayal.FeatherWall</div>
         <p class="hash">Update with <span class="mono-inline">winget upgrade RitvikDayal.FeatherWall</span>. Needs the <a href="https://dotnet.microsoft.com/download/dotnet/10.0">.NET 10 desktop runtime</a>.</p>
+      </div>
+
+      <div class="route">
+        <h3>Installer <em>Double-click</em></h3>
+        <p>Installs for your user, adds FeatherWall to the Start menu, and uninstalls from Apps &amp; Features. If the .NET 10 desktop runtime is missing, it installs that first, which asks for admin.</p>
+        <a class="btn btn-solid" href="https://github.com/RitvikDayal/featherwall/releases/latest/download/FeatherWall-Setup.exe" style="width:100%">Get the installer <span class="sz">17.8 MB</span></a>
+        <p class="hash">To check it, compare <span class="mono-inline">Get-FileHash .\FeatherWall-Setup.exe</span> with <span class="mono-inline">FeatherWall-Setup.exe.sha256</span> on the <a href="https://github.com/RitvikDayal/featherwall/releases/latest">release page</a>.</p>
       </div>
 
       <div class="route">
@@ -1108,7 +1116,7 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
       </details>
       <details>
         <summary>How do I install FeatherWall?</summary>
-        <p>Run <span class="mono-inline">winget install RitvikDayal.FeatherWall</span> in PowerShell or Terminal, or download the ZIP from GitHub and run <span class="mono-inline">featherwall.exe</span>. It needs the .NET 10 desktop runtime.</p>
+        <p>Download <a href="https://github.com/RitvikDayal/featherwall/releases/latest/download/FeatherWall-Setup.exe">FeatherWall-Setup.exe</a> and run it; it installs the .NET 10 desktop runtime too if it's missing. Or run <span class="mono-inline">winget install RitvikDayal.FeatherWall</span> in PowerShell or Terminal, or download the ZIP from GitHub and run <span class="mono-inline">featherwall.exe</span>. Those two need the .NET 10 desktop runtime installed.</p>
       </details>
       <details>
         <summary>Does it work on Windows 11 24H2?</summary>
@@ -1140,7 +1148,7 @@ footer{background:var(--ink);color:#A9A296;border-top:1px solid rgba(237,233,225
       <span class="meta">08 / Get it</span>
       <h2>Put something alive behind your work.</h2>
       <div class="cta">
-        <a class="btn btn-solid pc-only" href="https://github.com/RitvikDayal/featherwall/releases/download/v0.3.1/featherwall-v0.3.1-win-x64.zip">Download for Windows <span class="sz">ZIP 7.3 MB</span></a>
+        <a class="btn btn-solid pc-only" href="https://github.com/RitvikDayal/featherwall/releases/latest/download/FeatherWall-Setup.exe">Download for Windows <span class="sz">Installer 17.8 MB</span></a>
         <a class="btn btn-light" href="https://github.com/RitvikDayal/featherwall">Star it on GitHub</a>
       </div>
     </div>
