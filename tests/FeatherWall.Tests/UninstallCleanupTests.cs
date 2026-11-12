@@ -1,3 +1,4 @@
+using FeatherWall.Config;
 using FeatherWall.Desktop;
 using Microsoft.Win32;
 
@@ -54,6 +55,40 @@ public class UninstallCleanupTests : IDisposable
     [Fact]
     public void RemoveShortcut_NoShortcutIsFine() =>
         Assert.False(UninstallCleanup.RemoveShortcut(InstallDir, Lnk));
+
+    // config.json lives in %APPDATA% and survives the uninstall. Left saying "added", a reinstall
+    // would read the missing shortcut as one the user deleted and never make it again.
+    [Fact]
+    public void ForgetShortcut_LetsAReinstallMakeItAgain()
+    {
+        var config = Path.Combine(_dir, "config.json");
+        ConfigStore.Save(new AppConfig { StartMenuShortcutAdded = true }, config);
+
+        UninstallCleanup.ForgetShortcut(config);
+
+        Assert.False(ConfigStore.Load(config, out _).StartMenuShortcutAdded);
+    }
+
+    [Fact]
+    public void ForgetShortcut_LeavesAnUnreadableConfigAsItIs()
+    {
+        var config = Path.Combine(_dir, "config.json");
+        File.WriteAllText(config, "{ not json");
+
+        UninstallCleanup.ForgetShortcut(config);
+
+        Assert.Equal("{ not json", File.ReadAllText(config));
+    }
+
+    [Fact]
+    public void ForgetShortcut_WritesNoConfigWhereThereWasNone()
+    {
+        var config = Path.Combine(_dir, "config.json");
+
+        UninstallCleanup.ForgetShortcut(config);
+
+        Assert.False(File.Exists(config));
+    }
 
     [Fact]
     public void RemoveAutostart_DeletesAnEntryThatStartsTheInstalledCopy()
