@@ -5,6 +5,7 @@
 | Package | License | Purpose |
 |---|---|---|
 | [Vortice.Windows](https://github.com/amerkoleci/Vortice.Windows) (Direct3D11, DXGI, DirectComposition, Direct2D1) | MIT | DirectX bindings |
+| [Velopack](https://github.com/velopack/velopack) | MIT | Install and uninstall hooks for `FeatherWall-Setup.exe`, whose setup and `Update.exe` programs also come from Velopack |
 
 That is the entire third-party dependency surface. GDI+ image decoding and text rendering come
 from the Windows Desktop framework itself, not a package.

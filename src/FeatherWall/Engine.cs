@@ -843,7 +843,12 @@ public sealed class Engine : IDisposable
         }
     }
 
-    private void RestoreOriginalWallpaper()
+    private void RestoreOriginalWallpaper() => RestoreSavedWallpaper(_originalWallpaper);
+
+    /// <summary>Puts back the wallpaper saved at startup and deletes the saved copy. Static, and
+    /// reads the saved path itself when not given one, for the uninstaller: Velopack force-stops the
+    /// app before the uninstall hook runs, so the app's own exit never got here.</summary>
+    public static void RestoreSavedWallpaper(string? original = null)
     {
         try
         {
@@ -859,8 +864,9 @@ public sealed class Engine : IDisposable
                 File.Delete(OriginalDesktopWallpapersFile);
             }
 
-            if (!string.IsNullOrEmpty(_originalWallpaper))
-                DesktopWallpaper.RestoreCurrent(_originalWallpaper);
+            original ??= File.Exists(OriginalWallpaperFile) ? File.ReadAllText(OriginalWallpaperFile).Trim() : null;
+            if (!string.IsNullOrEmpty(original))
+                DesktopWallpaper.RestoreCurrent(original);
             if (File.Exists(OriginalWallpaperFile))
                 File.Delete(OriginalWallpaperFile);
         }
