@@ -13,15 +13,16 @@ internal static class Program
     private static int Main(string[] args)
     {
         // Setup.exe installs through Velopack, which starts the app with --veloapp-* arguments at
-        // install and uninstall time; Run() handles those and exits. A plain launch passes through.
-        VelopackApp.Build()
-            .OnBeforeUninstallFastCallback(_ =>
-            {
-                Log.Init();
-                Log.Info($"Uninstalling the copy in {AppContext.BaseDirectory}");
-                UninstallCleanup.Run(AppContext.BaseDirectory);
-            })
-            .Run();
+        // install and uninstall time; Run() handles those and exits.
+        if (UninstallCleanup.IsInstallerHook(args))
+            VelopackApp.Build()
+                .OnBeforeUninstallFastCallback(_ =>
+                {
+                    Log.Init();
+                    Log.Info($"Uninstalling the copy in {AppContext.BaseDirectory}");
+                    UninstallCleanup.Run(AppContext.BaseDirectory);
+                })
+                .Run();
 
         if (args.Contains("--diag"))
             return RunDiagnostics();

@@ -4,24 +4,52 @@ using Microsoft.Win32;
 
 namespace FeatherWall.Tests;
 
-// Real .lnk files and a real HKCU key under a throwaway name, as in StartMenuShortcutTests.
+// Real .lnk files, as in StartMenuShortcutTests, and a real HKCU key under a throwaway name.
 public class UninstallCleanupTests : IDisposable
 {
-    private const string InstallDir = @"C:\Users\me\AppData\Local\FeatherWallApp\current";
+    // The shape the hook really gets: AppContext.BaseDirectory, which ends in a separator.
+    private const string InstallDir = @"C:\Users\me\AppData\Local\FeatherWallApp\current\";
+    private const string TestKeyRoot = @"Software\FeatherWallTests";
     private readonly string _dir = Directory.CreateTempSubdirectory("fw-uninstall-").FullName;
-    private readonly string _runKey = $@"Software\FeatherWallTests\{Guid.NewGuid():N}";
+    private readonly string _runKey = $@"{TestKeyRoot}\{Guid.NewGuid():N}";
     private string Lnk => Path.Combine(_dir, "FeatherWall.lnk");
 
     public void Dispose()
     {
         Directory.Delete(_dir, recursive: true);
         Registry.CurrentUser.DeleteSubKeyTree(_runKey, throwOnMissingSubKey: false);
+        using (var root = Registry.CurrentUser.OpenSubKey(TestKeyRoot))
+            if (root is null || root.SubKeyCount > 0 || root.ValueCount > 0) return;
+        Registry.CurrentUser.DeleteSubKey(TestKeyRoot, throwOnMissingSubKey: false);
     }
+
+    [Theory]
+    [InlineData("--veloapp-install", "0.3.2")]
+    [InlineData("--veloapp-uninstall", "0.3.2")]
+    [InlineData("--VELOAPP-updated", "0.3.2")]
+    public void IsInstallerHook_ForVelopacksOwnLaunches(params string[] args) =>
+        Assert.True(UninstallCleanup.IsInstallerHook(args));
+
+    // Every other launch stays clear of Velopack, which would otherwise write its log and set an
+    // app model ID on each start.
+    [Theory]
+    [InlineData]
+    [InlineData("--settings")]
+    [InlineData("--diag")]
+    [InlineData("--no-shortcut", "--veloapp-install")]
+    public void IsInstallerHook_NotForAnythingElse(params string[] args) =>
+        Assert.False(UninstallCleanup.IsInstallerHook(args));
+
+    [Fact]
+    public void PointsInto_TakesTheFolderWithOrWithoutItsSeparator() =>
+        Assert.True(UninstallCleanup.PointsInto(@"C:\Apps\FW\featherwall.exe", @"C:\Apps\FW"));
 
     [Theory]
     [InlineData(@"C:\Users\me\AppData\Local\FeatherWallApp\current\featherwall.exe")]
     [InlineData("\"C:\\Users\\me\\AppData\\Local\\FeatherWallApp\\current\\featherwall.exe\"")]
     [InlineData(@"c:\users\ME\appdata\local\featherwallapp\CURRENT\featherwall.exe")]
+    [InlineData("\"C:\\Users\\me\\AppData\\Local\\FeatherWallApp\\current\\featherwall.exe\" --settings")]
+    [InlineData(@"C:\Users\me\AppData\Local\FeatherWallApp\current\featherwall.exe --settings")]
     public void PointsInto_TheInstalledExe(string stored) =>
         Assert.True(UninstallCleanup.PointsInto(stored, InstallDir));
 

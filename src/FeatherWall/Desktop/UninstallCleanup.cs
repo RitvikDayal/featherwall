@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using FeatherWall.Common;
 using FeatherWall.Config;
 using FeatherWall.Interop;
@@ -12,22 +13,50 @@ namespace FeatherWall.Desktop;
 /// zip copy elsewhere keeps its own.</summary>
 public static class UninstallCleanup
 {
+    /// <summary>Whether Velopack started this process to run an install or uninstall hook. Only
+    /// then is Velopack called at all: on any other start it would append to its own log and set its
+    /// app model ID, for nothing.</summary>
+    public static bool IsInstallerHook(string[] args) =>
+        args.Length > 0 && args[0].StartsWith("--veloapp-", StringComparison.OrdinalIgnoreCase);
+
     public static void Run(string installDir)
     {
         // Velopack has already force-stopped this copy, so its own exit path never ran. It stops only
         // this install, though: a zip copy still running owns the saved wallpaper and is drawing over
-        // the desktop, and puts both back itself when it exits.
-        if (User32.FindWindowW("FeatherWallMessage", null) == IntPtr.Zero)
+        // the desktop, puts both back itself when it exits, and would save its own idea of the
+        // shortcut flag over ours.
+        if (AnotherCopyRunning(installDir))
         {
-            Try("restore the wallpaper", () => Engine.RestoreSavedWallpaper());
-            Try("restore the desktop", DesktopLayerHost.RestoreDesktop);
+            Log.Info("Uninstall: another FeatherWall is running, so its wallpaper and config are left to it");
+            Try("remove the Start menu entry", () => RemoveShortcut(installDir));
         }
         else
         {
-            Log.Info("Uninstall: another FeatherWall is running, so its wallpaper is left to it");
+            Try("restore the wallpaper", () => Engine.RestoreSavedWallpaper());
+            Try("restore the desktop", DesktopLayerHost.RestoreDesktop);
+            Try("remove the Start menu entry", () => { if (RemoveShortcut(installDir)) ForgetShortcut(); });
         }
-        Try("remove the Start menu entry", () => { if (RemoveShortcut(installDir)) ForgetShortcut(); });
         Try("remove the sign-in entry", () => RemoveAutostart(installDir));
+    }
+
+    /// <summary>Velopack terminates this install's copy without waiting for it to go, so a message
+    /// window owned by this install's exe is that copy on its way out: wait for it, then look again.</summary>
+    private static bool AnotherCopyRunning(string installDir)
+    {
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            var window = User32.FindWindowW("FeatherWallMessage", null);
+            if (window == IntPtr.Zero) return false;
+            User32.GetWindowThreadProcessId(window, out uint pid);
+            try
+            {
+                using var process = Process.GetProcessById((int)pid);
+                if (!PointsInto(process.MainModule?.FileName, installDir)) return true;
+                process.WaitForExit(5000);
+            }
+            catch (Exception) { Thread.Sleep(200); } // exiting while we looked
+        }
+        return true;
     }
 
     /// <summary>Whether a shortcut target or a Run value, quoted or not, names a file inside
@@ -58,7 +87,6 @@ public static class UninstallCleanup
     public static void ForgetShortcut(string? configPath = null)
     {
         configPath ??= ConfigStore.ConfigPath;
-        if (!File.Exists(configPath)) return;
         var config = ConfigStore.Load(configPath, out bool unreadable, ranBefore: true);
         if (unreadable || !config.StartMenuShortcutAdded) return;
         config.StartMenuShortcutAdded = false;
