@@ -1177,8 +1177,8 @@ public sealed class Engine : IDisposable
 
 public static class Autostart
 {
-    private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string ValueName = "FeatherWall";
+    public const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
+    public const string ValueName = "FeatherWall";
 
     public static bool IsEnabled()
     {

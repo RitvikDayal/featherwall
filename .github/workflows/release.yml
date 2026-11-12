@@ -44,6 +44,26 @@ jobs:
             ForEach-Object { "$($_.Hash.ToLower())  featherwall-$tag-win-x64.zip" } |
             Out-File "featherwall-$tag-win-x64.zip.sha256" -Encoding ascii
 
+      # Per-user Setup.exe (Velopack); it installs .NET 10 first when missing, which asks for admin.
+      # The fixed name lets the site link releases/latest/download/FeatherWall-Setup.exe. The id is
+      # not "FeatherWall": %LOCALAPPDATA%\FeatherWall holds the log, and Velopack offers to wipe a
+      # folder that isn't empty. No Velopack shortcuts: the app keeps its own Start menu entry.
+      - name: Installer
+        shell: pwsh
+        run: |
+          $tag = "${{ github.event.inputs.tag }}"
+          if (-not $tag) { $tag = "${{ github.ref_name }}" }
+          dotnet tool install -g vpk --version 1.2.161
+          vpk pack --packId FeatherWallApp --packTitle FeatherWall --packAuthors "Ritvik Dayal" `
+            --packVersion $tag.TrimStart('v') --packDir publish --mainExe featherwall.exe `
+            --icon src/FeatherWall/featherwall.ico --framework net10.0-x64-desktop --runtime win-x64 `
+            --shortcuts "" -o velopack
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item velopack/FeatherWallApp-win-Setup.exe FeatherWall-Setup.exe
+          Get-FileHash FeatherWall-Setup.exe -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLower())  FeatherWall-Setup.exe" } |
+            Out-File FeatherWall-Setup.exe.sha256 -Encoding ascii
+
       - name: Draft release
         uses: softprops/action-gh-release@v3
         with:
@@ -52,9 +72,10 @@ jobs:
           files: |
             featherwall-*-win-x64.zip
             featherwall-*-win-x64.zip.sha256
+            FeatherWall-Setup.exe
+            FeatherWall-Setup.exe.sha256
           body: |
-            Requires the [.NET 10 desktop runtime](https://dotnet.microsoft.com/download/dotnet/10.0)
-            (the build is framework-dependent, which is what keeps the download small).
+            `FeatherWall-Setup.exe` installs FeatherWall for your user, and the .NET 10 desktop runtime too if it is missing. The zip needs the [.NET 10 desktop runtime](https://dotnet.microsoft.com/download/dotnet/10.0) installed already.
 
             Releases are **unsigned**, so SmartScreen will warn. Verify the SHA-256 against the
             `.sha256` file, or build from source.
