@@ -1,5 +1,6 @@
 using FeatherWall.Common;
 using FeatherWall.Config;
+using FeatherWall.Interop;
 using Microsoft.Win32;
 
 namespace FeatherWall.Desktop;
@@ -13,9 +14,18 @@ public static class UninstallCleanup
 {
     public static void Run(string installDir)
     {
-        // Velopack has already force-stopped the app, so its own exit path never ran.
-        Try("restore the wallpaper", () => Engine.RestoreSavedWallpaper());
-        Try("restore the desktop", DesktopLayerHost.RestoreDesktop);
+        // Velopack has already force-stopped this copy, so its own exit path never ran. It stops only
+        // this install, though: a zip copy still running owns the saved wallpaper and is drawing over
+        // the desktop, and puts both back itself when it exits.
+        if (User32.FindWindowW("FeatherWallMessage", null) == IntPtr.Zero)
+        {
+            Try("restore the wallpaper", () => Engine.RestoreSavedWallpaper());
+            Try("restore the desktop", DesktopLayerHost.RestoreDesktop);
+        }
+        else
+        {
+            Log.Info("Uninstall: another FeatherWall is running, so its wallpaper is left to it");
+        }
         Try("remove the Start menu entry", () => { if (RemoveShortcut(installDir)) ForgetShortcut(); });
         Try("remove the sign-in entry", () => RemoveAutostart(installDir));
     }
