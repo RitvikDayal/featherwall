@@ -2,7 +2,7 @@
 
 > FeatherWall is a free, open-source (MIT) live wallpaper app for Windows 10 and 11. It plays a video or an image as the desktop wallpaper and adds clock, battery and now-playing music widgets in seven styles. It runs as one process with no browser engine, no account and no telemetry.
 
-Install with `winget install RitvikDayal.FeatherWall`, or download the ZIP from GitHub Releases. It needs the .NET 10 desktop runtime. Current version: 0.3.1, released 2026-11-11.
+Install with `winget install RitvikDayal.FeatherWall`, run FeatherWall-Setup.exe from GitHub Releases, or download the ZIP. The installer adds the .NET 10 desktop runtime if it is missing; winget and the ZIP need it installed. Current version: 0.3.1, released 2026-11-11.
 
 ## Key facts
 
@@ -13,7 +13,7 @@ Install with `winget install RitvikDayal.FeatherWall`, or download the ZIP from 
 - Widgets: a clock in any installed font, a battery halo, and a now-playing record that shows real album art from the Windows media session.
 - Measured cost on the test machine: a still image used 0.008% CPU and about 110 MB of memory; 4K60 video used 0.3% to 0.5% CPU, on the integrated GPU.
 - Playback stops for fullscreen apps, the lock screen, remote desktop sessions and battery saver.
-- Built in C# on Win32, Direct3D 11 and DirectComposition. The download is about 7.3 MB.
+- Built in C# on Win32, Direct3D 11 and DirectComposition. The ZIP is about 7.3 MB and the installer about 17.8 MB.
 - Compared with Wallpaper Engine or Lively Wallpaper: FeatherWall covers video and image wallpapers only; it does not run web or interactive wallpapers. No side-by-side measurement against those apps has been published.
 - Not yet verified on real hardware: multi-monitor layouts, the classic Windows 10 WorkerW desktop, and recovery after an explorer.exe restart.
 
@@ -21,7 +21,7 @@ Install with `winget install RitvikDayal.FeatherWall`, or download the ZIP from 
 
 - [Website](https://ritvikdayal.github.io/featherwall/): styles, measurements, install
 - [Source code](https://github.com/RitvikDayal/featherwall): README with install steps and configuration
-- [Releases](https://github.com/RitvikDayal/featherwall/releases): ZIP downloads with SHA-256 hashes
+- [Releases](https://github.com/RitvikDayal/featherwall/releases): installer and ZIP downloads with SHA-256 hashes
 - [Architecture](https://github.com/RitvikDayal/featherwall/blob/main/docs/architecture.md): how it attaches to the Windows desktop
 - [Benchmark](https://github.com/RitvikDayal/featherwall/blob/main/docs/benchmark.md): method and raw measurements
 - [winget package](https://github.com/microsoft/winget-pkgs/tree/master/manifests/r/RitvikDayal/FeatherWall): RitvikDayal.FeatherWall

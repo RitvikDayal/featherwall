@@ -30,6 +30,11 @@ winget install RitvikDayal.FeatherWall
 Windows 10 1809 or newer, plus the [.NET 10 desktop runtime](https://dotnet.microsoft.com/download/dotnet/10.0).
 It installs per user without admin rights. `winget upgrade RitvikDayal.FeatherWall` keeps it current.
 
+**Or the installer.** Download [`FeatherWall-Setup.exe`](https://github.com/RitvikDayal/featherwall/releases/latest/download/FeatherWall-Setup.exe) and run it.
+It installs for your user, adds FeatherWall to the Start menu, and uninstalls from Apps & Features.
+If the .NET 10 desktop runtime is missing it installs that first, which asks for admin. It is
+unsigned, so SmartScreen will warn: choose More info, then Run anyway.
+
 <details>
 <summary><b>Or take the ZIP, or build it yourself</b></summary>
 
