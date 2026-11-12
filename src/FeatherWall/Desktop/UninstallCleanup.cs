@@ -1,4 +1,5 @@
 using FeatherWall.Common;
+using FeatherWall.Config;
 using Microsoft.Win32;
 
 namespace FeatherWall.Desktop;
@@ -15,7 +16,7 @@ public static class UninstallCleanup
         // Velopack has already force-stopped the app, so its own exit path never ran.
         Try("restore the wallpaper", () => Engine.RestoreSavedWallpaper());
         Try("restore the desktop", DesktopLayerHost.RestoreDesktop);
-        Try("remove the Start menu entry", () => RemoveShortcut(installDir));
+        Try("remove the Start menu entry", () => { if (RemoveShortcut(installDir)) ForgetShortcut(); });
         Try("remove the sign-in entry", () => RemoveAutostart(installDir));
     }
 
@@ -40,6 +41,18 @@ public static class UninstallCleanup
         if (!PointsInto(StartMenuShortcut.ReadTarget(lnkPath), installDir)) return false;
         File.Delete(lnkPath);
         return true;
+    }
+
+    /// <summary>config.json outlives the uninstall. Still saying the shortcut was added, it would
+    /// make a reinstall treat the removed shortcut as one the user deleted, and never recreate it.</summary>
+    public static void ForgetShortcut(string? configPath = null)
+    {
+        configPath ??= ConfigStore.ConfigPath;
+        if (!File.Exists(configPath)) return;
+        var config = ConfigStore.Load(configPath, out bool unreadable, ranBefore: true);
+        if (unreadable || !config.StartMenuShortcutAdded) return;
+        config.StartMenuShortcutAdded = false;
+        ConfigStore.Save(config, configPath);
     }
 
     public static bool RemoveAutostart(string installDir, string runKey = Autostart.RunKey)
