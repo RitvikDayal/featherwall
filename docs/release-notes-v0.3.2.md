@@ -12,7 +12,9 @@ The installer is unsigned, like the zip, so SmartScreen warns the first time: cl
 
 ## Moving from the zip to the installer
 
-1. Right-click the feather in the tray, then **Exit FeatherWall**.
+1. Right-click the feather in the tray, then **Exit FeatherWall**. Do this first: while the zip copy runs, Setup only opens that copy's Settings, and the steps below would change the old copy instead of the new one.
 2. Run `FeatherWall-Setup.exe`. The Start menu entry now opens the installed copy.
 3. If you use **Run at startup**, untick it and tick it again in the installed copy, so Windows starts the new copy rather than the old folder.
 4. Delete the old folder.
+
+Installed with winget? Keep using `winget upgrade RitvikDayal.FeatherWall`; these steps are for the zip.
