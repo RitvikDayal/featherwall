@@ -113,9 +113,11 @@ or you choose it. Size goes from 50 to 300%.
 
 <sub>A real screen recording of a 4000x2250 clip. <i>Big Buck Bunny</i>, (c) copyright 2008 Blender Foundation, <a href="https://peach.blender.org">peach.blender.org</a>, <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>.</sub>
 
-**A record for whatever you're playing.** Real album art from the Windows media session, turning
-at 33⅓ rpm with the track's progress on the rim. Any app with media controls counts, browser tabs
-included. The record and the battery halo stay off until you turn on the info widget.
+**A music pill for whatever you're playing.** Real album art from the Windows media session with the
+source app it came from, animated equalizer bars, and working previous / play-pause / next buttons —
+clickable, driving the player through the Windows media session. Any app with media controls counts,
+browser tabs included. The bars move only while something is actually playing; they stop with the
+desktop covered or the display off.
 
 <div align="center">
 
@@ -190,8 +192,8 @@ state changed during the sampling window. Full method, raw records and every cor
   `nvidia-smi` shows nothing on the RTX 5090. Your games keep the big GPU.
 - **Paused means stopped.** Fullscreen apps, the lock screen, remote sessions and battery saver stop
   playback outright. Memory stays allocated so resuming is instant.
-- **Only the record animates.** It stops when playback stops, the desktop is covered or the display
-  sleeps; turn off spin and its timer never runs. Everything else redraws on a Windows event.
+- **Only the music pill animates.** Equalizer bars stop when playback stops, the desktop is covered
+  or the display sleeps; everything else redraws on a Windows event.
 - **Add the memory columns** for the real footprint: about 470 MB for 4K60.
 - **CPU varies between runs**, so the table shows ranges. Treat any single figure as one sample.
 

@@ -20,8 +20,8 @@ public sealed class Tiles : IGroupTheme
     public ClockAnchor DefaultPosition => ClockAnchor.BottomRight;
 
     private const float Col = 250f, Gap = 18f, Radius = 34f, Inner = 26f;
-    private const float Cookie = 198f, MusicRecord = 110f, BatteryRing = 90f;
-    private const float LabelPx = 18f, BigPx = 56f, BatteryPx = 48f, TitlePx = 28f, ArtistPx = 20f, BarH = 6f, BarGap = 14f;
+    private const float Cookie = 198f, BatteryRing = 90f;
+    private const float LabelPx = 18f, BigPx = 56f, BatteryPx = 48f;
 
     private static readonly Color Card = Color.FromArgb(184, 18, 20, 26);
     private static readonly Color Edge = Color.FromArgb(18, 255, 255, 255);
@@ -42,8 +42,8 @@ public sealed class Tiles : IGroupTheme
 
         float col = GroupThemes.U(Col, s), gap = GroupThemes.U(Gap, s), inner = GroupThemes.U(Inner, s);
         float width = col * 2 + gap;
-        float musicH = GroupThemes.U(MusicRecord, s) + inner * 2;
         float batteryH = GroupThemes.U(BatteryRing, s) + inner * 2;
+        var strip = track is null ? (GroupThemes.StripLayout?)null : GroupThemes.PaddedStrip(track.Value, input.Source, s);
 
         var cards = new List<(string Kind, RectangleF Box)>();
         float y = 0;
@@ -53,7 +53,7 @@ public sealed class Tiles : IGroupTheme
             if (date) cards.Add(("date", new RectangleF(col + gap, y, col, col)));
             y += col + gap;
         }
-        if (track is not null) { cards.Add(("music", new RectangleF(0, y, width, musicH))); y += musicH + gap; }
+        if (strip is { } sl) { cards.Add(("music", new RectangleF(0, y, width, sl.Size.Height))); y += sl.Size.Height + gap; }
         if (battery is not null) { cards.Add(("battery", new RectangleF(0, y, width, batteryH))); y += batteryH + gap; }
         float height = y - gap;
 
@@ -63,12 +63,18 @@ public sealed class Tiles : IGroupTheme
         for (int i = 0; i < cards.Count; i++)
             cards[i] = (cards[i].Kind, new RectangleF(cards[i].Box.X + pad, cards[i].Box.Y + pad, cards[i].Box.Width, cards[i].Box.Height));
 
-        var faceBox = Rectangle.Empty;
-        if (track is not null)
+        Rectangle[]? buttons = null;
+        float stripInnerX = 0f;
+        if (strip is { } stripLayout)
         {
-            var music = cards.First(c => c.Kind == "music").Box;
-            float rec = GroupThemes.U(MusicRecord, s);
-            faceBox = Rectangle.Round(new RectangleF(music.X + inner, music.Y + inner, rec, rec));
+            var slot = cards.First(c => c.Kind == "music").Box;
+            stripInnerX = (slot.Width - stripLayout.Metrics.Size.Width) / 2f;
+            buttons =
+            [
+                Shift(stripLayout.Buttons[0], (int)(slot.X + stripInnerX), (int)slot.Y),
+                Shift(stripLayout.Buttons[1], (int)(slot.X + stripInnerX), (int)slot.Y),
+                Shift(stripLayout.Buttons[2], (int)(slot.X + stripInnerX), (int)slot.Y),
+            ];
         }
 
         void Paint(Graphics g)
@@ -82,13 +88,20 @@ public sealed class Tiles : IGroupTheme
                 {
                     case "clock": PaintClock(g, box, input, s); break;
                     case "date": PaintDate(g, box, input, s, inner); break;
-                    case "music": PaintMusic(g, box, input, s, inner, faceBox); break;
+                    case "music":
+                        var musicSave = g.Save();
+                        g.TranslateTransform(box.X + stripInnerX, box.Y);
+                        var innerStrip = MusicStrip.Measure(g, track!.Value, input.Source, s);
+                        float phase = (Environment.TickCount64 % 100_000) / 100_000f;
+                        MusicStrip.Paint(g, innerStrip, track.Value, input.TrackArt, s, phase);
+                        g.Restore(musicSave);
+                        break;
                     case "battery": PaintBattery(g, box, input, s, inner); break;
                 }
             }
         }
 
-        return [new GroupPanel("tiles", new Rectangle(origin, size), faceBox, Paint)];
+        return [new GroupPanel("tiles", new Rectangle(origin, size), Rectangle.Empty, Paint, buttons)];
     }
 
     private static void PaintCard(Graphics g, RectangleF box, float s)
@@ -151,38 +164,6 @@ public sealed class Tiles : IGroupTheme
         ThemeFonts.DrawTracked(g, month, labelFont, label, x, y, labelTracking);
     }
 
-    private static void PaintMusic(Graphics g, RectangleF box, GroupInput input, float s, float inner, Rectangle face)
-    {
-        var r = input.Track!.Value;
-        float fade = r.IsPlaying ? 1f : 0.55f;
-        float x = face.Right + GroupThemes.U(22f, s), right = box.Right - inner;
-        float maxW = right - x;
-        using var titleFont = ThemeFonts.Create(ThemeFonts.DisplaySemibold, GroupThemes.Text(TitlePx, s));
-        using var artistFont = ThemeFonts.Create(ThemeFonts.Text, GroupThemes.Text(ArtistPx, s));
-        string title = GroupThemes.FitText(g, r.Title ?? "", titleFont, maxW);
-        string artist = GroupThemes.FitText(g, r.Artist ?? "", artistFont, maxW);
-        var ts = g.MeasureString(title.Length == 0 ? "Ag" : title, titleFont, PointF.Empty, ThemeFonts.Tight);
-        var asz = g.MeasureString(artist.Length == 0 ? "Ag" : artist, artistFont, PointF.Empty, ThemeFonts.Tight);
-        float barH = GroupThemes.U(BarH, s), barGap = GroupThemes.U(BarGap, s);
-        float block = ts.Height + asz.Height + (input.Disc.ShowProgress ? barGap + barH : 0);
-        float y = box.Y + (box.Height - block) / 2f;
-
-        using (var ink = new SolidBrush(Color.FromArgb((int)(245 * fade), 255, 255, 255)))
-            g.DrawString(title, titleFont, ink, x, y, ThemeFonts.Tight);
-        using (var dim = new SolidBrush(Color.FromArgb((int)(153 * fade), 255, 255, 255)))
-            g.DrawString(artist, artistFont, dim, x, y + ts.Height, ThemeFonts.Tight);
-        if (!input.Disc.ShowProgress) return;
-
-        var bar = new RectangleF(x, y + ts.Height + asz.Height + barGap, maxW, barH);
-        using (var track = new SolidBrush(Color.FromArgb(31, 255, 255, 255)))
-        using (var path = Rounded(bar, barH / 2f)) g.FillPath(track, path);
-        float done = bar.Width * (float)Math.Clamp(r.Progress, 0, 1);
-        if (done < barH) return;
-        using var accent = new SolidBrush(GroupThemes.Alpha(input.Accent, fade));
-        using var filled = Rounded(bar with { Width = done }, barH / 2f);
-        g.FillPath(accent, filled);
-    }
-
     private static void PaintBattery(Graphics g, RectangleF box, GroupInput input, float s, float inner)
     {
         var r = input.Battery!.Value;
@@ -213,6 +194,8 @@ public sealed class Tiles : IGroupTheme
         ThemeFonts.DrawTracked(g, word, labelFont, label, x, y, labelTracking);
         g.DrawString(value, bigFont, ink, x, y + ls.Height + GroupThemes.U(6f, s), ThemeFonts.Tight);
     }
+
+    private static Rectangle Shift(Rectangle r, int dx, int dy) => new(r.X + dx, r.Y + dy, r.Width, r.Height);
 
     private static GraphicsPath Rounded(RectangleF r, float radius)
     {

@@ -23,6 +23,9 @@ public static partial class User32
     [DllImport("user32.dll")]
     public static extern IntPtr DefWindowProcW(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam);
 
+    // Messages a clickable invisible window answers.
+    public const uint WM_LBUTTONDOWN = 0x0201;
+
     [DllImport("user32.dll", SetLastError = true)]
     public static extern bool DestroyWindow(IntPtr hwnd);
 

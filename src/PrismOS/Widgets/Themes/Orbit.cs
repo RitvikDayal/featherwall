@@ -22,7 +22,7 @@ public sealed class Orbit : IGroupTheme
 
     private static readonly Color Disc = Color.FromArgb(97, 10, 8, 16);
 
-    /// <summary>How far through the hour, 0 to 1 — the dial's accent arc.</summary>
+    /// <summary>How far through the hour, 0 to 1 Ã¢â‚¬â€ the dial's accent arc.</summary>
     public static float HourFraction(DateTime now) => (now.Minute * 60 + now.Second) / 3600f;
 
     public IReadOnlyList<GroupPanel> Layout(GroupInput input)
@@ -31,71 +31,64 @@ public sealed class Orbit : IGroupTheme
         bool clock = input.Clock.Enabled;
         var track = input.Track;
         var battery = input.Battery;
-        int moons = (track is null ? 0 : 1) + (battery is null ? 0 : 1);
-        if (!clock && moons == 0) return [];
+        var strip = track is null ? (GroupThemes.StripLayout?)null : GroupThemes.PaddedStrip(track.Value, input.Source, s);
+        if (!clock && strip is null && battery is null) return [];
 
         float dial = GroupThemes.U(Dial, s), sat = GroupThemes.U(Satellite, s);
-        float rowGap = GroupThemes.U(RowGap, s), satGap = GroupThemes.U(SatGap, s);
-        float captionGap = GroupThemes.U(CaptionGap, s), captionPx = GroupThemes.Text(CaptionPx, s);
-        float captionWidth = sat + satGap * 0.8f;
+        float rowGap = GroupThemes.U(RowGap, s), captionGap = GroupThemes.U(CaptionGap, s), captionPx = GroupThemes.Text(CaptionPx, s);
+        float captionWidth = sat + GroupThemes.U(SatGap, s) * 0.8f;
         float tracking = captionPx * 0.14f;
 
         using var captionFont = ThemeFonts.Create(ThemeFonts.Bahn, captionPx);
-        float lineH;
-        using (var mg = Graphics.FromHwnd(IntPtr.Zero))
-            lineH = mg.MeasureString("Ag", captionFont, PointF.Empty, ThemeFonts.Tight).Height;
-        int captionLines = track is not null ? 2 : moons > 0 ? 1 : 0;
+        float lineH = Graphics.FromHwnd(IntPtr.Zero).MeasureString("Ag", captionFont, PointF.Empty, ThemeFonts.Tight).Height;
 
-        float rowWidth = moons == 0 ? 0 : moons * captionWidth + (moons - 1) * (satGap * 0.2f);
-        float colWidth = Math.Max(clock ? dial : 0, rowWidth);
-        float rowHeight = moons == 0 ? 0 : sat + captionGap + captionLines * lineH;
-        float colHeight = (clock ? dial : 0) + (clock && moons > 0 ? rowGap : 0) + rowHeight;
+        float dialW = clock ? dial : 0f;
+        float stripW = strip?.Size.Width ?? 0f;
+        float stripH = strip?.Size.Height ?? 0f;
+        float rowW = battery is null ? 0 : captionWidth;
+        float colWidth = Math.Max(dialW, Math.Max(stripW, rowW));
+        float colHeight = dialW + (clock && (strip is not null || battery is not null) ? rowGap : 0)
+                        + stripH + (strip is not null && battery is not null ? rowGap : 0)
+                        + (battery is null ? 0 : sat + captionGap + lineH);
 
         int pad = GroupThemes.Pad(s);
         var size = new Size((int)Math.Ceiling(colWidth) + pad * 2, (int)Math.Ceiling(colHeight) + pad * 2);
         var origin = GroupThemes.Place(input.WorkArea, size, input.Position ?? DefaultPosition, GroupThemes.Margin(input));
 
-        // Where everything sits inside the panel.
-        var dialBox = new RectangleF(pad + (colWidth - dial) / 2f, pad, dial, dial);
-        float rowTop = pad + (clock ? dial + (moons > 0 ? rowGap : 0) : 0);
-        float rowLeft = pad + (colWidth - rowWidth) / 2f;
-        var slots = new List<(RectangleF Ring, RectangleF Caption, bool IsRecord)>();
-        for (int i = 0, k = 0; i < 2; i++)
-        {
-            bool isRecord = i == 0;
-            if (isRecord ? track is null : battery is null) continue;
-            float x = rowLeft + k * (captionWidth + satGap * 0.2f);
-            var ring = new RectangleF(x + (captionWidth - sat) / 2f, rowTop, sat, sat);
-            var caption = new RectangleF(x, rowTop + sat + captionGap, captionWidth, captionLines * lineH);
-            slots.Add((ring, caption, isRecord));
-            k++;
-        }
+        float stripX = pad + (colWidth - stripW) / 2f;
+        float stripY = pad + (clock ? dial + rowGap : 0f);
+        int battTop = (int)(stripY + stripH + (strip is not null && battery is not null ? rowGap : 0f));
+        var ring = new RectangleF(pad + (colWidth - sat) / 2f, battTop, sat, sat);
+        var caption = new RectangleF(pad + (colWidth - captionWidth) / 2f, battTop + sat + captionGap, captionWidth, lineH);
 
-        var faceBox = Rectangle.Empty;
-        var recordSlot = slots.FirstOrDefault(sl => sl.IsRecord);
-        if (track is not null)
-        {
-            float inset = recordSlot.Ring.Width * 12f / 128f;
-            var face = RectangleF.Inflate(recordSlot.Ring, -inset, -inset);
-            faceBox = Rectangle.Round(face);
-        }
+        Rectangle[]? buttons = strip is null ? null :
+            [
+                Shift(strip.Value.Buttons[0], (int)stripX, (int)stripY),
+                Shift(strip.Value.Buttons[1], (int)stripX, (int)stripY),
+                Shift(strip.Value.Buttons[2], (int)stripX, (int)stripY),
+            ];
 
         void Paint(Graphics g)
         {
-            // Fonts are made again here: the ones Layout measured with are disposed by the time a
-            // panel is painted.
             using var captionFont = ThemeFonts.Create(ThemeFonts.Bahn, captionPx);
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-            if (clock) PaintDial(g, dialBox, input, s);
-            foreach (var (ring, caption, isRecord) in slots)
+            if (clock) PaintDial(g, new RectangleF(pad + (colWidth - dial) / 2f, pad, dial, dial), input, s);
+            if (strip is { } sl && track is { } t)
             {
-                if (isRecord) PaintRecordRing(g, ring, input, s, caption, captionFont, tracking, lineH);
-                else PaintBatteryRing(g, ring, input, s, caption, captionFont, tracking);
+                var inner = MusicStrip.Measure(g, t, input.Source, s);
+                float phase = (Environment.TickCount64 % 100_000) / 100_000f;
+                var save = g.Save();
+                g.TranslateTransform(stripX, stripY);
+                MusicStrip.Paint(g, inner, t, input.TrackArt, s, phase);
+                g.Restore(save);
             }
+            if (battery is not null) PaintBatteryRing(g, ring, input, s, caption, captionFont, tracking);
         }
 
-        return [new GroupPanel("orbit", new Rectangle(origin, size), faceBox, Paint)];
+        return [new GroupPanel("orbit", new Rectangle(origin, size), Rectangle.Empty, Paint, buttons)];
+
+        static Rectangle Shift(Rectangle r, int dx, int dy) => new(r.X + dx, r.Y + dy, r.Width, r.Height);
     }
 
     private static void PaintDial(Graphics g, RectangleF box, GroupInput input, float s)
@@ -114,7 +107,7 @@ public sealed class Orbit : IGroupTheme
                 double a = q * Math.PI / 2;
                 float r1 = 152f * k, r2 = 140f * k;
                 g.DrawLine(tick, cx + (float)Math.Sin(a) * r1, cy - (float)Math.Cos(a) * r1,
-                                 cx + (float)Math.Sin(a) * r2, cy - (float)Math.Cos(a) * r2);
+                                     cx + (float)Math.Sin(a) * r2, cy - (float)Math.Cos(a) * r2);
             }
 
         if (sweep > 0)
@@ -149,23 +142,6 @@ public sealed class Orbit : IGroupTheme
         if (date is null) return;
         using var dim = new SolidBrush(GroupThemes.DateInk(input.Clock));
         ThemeFonts.DrawTracked(g, date, dateFont, dim, cx - ds.Width / 2f, y + ts.Height + gap, dateTracking);
-    }
-
-    private static void PaintRecordRing(Graphics g, RectangleF box, GroupInput input, float s,
-                                        RectangleF caption, Font font, float tracking, float lineH)
-    {
-        var r = input.Track!.Value;
-        float k = box.Width / Satellite;
-        var ring = RectangleF.Inflate(box, -4f * k, -4f * k);
-        float fade = r.IsPlaying ? 1f : 0.55f;
-        float sweep = input.Disc.ShowProgress ? 360f * (float)Math.Clamp(r.Progress, 0, 1) : 0f;
-        GroupThemes.Ring(g, ring, Math.Max(3f * k, 1f), Disc, Color.FromArgb(41, 255, 255, 255),
-                         GroupThemes.Alpha(input.Accent, fade), sweep);
-
-        string title = (r.Title ?? "").ToUpper(CultureInfo.CurrentCulture);
-        string artist = (r.Artist ?? "").ToUpper(CultureInfo.CurrentCulture);
-        CaptionLine(g, title, font, Color.FromArgb((int)(230 * fade), 255, 255, 255), caption, 0, tracking);
-        CaptionLine(g, artist, font, Color.FromArgb((int)(138 * fade), 255, 255, 255), caption, lineH, tracking);
     }
 
     private static void PaintBatteryRing(Graphics g, RectangleF box, GroupInput input, float s,

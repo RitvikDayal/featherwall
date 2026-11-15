@@ -35,6 +35,7 @@ public static class ThemePreview
     private static readonly DateTime SampleTime = new(2026, 11, 10, 12, 30, 0);
     private static readonly NowPlayingReading SampleTrack = new("Bairan", "Banjaare", true, "preview", 0.42);
     private static readonly BatteryReading SampleBattery = new(76, BatteryState.OnBattery);
+    private static readonly string SampleSource = "Spotify";
 
     public static Bitmap Render(WidgetTheme theme, Size tile, Color accent, Image? backdrop, AppConfig? config = null, bool battery = true)
     {
@@ -67,23 +68,27 @@ public static class ThemePreview
         return result;
     }
 
+    private static Size StripMetrics(float scale)
+    {
+        using var g = Graphics.FromHwnd(IntPtr.Zero);
+        return MusicStrip.Measure(g, SampleTrack, SampleSource, scale).Size;
+    }
+
     private static void DrawClassic(Graphics g, AppConfig config, bool battery)
     {
         var clock = config.Clock;
-        var disc = config.Info.Disc;
         var halo = config.Info.Halo;
         float scale = Fit(ClockRenderer.Measure(clock, SampleTime).Total,
-                          NowPlayingRenderer.Measure(disc, SampleTrack).Total,
+                          StripMetrics(1f),
                           battery ? BatteryHaloRenderer.Measure(halo, SampleBattery) : Size.Empty);
 
         var cm = ClockRenderer.Measure(clock, SampleTime, scale);
         Place(g, cm.Total, (Canvas.Width - cm.Total.Width) / 2, Margin,
               bg => ClockRenderer.Paint(bg, clock, cm, ClockRenderer.ParseColor(clock.Color), cm.Total), shadow: 0f);
 
-        var rm = NowPlayingRenderer.Measure(disc, SampleTrack, scale);
-        using var face = DiscRenderer.RenderFace(Math.Max(rm.DiscBox.Width, 1), null, ClockRenderer.ParseColor(disc.AccentColor));
-        Place(g, rm.Total, Margin, Canvas.Height - Margin - rm.Total.Height,
-              bg => NowPlayingRenderer.Paint(bg, rm, disc, SampleTrack, face, 0.1f, (float)SampleTrack.Progress, scale), shadow: 0f);
+        var rm = StripMetrics(scale);
+        Place(g, rm, Margin, Canvas.Height - Margin - rm.Height,
+              bg => { var m = MusicStrip.Measure(bg, SampleTrack, SampleSource, scale); MusicStrip.Paint(bg, m, SampleTrack, null, scale, 0.35f); }, shadow: 0f);
 
         if (!battery) return; // a laptop preview shows the halo; a desktop preview does not
         var hs = BatteryHaloRenderer.Measure(halo, SampleBattery, scale);
@@ -93,23 +98,18 @@ public static class ThemePreview
 
     private static void DrawEditorial(Graphics g, Color accent, AppConfig config, bool battery)
     {
-        var disc = config.Info.Disc;
         var halo = config.Info.Halo;
         float unit = config.Widgets.ScaleFor(config.Clock);
         float scale = unit * Fit(Editorial.MeasureClock(config.Clock, SampleTime, unit).Total,
-                                 Editorial.MeasureRecord(disc, SampleTrack, unit).Total,
+                                 StripMetrics(unit),
                                  battery ? Editorial.MeasureHalo(halo, SampleBattery, unit) : Size.Empty);
         var cm = Editorial.MeasureClock(config.Clock, SampleTime, scale);
         Place(g, cm.Total, (Canvas.Width - cm.Total.Width) / 2, Margin / 2,
               bg => Editorial.PaintClock(bg, cm, accent, ClockRenderer.ParseColor(config.Clock.Color)), scale);
 
-        var rm = Editorial.MeasureRecord(disc, SampleTrack, scale);
-        using var face = DiscRenderer.RenderFace(Math.Max(rm.DiscBox.Width, 1), null, accent);
-        Place(g, rm.Total, Margin / 2, Canvas.Height - Margin / 2 - rm.Total.Height, bg =>
-        {
-            DiscRenderer.PaintFace(bg, rm.DiscBox, face, 0.1f, true);
-            Editorial.PaintRecordStatic(bg, rm, disc, SampleTrack, (float)SampleTrack.Progress, accent, scale);
-        }, scale);
+        var rm = StripMetrics(scale);
+        Place(g, rm, Margin / 2, Canvas.Height - Margin / 2 - rm.Height,
+              bg => { var m = MusicStrip.Measure(bg, SampleTrack, SampleSource, scale); MusicStrip.Paint(bg, m, SampleTrack, null, scale, 0.35f); }, scale);
 
         if (battery)
         {
@@ -131,7 +131,7 @@ public static class ThemePreview
         {
             var input = new GroupInput(SampleTime, config.Clock, config.Info.Disc, config.Info.Halo,
                 SampleTrack, battery ? SampleBattery : null, accent, unit * f, f, config.Widgets.Position,
-                new Rectangle(Point.Empty, Canvas), config.Info.MaxCharacters);
+                new Rectangle(Point.Empty, Canvas), config.Info.MaxCharacters, SampleSource);
             panels = theme.Layout(input);
             if (FitsWithoutOverlap(panels)) break;
         }

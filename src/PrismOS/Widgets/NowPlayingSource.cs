@@ -77,13 +77,69 @@ public sealed partial class NowPlayingSource : IWidgetSource
     private NowPlayingReading _current;
     private Bitmap? _art;
     private string? _artTrackId;
+    private string? _sourceApp;
 
-    /// <summary>What is playing, in parts, for the record to draw.</summary>
+    /// <summary>The media app's AUMID as Windows reports it, e.g. "Spotify.exe" or
+    /// "Chrome_..!AppTab". Null when there is no session.</summary>
+    public string? SourceApp =>
+        _sourceApp ??= _session?.SourceAppUserModelId;
+
     public NowPlayingReading Current => _current;
-
-    /// <summary>The current track's artwork, or null when it has none or the decode failed.
-    /// Owned here and disposed when the track changes — the renderer only borrows it.</summary>
     public Bitmap? Art => _art;
+
+    /// <summary>Media transport the buttons drive. Fire-and-forget: the buttons are paint, and
+    /// a player that does not answer (dead session, PMP window) must not block the click.</summary>
+    public enum MediaCommand { Previous, PlayPause, Next }
+
+    public void SendCommand(MediaCommand command) => _ = SendCommandAsync(command);
+
+    private async Task SendCommandAsync(MediaCommand command)
+    {
+        var session = _session;
+        if (session is null) return;
+        try
+        {
+            switch (command)
+            {
+                case MediaCommand.Previous: await session.TrySkipPreviousAsync(); break;
+                case MediaCommand.PlayPause: await session.TryTogglePlayPauseAsync(); break;
+                case MediaCommand.Next: await session.TrySkipNextAsync(); break;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"Media command {command} failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>Poor-man's FriendlyName for the common media apps; anything else shows the raw
+    /// token lowercased, or NOW PLAYING when that is nothing either.</summary>
+    public static string FriendlySourceName(string? aumid)
+    {
+        if (string.IsNullOrWhiteSpace(aumid)) return "Now playing";
+        string t = aumid.Trim().ToLowerInvariant();
+        static bool Has(string s, string needle) => s.Contains(needle, StringComparison.Ordinal);
+        if (Has(t, "spotify")) return "Spotify";
+        if (Has(t, "applemusic") || Has(t, "itunes")) return "Apple Music";
+        if (Has(t, "zune") || Has(t, "groove")) return "Groove";
+        if (Has(t, "youtube")) return "YouTube";
+        if (Has(t, "chrome")) return "Chrome";
+        if (Has(t, "msedge") || Has(t, "edge")) return "Edge";
+        if (Has(t, "firefox")) return "Firefox";
+        if (Has(t, "vlc")) return "VLC";
+        if (Has(t, "mpv")) return "mpv";
+        if (Has(t, "foobar")) return "foobar2000";
+        if (Has(t, "windowsplayer")) return "Media Player";
+        if (Has(t, "deezer")) return "Deezer";
+        if (Has(t, "tidal")) return "Tidal";
+        if (Has(t, "soundcloud")) return "SoundCloud";
+        if (Has(t, "plex")) return "Plex";
+        // Fall back to the raw app id: the part after the last '\' or '.', minus .exe.
+        int cut = t.LastIndexOfAny(['\\', '!', '.', '/']);
+        string token = cut >= 0 ? t[(cut + 1)..] : t;
+        if (token.EndsWith(".exe", StringComparison.Ordinal)) token = token[..^4];
+        return string.IsNullOrWhiteSpace(token) ? "Now playing" : char.ToUpperInvariant(token[0]) + token[1..];
+    }
 
     /// <summary>Serialises the end of InitialiseAsync against Dispose. RequestAsync resumes on a
     /// pool thread, so checking _disposed and then subscribing is two steps a main-thread Dispose
@@ -148,6 +204,7 @@ public sealed partial class NowPlayingSource : IWidgetSource
         }
 
         _session = _manager?.GetCurrentSession();
+        _sourceApp = null;
         if (_session is not null)
         {
             _session.MediaPropertiesChanged += OnMediaChanged;

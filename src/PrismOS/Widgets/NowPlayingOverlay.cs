@@ -10,18 +10,18 @@ using PrismOS.Widgets.Themes;
 
 namespace PrismOS.Widgets;
 
-/// <summary>The now-playing block on its own overlay visual: the record, the title, the artist.
+/// <summary>The now-playing pill on its own overlay visual: album art (with equalizer bars while
+/// something plays), the source app over the title over the artist, and working previous /
+/// play-pause / next buttons.
 ///
-/// This is the only thing in PrismOS that owns a frame clock, and it is deliberately hard to
-/// leave running. The timer exists only while all of these hold:
+/// Clicks on the buttons are delivered by an invisible clickable window
+/// (<see cref="RecordHitWindow"/>) — the composition tree itself is click-through by
+/// construction, so the buttons cannot be hit from it. The hit window paints nothing and moves
+/// with the pill.
 ///
-///   * something is actually playing (not paused, not stopped),
-///   * the desktop is visible (no window covering it),
-///   * the display is on,
-///   * and <see cref="DiscConfig.Rotate"/> is set.
-///
-/// Any of those going false stops it dead rather than throttling it. With Rotate off no timer is
-/// ever created and the whole design renders as a still image.</summary>
+/// The bars animate on the same 15 fps timer the old record used, and only while all of these
+/// hold: something is playing, the desktop is visible, the display is on, and Disc.Rotate
+/// (re-purposed as the animation switch) is set.</summary>
 public sealed class NowPlayingOverlay : IDisposable
 {
     private const string OverlayKey = "nowplaying";
@@ -35,17 +35,9 @@ public sealed class NowPlayingOverlay : IDisposable
     private readonly Timer _timer;
     private readonly Lock _sync = new();
 
+    private RecordHitWindow? _hitWindow;
     private SIZE _size;
-    private Bitmap? _face;
-    private string? _faceTrackId;
-
-    /// <summary>Whether the cached face was built with artwork.
-    ///
-    /// Artwork is fetched asynchronously, so it routinely lands *after* the first paint of the
-    /// track it belongs to. Keying staleness on the track alone meant that face was kept — same
-    /// track, so not stale — and the record showed the flat fallback for the rest of that song.</summary>
-    private bool _faceHasArt;
-    private float _turns;
+    private float _phase;
     private bool _disposed;
     private bool _suspended;   // display off
     private bool _covered;     // a window is over the desktop
@@ -108,7 +100,7 @@ public sealed class NowPlayingOverlay : IDisposable
     }
 
     /// <summary>A window is over the desktop, so nothing here is visible. Reuses the signal the
-    /// engine already computes for pausing video — the record should stop for exactly the reasons
+    /// engine already computes for pausing video — the widget should stop for exactly the reasons
     /// the wallpaper does.</summary>
     public void SetCovered(bool covered)
     {
@@ -120,33 +112,22 @@ public sealed class NowPlayingOverlay : IDisposable
         UpdateTimer();
     }
 
-    /// <summary>Starts or stops the frame clock. Called after anything that could change the
-    /// answer, and it is the only place the timer is armed.</summary>
+    /// <summary>Starts or stops the frame clock. The only place the timer is armed.</summary>
     private void UpdateTimer()
     {
-
         bool shouldTick;
         lock (_sync)
         {
             shouldTick = RecordSpin.ShouldTurn(_disposed, _suspended, _covered, _config.Disc.Rotate,
                                                _source.Current.IsPlaying, _size.Cx > 0 && _size.Cy > 0);
-
             if (shouldTick == _ticking) return;
             _ticking = shouldTick;
         }
 
         try
         {
-            if (shouldTick)
-            {
-                Log.Info("Now-playing: record turning");
-                _timer.Change(0, 1000 / RecordSpin.TimerFramesPerSecond);
-            }
-            else
-            {
-                Log.Info("Now-playing: record still");
-                _timer.Change(Timeout.Infinite, Timeout.Infinite);
-            }
+            if (shouldTick) _timer.Change(0, 1000 / RecordSpin.TimerFramesPerSecond);
+            else _timer.Change(Timeout.Infinite, Timeout.Infinite);
         }
         catch (ObjectDisposedException) { /* raced Dispose */ }
     }
@@ -158,7 +139,7 @@ public sealed class NowPlayingOverlay : IDisposable
             lock (_sync)
             {
                 if (_disposed || !_ticking) return;
-                _turns = (_turns + RecordSpin.DegreesPerSecond / 360f / RecordSpin.TimerFramesPerSecond) % 1f;
+                _phase = (Environment.TickCount64 / 150f) % (MathF.PI * 2f * 4f); // slow wobble, shared with the bars
             }
             Render();
         }
@@ -175,21 +156,21 @@ public sealed class NowPlayingOverlay : IDisposable
             if (_disposed || _suspended) return;
 
             var reading = _source.Current;
-            var metrics = IsEditorial
-                ? Editorial.MeasureRecord(_config.Disc, reading, ThemeScale)
-                : NowPlayingRenderer.Measure(_config.Disc, reading, (float)_dpiScale);
-            if (metrics.Total.IsEmpty)
+            if (DiscRenderer.Measure(_config.Disc, reading).IsEmpty)
             {
-                Log.Info($"Record: nothing to draw (title={reading.Title ?? "<none>"}, playing={reading.IsPlaying})");
                 _size = default;
-                DisposeFace();
                 try { _host.RemoveOverlay(OverlayKey); } catch { /* host may already be gone */ }
+                _hitWindow?.Hide();
                 return;
             }
 
-            EnsureFace(reading, metrics.DiscBox.Width);
+            float scale = ThemeScale;
+            using var measure = Graphics.FromHwnd(IntPtr.Zero);
+            var metrics = MusicStrip.Measure(measure, reading,
+                NowPlayingSource.FriendlySourceName(_source.SourceApp), scale);
+            int pad = (int)Math.Ceiling(ShadowRecipe.Default.Pad * Math.Max(scale, 0.05f));
+            var size = new SIZE { Cx = metrics.Size.Width + pad * 2, Cy = metrics.Size.Height + pad * 2 };
 
-            var size = new SIZE { Cx = metrics.Total.Width, Cy = metrics.Total.Height };
             var disc = _config.Disc;
             var screenPos = ClockLayout.Position(_monitor.WorkArea, size.Cx, size.Cy, disc.Anchor,
                 ClockLayout.ScaleMargin(disc.MarginLeft ?? disc.MarginX, _dpiScale),
@@ -210,64 +191,53 @@ public sealed class NowPlayingOverlay : IDisposable
                 overlay.SetOffset(offsetX, offsetY);
             }
 
-            using var bmp = new Bitmap(_size.Cx, _size.Cy, PixelFormat.Format32bppPArgb);
+            using var bmp = new Bitmap(size.Cx, size.Cy, PixelFormat.Format32bppPArgb);
             using (var g = Graphics.FromImage(bmp))
             {
-                if (IsEditorial)
-                {
-                    if (_face is not null && !metrics.DiscBox.IsEmpty)
-                        DiscRenderer.PaintFace(g, metrics.DiscBox, _face, _turns, reading.IsPlaying);
-                    Editorial.PaintRecordStatic(g, metrics, _config.Disc, reading, (float)reading.Progress,
-                                                _style.Accent, ThemeScale);
-                }
-                else
-                {
-                    NowPlayingRenderer.Paint(g, metrics, _config.Disc, reading, _face, _turns,
-                                             (float)reading.Progress, (float)_dpiScale);
-                }
+                g.TranslateTransform(pad, pad);
+                MusicStrip.Paint(g, metrics, reading, _source.Art, scale, _phase);
+                g.ResetTransform();
+                BakedShadow.DrawBehind(bmp, ShadowRecipe.Default, scale);
             }
-            if (IsEditorial) BakedShadow.DrawBehind(bmp, ShadowRecipe.Default, ThemeScale);
             overlay.PresentBitmap(bmp);
+
+            PositionHitWindow(metrics, screenPos, pad);
         }
     }
 
-    /// <summary>The record's face is composited once per track. Rebuilding it every frame would
-    /// mean redrawing the artwork and forty groove circles fifteen times a second.</summary>
-    private void EnsureFace(NowPlayingReading reading, int side)
+    /// <summary>The buttons live on the invisible clickable window, positioned in screen
+    /// coordinates over the pill's button band.</summary>
+    private void PositionHitWindow(MusicStrip.Metrics metrics, Interop.POINT screenPos, int pad)
     {
-        if (side <= 0)
+        if (_hitWindow is null)
+            _hitWindow = new RecordHitWindow(SendMediaCommand);
+
+        int ox = screenPos.X + pad;
+        int oy = screenPos.Y + pad;
+        var band = new Rectangle(ox + metrics.PrevBox.X, oy,
+            metrics.NextBox.Right - metrics.PrevBox.X, metrics.Size.Height);
+        var buttons = new Rectangle[]
         {
-            DisposeFace();
-            return;
-        }
-
-        // Artwork arriving for a track already on screen counts as stale. It does not go the
-        // other way: art never disappears mid-track, so a face that has art is not rebuilt just
-        // because a later read returned none.
-        bool stale = _face is null
-                     || _faceTrackId != reading.TrackId
-                     || _face.Width != side
-                     || (!_faceHasArt && _source.Art is not null);
-        if (!stale) return;
-
-        var art = _source.Art;
-        DisposeFace();
-        _face = DiscRenderer.RenderFace(side, art,
-            IsEditorial ? _style.Accent : ClockRenderer.ParseColor(_config.Disc.AccentColor));
-        _faceTrackId = reading.TrackId;
-        _faceHasArt = art is not null;
+            new(ox + metrics.PrevBox.X, oy + metrics.PrevBox.Y, metrics.PrevBox.Width, metrics.PrevBox.Height),
+            new(ox + metrics.PlayBox.X, oy + metrics.PlayBox.Y, metrics.PlayBox.Width, metrics.PlayBox.Height),
+            new(ox + metrics.NextBox.X, oy + metrics.NextBox.Y, metrics.NextBox.Width, metrics.NextBox.Height),
+        };
+        _hitWindow.Reposition(band, buttons);
     }
 
-    private bool IsEditorial => _style.Theme == WidgetTheme.Editorial;
-    private float ThemeScale => _style.Size * (float)_dpiScale;
-
-    private void DisposeFace()
+    private void SendMediaCommand(int index)
     {
-        _face?.Dispose();
-        _face = null;
-        _faceTrackId = null;
-        _faceHasArt = false;
+        if (_disposed) return;
+        var command = index switch
+        {
+            0 => NowPlayingSource.MediaCommand.Previous,
+            1 => NowPlayingSource.MediaCommand.PlayPause,
+            _ => NowPlayingSource.MediaCommand.Next,
+        };
+        _source.SendCommand(command);
     }
+
+    private float ThemeScale => _style.Size * (float)_dpiScale * (_config.Disc.Size / 112f);
 
     public void Dispose()
     {
@@ -278,7 +248,8 @@ public sealed class NowPlayingOverlay : IDisposable
             _ticking = false;
             _source.Changed -= OnSourceChanged;
             _timer.Dispose();
-            DisposeFace();
+            _hitWindow?.Dispose();
+            _hitWindow = null;
             try { _host.RemoveOverlay(OverlayKey); } catch { /* host may already be gone */ }
         }
     }

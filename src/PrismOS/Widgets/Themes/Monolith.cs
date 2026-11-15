@@ -7,9 +7,9 @@ using PrismOS.Config;
 namespace PrismOS.Widgets.Themes;
 
 /// <summary>Monolith: the weekday is the widget. Thin condensed capitals spaced far apart, the date
-/// and the time as small tracked lines under it, and the music and battery as one quiet line at the
-/// opposite edge. Two panels: the day block at the chosen position, the strip at the other end of
-/// the same column, so the pair frames the wallpaper rather than crowding one corner.
+/// and the time as small tracked lines under it, and the music and battery as one stacked set at the
+/// opposite edge. Two panels: the day block at the chosen position, the music set at the other end
+/// of the same column, so the pair frames the wallpaper rather than crowding one corner.
 ///
 /// Text aligns to the column it sits in: left, centred or right. Proportions are the 2026-11-10
 /// prototype's, through <see cref="GroupThemes.MockupUnit"/>.</summary>
@@ -21,7 +21,7 @@ public sealed class Monolith : IGroupTheme
 
     private const float DayPx = 118f, DayTracking = 0.62f;
     private const float LinePx = 30f, LineTracking = 0.3f, DateGap = 36f, TimeGap = 22f;
-    private const float StripPx = 22f, StripTracking = 0.32f, Record = 46f, StripGap = 22f, Rule = 60f, MaxText = 640f;
+    private const float StripPx = 22f, StripTracking = 0.32f, StripGap = 22f, MaxText = 640f;
 
     private static readonly Color Ink = Color.FromArgb(245, 255, 255, 255);
     private static readonly Color Dim = Color.FromArgb(140, 255, 255, 255);
@@ -59,17 +59,28 @@ public sealed class Monolith : IGroupTheme
         var battery = input.Battery;
         if (track is not null || battery is not null)
         {
-            // Capped short of the screen, as Poster caps its record line, so a long title at a large
-            // size cannot run the strip off the edge or into the day block.
-            var strip = StripLayout(mg, track, battery, s, input.WorkArea.Width * 0.42f);
-            var size = new Size((int)Math.Ceiling(strip.Width) + pad * 2, (int)Math.Ceiling(strip.Height) + pad * 2);
+            // The pill and, beneath it, the battery as a quiet tracked line: one stacked set,
+            // pinned to the opposite end of the same column.
+            // Cap short of the screen: at very large sizes the weekday can move, the pill cannot be allowed to run off the edge.
+            float stripCap = Math.Min(input.WorkArea.Width * 0.42f, GroupThemes.U(MaxText, s) + 400f * s);
+            var strip = track is null ? (GroupThemes.StripLayout?)null : GroupThemes.PaddedStrip(track.Value, input.Source, s, stripCap);
+            var set = PowerSet(mg, battery, s, strip?.Size.Width ?? 0f, strip?.Size.Height ?? 0f, track);
+            var size = new Size((int)Math.Ceiling(set.Width) + pad * 2, (int)Math.Ceiling(set.Height) + pad * 2);
             // The opposite end of the same column, or the anchor itself when there is no day block.
             var stripAnchor = panels.Count == 0 ? anchor : (ClockAnchor)((row == 2 ? 0 : 2) * 3 + col);
             var origin = GroupThemes.Place(input.WorkArea, size, stripAnchor, margin);
-            var face = track is null ? Rectangle.Empty
-                : Rectangle.Round(new RectangleF(pad, pad + (strip.Height - strip.Record) / 2f, strip.Record, strip.Record));
-            panels.Add(new GroupPanel("monolith-strip", new Rectangle(origin, size), face,
-                g => PaintStrip(g, strip, track, battery, input, s, pad)));
+
+            Rectangle[]? buttons = null;
+            if (strip is { } sl && set.StripOrigin is { } so)
+                buttons =
+                [
+                    new Rectangle(sl.Buttons[0].X + so.X + pad, sl.Buttons[0].Y + so.Y + pad, sl.Buttons[0].Width, sl.Buttons[0].Height),
+                    new Rectangle(sl.Buttons[1].X + so.X + pad, sl.Buttons[1].Y + so.Y + pad, sl.Buttons[1].Width, sl.Buttons[1].Height),
+                    new Rectangle(sl.Buttons[2].X + so.X + pad, sl.Buttons[2].Y + so.Y + pad, sl.Buttons[2].Width, sl.Buttons[2].Height),
+                ];
+
+            panels.Add(new GroupPanel("monolith-strip", new Rectangle(origin, size), Rectangle.Empty,
+                g => PaintMusicSet(g, set, track, battery, input, s, pad), buttons));
         }
         return panels;
     }
@@ -115,6 +126,7 @@ public sealed class Monolith : IGroupTheme
             var size = ThemeFonts.MeasureTracked(g, text, font, tracking);
             float x = pad + col switch { 0 => 0f, 1 => (width - size.Width) / 2f, _ => width - size.Width };
             ThemeFonts.DrawTracked(g, text, font, brush, x, y, tracking);
+            y += size.Height;
             return size.Height;
         }
 
@@ -132,97 +144,70 @@ public sealed class Monolith : IGroupTheme
         Line(t.Time, timeFont, ink, timeFont.Size * LineTracking);
     }
 
-    // ---- the strip ---------------------------------------------------------------------------
+    // ---- the music set -----------------------------------------------------------------------
 
-    private sealed record Strip(float Width, float Height, float Record, string Title, string Artist, string? Power,
-                                float TextX, float TitleWidth, float RuleX, float PowerX);
+    private readonly record struct SetLayout(float Width, float Height, Point? StripOrigin,
+        float PowerTop, string? Power, bool Charging, bool Low);
 
-    private static Strip StripLayout(Graphics g, NowPlayingReading? track, BatteryReading? battery, float s, float limit)
+    private static SetLayout PowerSet(Graphics mg, BatteryReading? battery, float s,
+        float stripW, float stripH, NowPlayingReading? track)
     {
         float px = GroupThemes.Text(StripPx, s), tracking = px * StripTracking, gap = GroupThemes.U(StripGap, s);
         using var font = ThemeFonts.Create(ThemeFonts.Bahn, px);
-        float lineH = g.MeasureString("Ag", font, PointF.Empty, ThemeFonts.Tight).Height;
-        float record = track is null ? 0 : GroupThemes.U(Record, s);
+        float lineH = mg.MeasureString("Ag", font, PointF.Empty, ThemeFonts.Tight).Height;
 
-        string? power = battery is { } b
-            ? b.State == BatteryState.Charged ? "CHARGED" : b.Percent.ToString(CultureInfo.InvariantCulture) + "%"
-            : null;
-        float ruleW = power is not null && track is not null ? GroupThemes.U(Rule, s) : 0;
-        float boltW = battery is { State: BatteryState.Charging } ? px * 0.7f : 0;
-        float powerW = power is null ? 0 : boltW + ThemeFonts.MeasureTracked(g, power, font, tracking).Width;
-
-        string title = "", artist = "";
-        float x = 0, titleWidth = 0;
-        if (track is { } r)
+        string? power = null;
+        bool charging = false, low = false;
+        float boltW = 0f, powerW = 0f;
+        if (battery is { } b)
         {
-            var culture = CultureInfo.CurrentCulture;
-            title = (r.Title ?? "").ToUpper(culture);
-            artist = string.IsNullOrWhiteSpace(r.Artist) ? "" : r.Artist!.ToUpper(culture);
-            if (string.IsNullOrWhiteSpace(title)) (title, artist) = (artist, "");
-            else if (artist.Length > 0) artist = " · " + artist;
-            x = record + gap;
-            // The title gets what the record, the rule and the charge leave of the cap.
-            float rest = power is null ? 0 : gap + (ruleW > 0 ? ruleW + gap : 0) + powerW;
-            float max = Math.Max(Math.Min(GroupThemes.U(MaxText, s), limit - x - rest), 0);
-            title = GroupThemes.FitText(g, title, font, max, tracking);
-            float tw = ThemeFonts.MeasureTracked(g, title, font, tracking).Width;
-            artist = artist.Length == 0 || tw + tracking >= max ? "" : GroupThemes.FitText(g, artist, font, max - tw - tracking, tracking);
-            titleWidth = tw + (artist.Length == 0 ? 0 : tracking + ThemeFonts.MeasureTracked(g, artist, font, tracking).Width);
+            power = b.State == BatteryState.Charged ? "CHARGED" : b.Percent.ToString(CultureInfo.InvariantCulture) + "%";
+            charging = b.State == BatteryState.Charging;
+            low = b.State == BatteryState.OnBattery && b.Percent <= 20;
+            boltW = charging ? px * 0.7f : 0f;
+            powerW = boltW + ThemeFonts.MeasureTracked(mg, power, font, tracking).Width;
         }
 
-        float ruleX = x + titleWidth + (titleWidth > 0 ? gap : 0);
-        float powerX = ruleX + (ruleW > 0 ? ruleW + gap : 0);
-
-        float width = power is null ? x + titleWidth : powerX + powerW;
-        return new Strip(width, Math.Max(record, lineH), record, title, artist, power, x, titleWidth, ruleX, powerX);
+        float width = Math.Max(stripW, powerW);
+        float height = stripH + (power is not null ? (stripH > 0f ? gap : 0f) + lineH : 0f);
+        Point? stripOrigin = track is null ? null : new Point((int)Math.Round((width - stripW) / 2f), 0);
+        float powerTop = stripH + (stripH > 0f ? gap : 0f);
+        return new SetLayout(width, height, stripOrigin, powerTop, power, charging, low);
     }
 
-    private static void PaintStrip(Graphics g, Strip st, NowPlayingReading? track, BatteryReading? battery,
-                                   GroupInput input, float s, int pad)
+    private static void PaintMusicSet(Graphics g, SetLayout set, NowPlayingReading? track, BatteryReading? battery,
+                                      GroupInput input, float s, int pad)
     {
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
         float px = GroupThemes.Text(StripPx, s), tracking = px * StripTracking;
         using var font = ThemeFonts.Create(ThemeFonts.Bahn, px);
         float lineH = g.MeasureString("Ag", font, PointF.Empty, ThemeFonts.Tight).Height;
-        float textY = pad + (st.Height - lineH) / 2f;
-        float fade = track is { IsPlaying: false } ? 0.55f : 1f;
 
-        if (track is not null)
+        if (track is { } t && set.StripOrigin is { } origin)
         {
-            // The record's rim; the face turns on its own layer above this panel.
-            var rim = new RectangleF(pad, pad + (st.Height - st.Record) / 2f, st.Record, st.Record);
-            float sweep = input.Disc.ShowProgress ? 360f * (float)Math.Clamp(track.Value.Progress, 0, 1) : 0f;
-            GroupThemes.Ring(g, RectangleF.Inflate(rim, 1f, 1f), Math.Max(1.5f * s, 1f), Color.Transparent,
-                             Color.FromArgb(46, 255, 255, 255), GroupThemes.Alpha(input.Accent, fade), sweep);
+            var stripSave = g.Save();
+            g.TranslateTransform(pad + origin.X, pad);
+            var inner = MusicStrip.Measure(g, t, input.Source, s);
+            float phase = (Environment.TickCount64 % 100_000) / 100_000f;
+            MusicStrip.Paint(g, inner, t, input.TrackArt, s, phase);
+            g.Restore(stripSave);
+        }
 
-            using var ink = new SolidBrush(Color.FromArgb((int)(245 * fade), 255, 255, 255));
-            using var dim = new SolidBrush(Color.FromArgb((int)(Dim.A * fade), 255, 255, 255));
-            float x = pad + st.TextX;
-            ThemeFonts.DrawTracked(g, st.Title, font, ink, x, textY, tracking);
-            if (st.Artist.Length > 0)
+        if (battery is { } b && set.Power is { } power)
+        {
+            var colour = Editorial.HaloColour(b.Percent, b.State, input.Halo, input.Accent);
+            bool low = b.State == BatteryState.OnBattery && b.Percent <= 20;
+            using var powerBrush = new SolidBrush(low ? colour : Ink);
+            float textWidth = ThemeFonts.MeasureTracked(g, power, font, tracking).Width + (b.State == BatteryState.Charging ? px * 0.7f : 0f);
+            float px0 = pad + (set.Width - textWidth) / 2f;
+            float textY = pad + set.PowerTop;
+            if (b.State == BatteryState.Charging)
             {
-                x += ThemeFonts.MeasureTracked(g, st.Title, font, tracking).Width + tracking;
-                ThemeFonts.DrawTracked(g, st.Artist, font, dim, x, textY, tracking);
+                BatteryHaloRenderer.PaintBolt(g, px0 + px * 0.3f, textY + lineH / 2f, px * 1.1f, colour);
+                px0 += px * 0.7f;
             }
+            ThemeFonts.DrawTracked(g, power, font, powerBrush, px0, textY, tracking);
         }
-
-        if (battery is not { } b || st.Power is null) return;
-        if (track is not null)
-        {
-            using var rule = new Pen(Color.FromArgb(128, 255, 255, 255), 1f);
-            float ry = pad + st.Height / 2f;
-            g.DrawLine(rule, pad + st.RuleX, ry, pad + st.RuleX + GroupThemes.U(Rule, s), ry);
-        }
-        float px0 = pad + st.PowerX;
-        var colour = Editorial.HaloColour(b.Percent, b.State, input.Halo, input.Accent);
-        if (b.State == BatteryState.Charging)
-        {
-            BatteryHaloRenderer.PaintBolt(g, px0 + px * 0.3f, pad + st.Height / 2f, px * 1.1f, colour);
-            px0 += px * 0.7f;
-        }
-        bool low = b.State == BatteryState.OnBattery && b.Percent <= input.Halo.LowThreshold;
-        using var power = new SolidBrush(low ? colour : Ink);
-        ThemeFonts.DrawTracked(g, st.Power, font, power, px0, textY, tracking);
     }
 }

@@ -10,16 +10,22 @@ namespace PrismOS.Widgets.Themes;
 /// <paramref name="Track"/> is null when there is no record to show — switched off, no now-playing
 /// source, or nothing playing or paused. <paramref name="Battery"/> is null the same way. The theme
 /// collapses what is absent rather than drawing empty rings. <paramref name="WorkArea"/> is relative
-/// to the monitor's top-left, as overlay offsets are.</summary>
+/// to the monitor's top-left, as overlay offsets are. <paramref name="Source"/> is the media app's
+/// friendly name (SPOTIFY, CHROME…), null for anything else; <paramref name="TrackArt"/> is the
+/// current track's artwork.</summary>
 public sealed record GroupInput(
     DateTime Now, ClockConfig Clock, DiscConfig Disc, HaloConfig Halo,
     NowPlayingReading? Track, BatteryReading? Battery,
-    Color Accent, float Scale, float Dpi, ClockAnchor? Position, Rectangle WorkArea, int MaxCharacters);
+    Color Accent, float Scale, float Dpi, ClockAnchor? Position, Rectangle WorkArea, int MaxCharacters,
+    string? Source = null, Bitmap? TrackArt = null);
 
 /// <summary>One surface of a group theme. <paramref name="FaceBox"/>, relative to the panel, is where
 /// the turning record goes on its own layer above the panel; empty when the panel has none.
-/// <paramref name="Paint"/> draws everything else, measured by the same call that built it.</summary>
-public sealed record GroupPanel(string Key, Rectangle Bounds, Rectangle FaceBox, Action<Graphics> Paint);
+/// <paramref name="Paint"/> draws everything else, measured by the same call that built it.
+/// <paramref name="Buttons"/> are the strip's clickable rects, panel-relative, for the overlay
+/// to place its hit window over.</summary>
+public sealed record GroupPanel(string Key, Rectangle Bounds, Rectangle FaceBox, Action<Graphics> Paint,
+    Rectangle[]? Buttons = null);
 
 /// <summary>Orbit, Poster, Glass dock, Monolith and Tiles: the set placed as a group at one position.</summary>
 public interface IGroupTheme
@@ -54,6 +60,52 @@ public static class GroupThemes
     // ---- shared drawing ------------------------------------------------------------------------
 
     internal static int Pad(float scale) => (int)Math.Ceiling(ShadowRecipe.Default.Pad * Math.Max(scale, 0.05f));
+
+    // ---- the music pill --------------------------------------------------------------------------
+
+    /// <summary>The modern now-playing pill as one panel, measured once for size and painted with
+    /// the exact same renderer as the Classic overlay. <paramref name="Buttons"/> ride on the panel
+    /// so the overlay can position its invisible click window over them.</summary>
+    public static MusicStrip.Metrics StripMetrics(NowPlayingReading track, string? source, float scale, float maxWidth = float.MaxValue)
+    {
+        using var g = Graphics.FromHwnd(IntPtr.Zero);
+        return MusicStrip.Measure(g, track, source, scale, maxWidth);
+    }
+
+    /// <summary>The strip plus the room its shadow needs on every side, with the buttons' rects
+    /// already in panel coordinates. Every panel paint goes through TranslateTransform(pad, pad)
+    /// or equivalent — the shadow is baked inside the panel bitmap, and clipping kills it.</summary>
+    public readonly record struct StripLayout(int Pad, Size Size, MusicStrip.Metrics Metrics, Rectangle[] Buttons);
+
+    public static StripLayout PaddedStrip(NowPlayingReading track, string? source, float scale, float maxWidth = float.MaxValue)
+    {
+        var metrics = StripMetrics(track, source, scale, maxWidth);
+        int pad = Pad(scale);
+        var buttons = new[]
+        {
+            Shift(metrics.PrevBox, pad, pad), Shift(metrics.PlayBox, pad, pad), Shift(metrics.NextBox, pad, pad),
+        };
+        var size = new Size(metrics.Size.Width + pad * 2, metrics.Size.Height + pad * 2);
+        return new StripLayout(pad, size, metrics, buttons);
+
+        static Rectangle Shift(Rectangle r, int dx, int dy) => new(r.X + dx, r.Y + dy, r.Width, r.Height);
+    }
+
+    public static GroupPanel StripPanel(string key, int x, int y, NowPlayingReading track,
+        string? source, Bitmap? art, float scale)
+    {
+        var layout = PaddedStrip(track, source, scale);
+        return new GroupPanel(key, new Rectangle(x, y, layout.Size.Width, layout.Size.Height),
+            Rectangle.Empty,
+            g =>
+            {
+                var inner = MusicStrip.Measure(g, track, source, scale);
+                float phase = (Environment.TickCount64 % 100_000) / 100_000f;
+                g.TranslateTransform(layout.Pad, layout.Pad);
+                MusicStrip.Paint(g, inner, track, art, scale, phase);
+            },
+            layout.Buttons);
+    }
 
     /// <summary>The time's drawn colour: the configured Clock.Color. The themes used to hard-code
     /// a white ink here, which made the Clock page's colour swatch a no-op in every theme but

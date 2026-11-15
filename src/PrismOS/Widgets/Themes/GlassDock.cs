@@ -6,23 +6,17 @@ using PrismOS.Config;
 
 namespace PrismOS.Widgets.Themes;
 
-/// <summary>Glass dock: everything in one capsule, centred on the top or bottom edge. Left to right,
-/// only what is enabled: the turning record, the track with a thin progress bar, the time and the
-/// day, the battery ring. Missing segments collapse, and with nothing to show there is no dock.
-///
-/// The "glass" is a drawn gradient with a hairline highlight and a faint border — never a blur of
-/// the wallpaper behind it, which would be a per-frame readback.</summary>
+/// <summary>Glass dock: everything in one frosted capsule. The music pill (art, title, transport)
+/// sits left, the clock and date centre, the battery right, separated by hairlines. One panel.</summary>
 public sealed class GlassDock : IGroupTheme
 {
     public static readonly GlassDock Instance = new();
 
     public ClockAnchor DefaultPosition => ClockAnchor.BottomCenter;
 
-    private const float Record = 76f, Gap = 30f, PadY = 16f, PadLeft = 18f, PadRight = 34f, Edge = 56f;
-    private const float TitlePx = 24f, ArtistPx = 18f, BarWidth = 200f, BarHeight = 3f, BarGap = 9f, MaxTrack = 260f;
-    private const float TimePx = 56f, DatePx = 15f, Battery = 60f;
+    private const float TimePx = 74f, DatePx = 15f, Battery = 74f, Gap = 26f, PadY = 22f, PadLeft = 24f, PadRight = 24f, Edge = 30f;
 
-    private enum Kind { Record, Track, Separator, Time, Date, Battery }
+    private enum Kind { Strip, Separator, Time, Date, Battery }
 
     public IReadOnlyList<GroupPanel> Layout(GroupInput input)
     {
@@ -30,39 +24,29 @@ public sealed class GlassDock : IGroupTheme
         var track = input.Track;
         var battery = input.Battery;
         bool clock = input.Clock.Enabled;
-        if (!clock && track is null && battery is null) return [];
+        var strip = track is null ? (GroupThemes.StripLayout?)null : GroupThemes.PaddedStrip(track.Value, input.Source, s);
+        if (strip is null && !clock && battery is null) return [];
 
-        using var titleFont = ThemeFonts.Create(ThemeFonts.TextSemibold, GroupThemes.Text(TitlePx, s));
-        using var artistFont = ThemeFonts.Create(["Segoe UI"], GroupThemes.Text(ArtistPx, s));
         using var timeFont = ThemeFonts.Create(ThemeFonts.DisplayLight, GroupThemes.U(TimePx, s));
         float datePx = GroupThemes.Text(DatePx, s), dateTracking = datePx * 0.14f;
         using var dateFont = ThemeFonts.Create(ThemeFonts.TextSemibold, datePx);
 
-        string title = "", artist = "", time = "", day = "", date = "";
-        SizeF titleSize = SizeF.Empty, artistSize = SizeF.Empty, timeSize = SizeF.Empty, daySize = SizeF.Empty, dateSize = SizeF.Empty;
+        string time = "", day = "", date = "";
+        SizeF timeSize = SizeF.Empty, daySize = SizeF.Empty, dateSize = SizeF.Empty;
         float actualTimeWidth = 0f;
-        float maxTrack = GroupThemes.U(MaxTrack, s), bar = GroupThemes.U(BarWidth, s);
         using (var mg = Graphics.FromHwnd(IntPtr.Zero))
         {
-            if (track is { } t)
-            {
-                title = GroupThemes.FitText(mg, t.Title ?? "", titleFont, maxTrack);
-                artist = GroupThemes.FitText(mg, t.Artist ?? "", artistFont, maxTrack);
-                titleSize = ThemeFonts.MeasureTracked(mg, title, titleFont, 0f);
-                artistSize = artist.Length == 0 ? SizeF.Empty : ThemeFonts.MeasureTracked(mg, artist, artistFont, 0f);
-            }
             if (clock)
             {
                 time = ClockLayout.TimeText(input.Now, input.Clock.TwentyFourHour, input.Clock.ShowSeconds);
-                // The slot is sized from the widest digit, not the time on show: proportional digits
-                // made the capsule change width most minutes, and each change rebuilt the panel.
-                // The widest a time can be: two hour digits, and whichever of AM and PM is wider.
-                char widest = WidestDigit(mg, timeFont);
+                // The slot is sized from the widest digit: proportional digits made the capsule
+                // jump width most minutes, and each jump rebuilt the panel.
+                char widestDigit = WidestDigit(mg, timeFont);
                 foreach (int hour in new[] { 0, 12 })
                 {
                     string reference = ClockLayout.TimeText(new DateTime(2000, 1, 1, hour == 0 ? 10 : 22, 58, 58),
                                                             input.Clock.TwentyFourHour, input.Clock.ShowSeconds);
-                    string slot = new(reference.Select(c => char.IsDigit(c) ? widest : c).ToArray());
+                    string slot = new(reference.Select(c => char.IsDigit(c) ? widestDigit : c).ToArray());
                     var slotSize = ThemeFonts.MeasureTracked(mg, slot, timeFont, -0.01f * timeFont.Size);
                     if (slotSize.Width > timeSize.Width) timeSize = slotSize;
                 }
@@ -77,15 +61,12 @@ public sealed class GlassDock : IGroupTheme
             }
         }
 
-        float record = GroupThemes.U(Record, s), batterySide = GroupThemes.U(Battery, s);
-        float barH = Math.Max(GroupThemes.U(BarHeight, s), 1.5f), barGap = GroupThemes.U(BarGap, s);
-        float trackW = Math.Max(Math.Max(titleSize.Width, artistSize.Width), bar);
-        float trackH = titleSize.Height + artistSize.Height + barGap + barH;
+        float batterySide = GroupThemes.U(Battery, s);
         float dateW = Math.Max(daySize.Width, dateSize.Width), dateH = daySize.Height + dateSize.Height;
 
-        // Segments, grouped so a separator only ever sits between two groups that are both present.
+        // Segments, grouped so a separator only ever sits between two present groups.
         var groups = new List<List<(Kind Kind, float W, float H)>>();
-        if (track is not null) groups.Add([(Kind.Record, record, record), (Kind.Track, trackW, trackH)]);
+        if (strip is { } sm) groups.Add([(Kind.Strip, sm.Size.Width, sm.Size.Height)]);
         if (clock)
         {
             var g = new List<(Kind, float, float)> { (Kind.Time, timeSize.Width, timeSize.Height) };
@@ -102,7 +83,7 @@ public sealed class GlassDock : IGroupTheme
         }
 
         float gap = GroupThemes.U(Gap, s), padY = GroupThemes.U(PadY, s);
-        float padLeft = GroupThemes.U(items[0].Kind == Kind.Record ? PadLeft : PadRight, s);
+        float padLeft = GroupThemes.U(items[0].Kind == Kind.Strip ? PadLeft : PadRight, s);
         float padRight = GroupThemes.U(items[^1].Kind == Kind.Battery ? PadLeft : PadRight, s);
         float contentW = items.Sum(it => it.W) + gap * (items.Count - 1);
         float contentH = items.Max(it => it.H);
@@ -123,20 +104,26 @@ public sealed class GlassDock : IGroupTheme
             boxes.Add((it.Kind, new RectangleF(x, cy - it.H / 2f, it.W, it.H)));
             x += it.W + gap;
         }
-        var faceBox = track is null ? Rectangle.Empty : Rectangle.Round(boxes.First(b => b.Kind == Kind.Record).Box);
+
+        Rectangle[]? buttons = null;
+        if (strip is { } sl)
+        {
+            var stripBox = boxes.First(item => item.Kind == Kind.Strip).Box;
+            buttons =
+            [
+                new Rectangle(sl.Buttons[0].X + (int)stripBox.X, sl.Buttons[0].Y + (int)stripBox.Y, sl.Buttons[0].Width, sl.Buttons[0].Height),
+                new Rectangle(sl.Buttons[1].X + (int)stripBox.X, sl.Buttons[1].Y + (int)stripBox.Y, sl.Buttons[1].Width, sl.Buttons[1].Height),
+                new Rectangle(sl.Buttons[2].X + (int)stripBox.X, sl.Buttons[2].Y + (int)stripBox.Y, sl.Buttons[2].Width, sl.Buttons[2].Height),
+            ];
+        }
 
         void Paint(Graphics g)
         {
-            // Fonts are made again here: the ones Layout measured with are disposed by the time a
-            // panel is painted.
-            using var titleFont = ThemeFonts.Create(ThemeFonts.TextSemibold, GroupThemes.Text(TitlePx, s));
-            using var artistFont = ThemeFonts.Create(["Segoe UI"], GroupThemes.Text(ArtistPx, s));
             using var timeFont = ThemeFonts.Create(ThemeFonts.DisplayLight, GroupThemes.U(TimePx, s));
             using var dateFont = ThemeFonts.Create(ThemeFonts.TextSemibold, datePx);
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
             PaintCapsule(g, capsule);
-            float fade = track is { IsPlaying: false } ? 0.55f : 1f;
             foreach (var (kind, box) in boxes)
             {
                 switch (kind)
@@ -145,21 +132,13 @@ public sealed class GlassDock : IGroupTheme
                         using (var sep = new Pen(Color.FromArgb(31, 255, 255, 255), 1f))
                             g.DrawLine(sep, box.X, capsule.Y + padY + GroupThemes.U(6f, s), box.X, capsule.Bottom - padY - GroupThemes.U(6f, s));
                         break;
-                    case Kind.Track:
-                        using (var ink = new SolidBrush(Color.FromArgb((int)(245 * fade), 255, 255, 255)))
-                            ThemeFonts.DrawTracked(g, title, titleFont, ink, box.X, box.Y, 0f);
-                        if (artist.Length > 0)
-                            using (var dim = new SolidBrush(Color.FromArgb((int)(158 * fade), 255, 255, 255)))
-                                ThemeFonts.DrawTracked(g, artist, artistFont, dim, box.X, box.Y + titleSize.Height, 0f);
-                        if (input.Disc.ShowProgress)
-                        {
-                            var barBox = new RectangleF(box.X, box.Bottom - barH, bar, barH);
-                            using (var trackBrush = new SolidBrush(Color.FromArgb(36, 255, 255, 255)))
-                                g.FillRectangle(trackBrush, barBox);
-                            float p = (float)Math.Clamp(track!.Value.Progress, 0, 1);
-                            using var fill = new SolidBrush(GroupThemes.Alpha(input.Accent, fade));
-                            if (p > 0) g.FillRectangle(fill, barBox with { Width = barBox.Width * p });
-                        }
+                    case Kind.Strip:
+                        var stripSave = g.Save();
+                        g.TranslateTransform(box.X, box.Y);
+                        var inner = MusicStrip.Measure(g, track!.Value, input.Source, s);
+                        float phase = (Environment.TickCount64 % 100_000) / 100_000f;
+                        MusicStrip.Paint(g, inner, track.Value, input.TrackArt, s, phase);
+                        g.Restore(stripSave);
                         break;
                     case Kind.Time:
                         using (var ink = new SolidBrush(GroupThemes.ClockInk(input.Clock)))
@@ -179,7 +158,7 @@ public sealed class GlassDock : IGroupTheme
             }
         }
 
-        return [new GroupPanel("dock", new Rectangle(origin, size), faceBox, Paint)];
+        return [new GroupPanel("dock", new Rectangle(origin, size), Rectangle.Empty, Paint, buttons)];
     }
 
     private static char WidestDigit(Graphics g, Font font)

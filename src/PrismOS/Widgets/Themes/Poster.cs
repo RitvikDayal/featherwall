@@ -37,7 +37,7 @@ public sealed class Poster : IGroupTheme
                             : (clockRight ? ClockAnchor.TopRight : ClockAnchor.TopLeft);
         var far = clockTop ? (clockRight ? ClockAnchor.BottomLeft : ClockAnchor.BottomRight)
                            : (clockRight ? ClockAnchor.TopLeft : ClockAnchor.TopRight);
-        if (input.Track is not null) panels.Add(RecordPanel(input, s, far, margin));
+        if (input.Track is not null) panels.Add(StripPanel(input, s, far, margin));
         if (input.Battery is not null) panels.Add(BatteryPanel(input, s, near, margin));
         return panels;
     }
@@ -151,53 +151,26 @@ public sealed class Poster : IGroupTheme
         return path;
     }
 
-    // ---- record line --------------------------------------------------------------------------
+    // ---- music pill ----------------------------------------------------------------------------
 
-    private static GroupPanel RecordPanel(GroupInput input, float s, ClockAnchor corner, int margin)
+    private static GroupPanel StripPanel(GroupInput input, float s, ClockAnchor corner, int margin)
     {
-        var r = input.Track!.Value;
-        float token = GroupThemes.U(Token, s), gap = GroupThemes.U(TokenGap, s);
-        float px = GroupThemes.Text(LinePx, s), tracking = px * 0.1f;
-        // Capped well short of the screen: a 93-character YouTube title ran as a thin line across half of it.
-        float maxLine = Math.Min(input.WorkArea.Width * 0.42f, GroupThemes.U(620f, s)) - token - gap;
-        using var titleFont = ThemeFonts.Create(ThemeFonts.BahnSemibold, px);
-        using var artistFont = ThemeFonts.Create(ThemeFonts.Bahn, px);
-
-        string title = (r.Title ?? "").ToUpper(CultureInfo.CurrentCulture);
-        string artist = string.IsNullOrWhiteSpace(r.Artist) ? "" : " — " + r.Artist!.ToUpper(CultureInfo.CurrentCulture);
-        SizeF ts, asz;
-        using (var mg = Graphics.FromHwnd(IntPtr.Zero))
-        {
-            title = GroupThemes.FitText(mg, title, titleFont, maxLine, tracking);
-            ts = ThemeFonts.MeasureTracked(mg, title, titleFont, tracking);
-            artist = artist.Length == 0 ? "" : GroupThemes.FitText(mg, artist, artistFont, Math.Max(maxLine - ts.Width, 0), tracking);
-            asz = artist.Length == 0 ? SizeF.Empty : ThemeFonts.MeasureTracked(mg, artist, artistFont, tracking);
-        }
-
-        int pad = GroupThemes.Pad(s);
-        float textW = ts.Width + asz.Width, textH = Math.Max(ts.Height, asz.Height);
-        float blockH = Math.Max(token, textH);
-        var size = new Size((int)Math.Ceiling(token + gap + textW) + pad * 2, (int)Math.Ceiling(blockH) + pad * 2);
+        var track = input.Track!.Value;
+        var strip = GroupThemes.PaddedStrip(track, input.Source, s);
+        var size = strip.Size;
         var origin = GroupThemes.Place(input.WorkArea, size, corner, margin);
-        var face = Rectangle.Round(new RectangleF(pad, pad + (blockH - token) / 2f, token, token));
-        float fade = r.IsPlaying ? 1f : 0.55f;
+        var buttons = strip.Buttons;
 
         void Paint(Graphics g)
         {
-            // Fonts are made again here: the ones Layout measured with are disposed by the time a
-            // panel is painted.
-            using var titleFont = ThemeFonts.Create(ThemeFonts.BahnSemibold, px);
-            using var artistFont = ThemeFonts.Create(ThemeFonts.Bahn, px);
             g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-            float x = pad + token + gap, y = pad + (blockH - textH) / 2f;
-            using (var ink = new SolidBrush(Color.FromArgb((int)(245 * fade), 255, 255, 255)))
-                ThemeFonts.DrawTracked(g, title, titleFont, ink, x, y, tracking);
-            if (artist.Length == 0) return;
-            using var dim = new SolidBrush(Color.FromArgb((int)(158 * fade), 255, 255, 255));
-            ThemeFonts.DrawTracked(g, artist, artistFont, dim, x + ts.Width, y, tracking);
+            var inner = MusicStrip.Measure(g, track, input.Source, s);
+            float phase = (Environment.TickCount64 % 100_000) / 100_000f;
+            g.TranslateTransform(strip.Pad, strip.Pad);
+            MusicStrip.Paint(g, inner, track, input.TrackArt, s, phase);
         }
 
-        return new GroupPanel("poster-record", new Rectangle(origin, size), face, Paint);
+        return new GroupPanel("poster-record", new Rectangle(origin, size), Rectangle.Empty, Paint, buttons);
     }
 
     // ---- battery bar --------------------------------------------------------------------------

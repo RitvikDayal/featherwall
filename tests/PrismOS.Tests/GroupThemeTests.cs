@@ -44,8 +44,9 @@ public class OrbitTests
     {
         var panels = Theme.Layout(Group.Input());
         var panel = Assert.Single(panels);
-        Assert.False(panel.FaceBox.IsEmpty);
-        Assert.True(panel.FaceBox.Top > panel.Bounds.Height / 2, "the record ring sits under the dial");
+        Assert.NotNull(panel.Buttons);
+        Assert.Equal(3, panel.Buttons.Length);
+        Assert.True(panel.Buttons[1].Top > panel.Bounds.Height / 2, "the music pill sits under the dial");
     }
 
     [Fact]
@@ -53,7 +54,7 @@ public class OrbitTests
     {
         var all = Assert.Single(Theme.Layout(Group.Input()));
         var noTrack = Assert.Single(Theme.Layout(Group.Input(track: false)));
-        Assert.True(noTrack.FaceBox.IsEmpty);
+        Assert.Null(noTrack.Buttons);
         Assert.True(noTrack.Bounds.Height < all.Bounds.Height);
     }
 
@@ -114,7 +115,7 @@ public class PosterTests
         Assert.True(clock.Bounds.Left > midX && clock.Bounds.Bottom < midY);
         Assert.True(record.Bounds.Right < midX && record.Bounds.Top > midY);
         Assert.True(battery.Bounds.Left > midX && battery.Bounds.Top > midY);
-        Assert.False(record.FaceBox.IsEmpty);
+        Assert.NotNull(record.Buttons);
     }
 
     [Fact]
@@ -163,7 +164,7 @@ public class GlassDockTests
         int centre = dock.Bounds.Left + dock.Bounds.Width / 2;
         Assert.InRange(centre, Group.Work.Width / 2 - 2, Group.Work.Width / 2 + 2);
         Assert.True(dock.Bounds.Top > Group.Work.Height / 2);
-        Assert.False(dock.FaceBox.IsEmpty);
+        Assert.NotNull(dock.Buttons);
     }
 
     [Theory]
@@ -186,7 +187,7 @@ public class GlassDockTests
         var clockOnly = Assert.Single(Theme.Layout(Group.Input(track: false, battery: false)));
         Assert.True(noTrack.Bounds.Width < all.Bounds.Width);
         Assert.True(clockOnly.Bounds.Width < noTrack.Bounds.Width);
-        Assert.True(noTrack.FaceBox.IsEmpty);
+        Assert.Null(noTrack.Buttons);
     }
 
     [Fact]
