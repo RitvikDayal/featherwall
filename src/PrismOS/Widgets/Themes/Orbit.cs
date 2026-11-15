@@ -77,7 +77,7 @@ public sealed class Orbit : IGroupTheme
             if (strip is { } sl && track is { } t)
             {
                 var inner = MusicStrip.Measure(g, t, input.Source, s);
-                float phase = (Environment.TickCount64 % 1500) / 1500f;
+                float phase = Environment.TickCount64 / 1000f;
                 var save = g.Save();
                 g.TranslateTransform(stripX, stripY);
                 MusicStrip.Paint(g, inner, t, input.TrackArt, s, phase, input.Blur ? 150 : 216);
@@ -89,7 +89,7 @@ public sealed class Orbit : IGroupTheme
         IReadOnlyList<PanelBlur.Region>? cardRegions = strip is null ? null
             : [new PanelBlur.Region(new RectangleF(stripX + strip.Value.Pad, stripY + strip.Value.Pad, strip.Value.Metrics.Size.Width, strip.Value.Metrics.Size.Height), strip.Value.Metrics.Size.Height * 0.3f)];
 
-        return [new GroupPanel("orbit", new Rectangle(origin, size), Rectangle.Empty, Paint, buttons, cardRegions)];
+        return [new GroupPanel("orbit", new Rectangle(origin, size), Rectangle.Empty, Paint, buttons, cardRegions, NoShadow: true)];
 
         static Rectangle Shift(Rectangle r, int dx, int dy) => new(r.X + dx, r.Y + dy, r.Width, r.Height);
     }

@@ -97,7 +97,7 @@ public sealed class Tiles : IGroupTheme
                         var musicSave = g.Save();
                         g.TranslateTransform(box.X + stripInnerX, box.Y);
                         var innerStrip = MusicStrip.Measure(g, track!.Value, input.Source, stripScale);
-                        float phase = (Environment.TickCount64 % 1500) / 1500f;
+                        float phase = Environment.TickCount64 / 1000f;
                         MusicStrip.Paint(g, innerStrip, track.Value, input.TrackArt, stripScale, phase, input.Blur ? 150 : 216);
                         g.Restore(musicSave);
                         break;

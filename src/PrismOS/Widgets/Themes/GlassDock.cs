@@ -98,10 +98,12 @@ public sealed class GlassDock : IGroupTheme
         var capsule = new RectangleF(pad, pad, capsuleSize.Width, capsuleSize.Height);
         float cy = capsule.Y + capsule.Height / 2f;
         var boxes = new List<(Kind Kind, RectangleF Box)>();
-        float x = capsule.X + padLeft;
+        float x = capsule.X + Math.Max(padLeft, (capsuleSize.Width - contentW) / 2f);
         foreach (var it in items)
         {
-            boxes.Add((it.Kind, new RectangleF(x, cy - it.H / 2f, it.W, it.H)));
+            // A small nudge so pill sits optically centred against the cap's round silhouette.
+            float y = cy - it.H / 2f + (it.Kind == Kind.Strip ? 2f : 0f);
+            boxes.Add((it.Kind, new RectangleF(x, y, it.W, it.H)));
             x += it.W + gap;
         }
 
@@ -136,7 +138,7 @@ public sealed class GlassDock : IGroupTheme
                         var stripSave = g.Save();
                         g.TranslateTransform(box.X, box.Y);
                         var inner = MusicStrip.Measure(g, track!.Value, input.Source, s);
-                        float phase = (Environment.TickCount64 % 1500) / 1500f;
+                        float phase = Environment.TickCount64 / 1000f;
                         MusicStrip.Paint(g, inner, track.Value, input.TrackArt, s, phase, input.Blur ? 150 : 216);
                         g.Restore(stripSave);
                         break;
@@ -159,7 +161,7 @@ public sealed class GlassDock : IGroupTheme
         }
 
         return [new GroupPanel("dock", new Rectangle(origin, size), Rectangle.Empty, Paint, buttons,
-            input.Blur ? [new PanelBlur.Region(capsule, capsule.Height / 2f)] : null)];
+            input.Blur ? [new PanelBlur.Region(capsule, capsule.Height / 2f)] : null, NoShadow: true)];
     }
 
     private static char WidestDigit(Graphics g, Font font)

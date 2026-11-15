@@ -29,7 +29,7 @@ public static class MusicStrip
         Size Size, int Pad, int ArtSide, int ArtGap,
         int SourceTop, int TitleTop, int ArtistTop,
         string SourceText, string TitleText, string? ArtistText,
-        Rectangle ArtBox, Rectangle PrevBox, Rectangle PlayBox, Rectangle NextBox)
+        Rectangle ArtBox, Rectangle EqBox, Rectangle PrevBox, Rectangle PlayBox, Rectangle NextBox)
     {
         /// <summary>The clickable button rects, in order: previous, play/pause, next.</summary>
         public Rectangle Button(int index) => index switch
@@ -53,11 +53,13 @@ public static class MusicStrip
         float height = Height * scale, art = ArtSidePx * scale, pad = PadPx * scale;
         float secX = pad + art + ArtGapPx * scale;
 
-        // The pill never resizes with the title: it clips into a fixed column like the
-        // Windows 11 media widget, so the panel does not jitter as tracks change. On a
-        // capped monitor the column shrinks, not the buttons or the art.
-        float fixedCols = pad + art + ArtGapPx * scale + TextButtonGapPx * scale + ButtonPx * scale * 3 + ButtonGapPx * scale * 2 + ButtonsRightPx * scale + pad;
-        float textWidth = Math.Min(MaxTextWidthPx * scale, Math.Max(maxWidth - fixedCols, 48f * scale));
+        // Everything the pill spends on things other than the text: art, gaps, the
+        // equalizer column and the transport buttons. The leftover goes to text, clamped
+        // so the pill is never wider than the caller's cap.
+        float eqWidth = 16f * scale, eqGap = 10f * scale;
+        float buttonsW = ButtonPx * scale * 3 + ButtonGapPx * scale * 2;
+        float overhead = secX + eqGap + eqWidth + eqGap + TextButtonGapPx * scale + buttonsW + ButtonsRightPx * scale;
+        float textWidth = Math.Min(MaxTextWidthPx * scale, Math.Max(maxWidth - overhead, 8f * scale));
 
         using var sourceFont = ThemeFonts.Create(ThemeFonts.TextSemibold, Math.Max(SourcePx * scale, 7f));
         using var titleFont = ThemeFonts.Create(ThemeFonts.TextSemibold, TitlePx * scale);
@@ -81,20 +83,23 @@ public static class MusicStrip
         float artistY = titleY + titleSize.Height + LineGapPx * scale;
 
         float btn = ButtonPx * scale, gap = ButtonGapPx * scale;
-        float buttonsW = btn * (ButtonCount - 1) + gap * (ButtonCount - 1) + btn;
-        float total = secX + textWidth + TextButtonGapPx * scale + buttonsW + ButtonsRightPx * scale;
+        float btnSize = btn * (ButtonCount - 1) + gap * (ButtonCount - 1) + btn;
+        float total = secX + textWidth + eqGap + eqWidth + eqGap + TextButtonGapPx * scale + btnSize + ButtonsRightPx * scale;
 
         float btnY = (height - btn) / 2f;
-        float prevX = secX + textWidth + TextButtonGapPx * scale;
+        float eqX = secX + textWidth + eqGap;
+        float prevX = eqX + eqWidth + eqGap + TextButtonGapPx * scale;
         float playX = prevX + btn + gap;
         float nextX = playX + btn + gap;
 
+        float eqH = Math.Min(34f * scale, height * 0.52f);
         return new Metrics(
             new Size((int)Math.Ceiling(total), (int)Math.Ceiling(height)),
             (int)Math.Ceiling(pad), (int)Math.Ceiling(art), (int)Math.Ceiling(ArtGapPx * scale),
             (int)srcY, (int)titleY, (int)artistY,
             sourceText, titleText, artistText,
             new Rectangle((int)pad, (int)((height - art) / 2f), (int)art, (int)art),
+            new Rectangle((int)eqX, (int)((height - eqH) / 2f), (int)eqWidth, (int)eqH),
             new Rectangle((int)prevX, (int)btnY, (int)btn, (int)btn),
             new Rectangle((int)playX, (int)btnY, (int)btn, (int)btn),
             new Rectangle((int)nextX, (int)btnY, (int)btn, (int)btn));
@@ -127,12 +132,11 @@ public static class MusicStrip
         }
         else
         {
-            using (var brush = new SolidBrush(Color.FromArgb(255, 44, 50, 63)))
-                g.FillPath(brush, artPath);
+            // No thumbnail from the media session: an accent-tinted tile with the
+            // note glyph, instead of a black box with a play icon.
+            using var brush = new LinearGradientBrush(m.ArtBox, Color.FromArgb(255, 58, 44, 84), Color.FromArgb(255, 16, 18, 26), 135f);
+            g.FillPath(brush, artPath);
         }
-
-        // Equalizer bars over the art — animated while playing, static low bars otherwise.
-        PaintEqualizer(g, m.ArtBox, eqPhase, scale, r.IsPlaying);
 
         // Text column
         float x = m.Pad + m.ArtSide + m.ArtGap;
@@ -146,6 +150,11 @@ public static class MusicStrip
         ThemeFonts.DrawTracked(g, m.TitleText, titleFont, ink, x, m.TitleTop, 0f);
         if (m.ArtistText is not null)
             ThemeFonts.DrawTracked(g, m.ArtistText, artistFont, dim, x, m.ArtistTop, Math.Max(ArtistPx * scale, 7f) * 0.15f);
+
+        // Equalizer column: five pseudo-random bars that move like live audio. Without
+        // a device to read, bars are animated with incommensurate sines (never looks like
+        // a canned loop) and settle low when paused.
+        PaintEqualizer(g, m.EqBox, eqPhase, scale, r.IsPlaying);
 
         // Transport buttons
         DrawPrevButton(g, m.PrevBox);
@@ -165,22 +174,26 @@ public static class MusicStrip
         return "…";
     }
 
-    private static void PaintEqualizer(Graphics g, Rectangle artBox, float phase, float scale, bool playing)
+    private static void PaintEqualizer(Graphics g, Rectangle box, float phase, float scale, bool playing)
     {
-        float barW = Math.Max(3.2f * scale, 2f), gap = Math.Max(2.4f * scale, 1.6f);
-        const int bars = 5;
-        float totalW = bars * barW + (bars - 1) * gap;
-        float x = artBox.X + (artBox.Width - totalW) / 2f;
-        float baseY = artBox.Bottom - 4f * scale;
-        float maxH = artBox.Height * 0.62f;
-        using var brush = new SolidBrush(Color.FromArgb(245, 255, 255, 255));
-        float amplitude = playing ? 1f : 0.18f;
+        // Base-level (not audio-reactive) bars: each band is a sum of incommensurate
+        // sines with slowly drifting phases, so they read as live audio without any
+        // capture device or FFT. Settles low and still when paused.
+        float amp = playing ? 1f : 0.16f;
+        int bars = Math.Max(5, (int)(box.Width / Math.Max(3.4f * scale, 2.4f)));
+        float gap = Math.Max(1.6f * scale, 1.2f);
+        float barW = (box.Width - (bars - 1) * gap) / bars;
+        float maxH = box.Height;
         for (int i = 0; i < bars; i++)
         {
-            float t = phase * MathF.PI * 2f + i * 1.3f;
-            float norm = 0.28f + 0.72f * (0.5f + 0.5f * MathF.Sin(t * 2.3f + i) * MathF.Sin(t * 1.1f + 0.6f));
-            float h = maxH * norm * amplitude;
-            g.FillRectangle(brush, x + i * (barW + gap), baseY - h, barW, h);
+            float band = amp * (0.55f
+                + 0.28f * MathF.Sin(phase * 12.7f + i * 1.31f)
+                + 0.17f * MathF.Sin(phase * 4.3f + i * 2.07f + 1.1f));
+            float norm = Math.Clamp(band, 0.08f, 1f);
+            float h = maxH * norm;
+            float x = box.X + i * (barW + gap);
+            using var brush = new SolidBrush(Color.FromArgb(245, 255, 255, 255));
+            g.FillRectangle(brush, x, box.Bottom - h, barW, h);
         }
     }
 

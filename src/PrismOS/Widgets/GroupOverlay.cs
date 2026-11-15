@@ -202,7 +202,9 @@ public sealed class GroupOverlay : IDisposable
                 var content = PanelContent.Hash(bmp);
                 if (layers.Content is null || !content.AsSpan().SequenceEqual(layers.Content))
                 {
-                    BakedShadow.DrawBehind(bmp, ShadowRecipe.Default, scale, panel.FaceBox.IsEmpty ? null : panel.FaceBox);
+                    // Pill-only panels skip the shadow — it just read as a dark box under the pill.
+                    if (!panel.NoShadow)
+                        BakedShadow.DrawBehind(bmp, ShadowRecipe.Default, scale, panel.FaceBox.IsEmpty ? null : panel.FaceBox);
                     layers.Static.PresentBitmap(bmp);
                     layers.Content = content;
                 }

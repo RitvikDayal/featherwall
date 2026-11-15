@@ -26,7 +26,7 @@ public sealed record GroupInput(
 /// to place its hit window over. <paramref name="CardRegions"/> are the frosted-glass surfaces
 /// under the card-bearing parts, panel-relative.</summary>
 public sealed record GroupPanel(string Key, Rectangle Bounds, Rectangle FaceBox, Action<Graphics> Paint,
-    Rectangle[]? Buttons = null, IReadOnlyList<PanelBlur.Region>? CardRegions = null);
+    Rectangle[]? Buttons = null, IReadOnlyList<PanelBlur.Region>? CardRegions = null, bool NoShadow = false);
 
 /// <summary>Orbit, Poster, Glass dock, Monolith and Tiles: the set placed as a group at one position.</summary>
 public interface IGroupTheme
@@ -101,7 +101,7 @@ public static class GroupThemes
             g =>
             {
                 var inner = MusicStrip.Measure(g, track, source, scale);
-                float phase = (Environment.TickCount64 % 1500) / 1500f;
+                float phase = Environment.TickCount64 / 1000f;
                 g.TranslateTransform(layout.Pad, layout.Pad);
                 MusicStrip.Paint(g, inner, track, art, scale, phase);
             },

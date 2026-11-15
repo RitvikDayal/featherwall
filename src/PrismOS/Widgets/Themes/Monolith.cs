@@ -62,7 +62,7 @@ public sealed class Monolith : IGroupTheme
             // The pill and, beneath it, the battery as a quiet tracked line: one stacked set,
             // pinned to the opposite end of the same column.
             // Cap short of the screen: at very large sizes the weekday can move, the pill cannot be allowed to run off the edge.
-            float stripCap = Math.Min(input.WorkArea.Width * 0.42f, GroupThemes.U(MaxText, s) + 400f * s);
+            float stripCap = Math.Min(input.WorkArea.Width * 0.28f, GroupThemes.U(MaxText, s) + 100f * s);
             var strip = track is null ? (GroupThemes.StripLayout?)null : GroupThemes.PaddedStrip(track.Value, input.Source, s, stripCap);
             var set = PowerSet(mg, battery, s, strip?.Size.Width ?? 0f, strip?.Size.Height ?? 0f, track);
             var size = new Size((int)Math.Ceiling(set.Width) + pad * 2, (int)Math.Ceiling(set.Height) + pad * 2);
@@ -84,7 +84,7 @@ public sealed class Monolith : IGroupTheme
             }
 
             panels.Add(new GroupPanel("monolith-strip", new Rectangle(origin, size), Rectangle.Empty,
-                g => PaintMusicSet(g, set, track, battery, input, s, pad), buttons, cardRegions));
+                g => PaintMusicSet(g, set, track, battery, input, s, pad), buttons, cardRegions, NoShadow: true));
         }
         return panels;
     }
@@ -193,7 +193,7 @@ public sealed class Monolith : IGroupTheme
             var stripSave = g.Save();
             g.TranslateTransform(pad + origin.X, pad);
             var inner = MusicStrip.Measure(g, t, input.Source, s);
-            float phase = (Environment.TickCount64 % 1500) / 1500f;
+            float phase = Environment.TickCount64 / 1000f;
             MusicStrip.Paint(g, inner, t, input.TrackArt, s, phase, input.Blur ? 150 : 216);
             g.Restore(stripSave);
         }
