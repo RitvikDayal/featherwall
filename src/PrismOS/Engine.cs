@@ -394,10 +394,18 @@ public sealed class Engine : IDisposable
         _group = null;
         _recordDevice = null;
 
+        // The text lines are gated by Info.Enabled; the record and the battery are not — they
+        // are driven by their own sources and their own toggles, and a user who switches off
+        // the info text in favour of art-only over a wallpaper should keep the record.
+        // A source only exists when it is listed in Info.Sources, so a user can drop the
+        // record by removing "nowPlaying" from the list; battery by removing "battery" or
+        // turning the halo off.
         bool info = _config.Info.Enabled;
-        if (!info) DisposeSources();
-        Log.Info($"Widget group: {WidgetsConfig.ConfigName(theme)}, clock={_config.Clock.Enabled}, info={info}");
-        if (!_config.Clock.Enabled && !info) return;
+        bool wantsSources = _config.Info.Sources.Count > 0;
+        if (wantsSources) ResolveSources();
+        else DisposeSources();
+
+        if (!_config.Clock.Enabled && !info && !wantsSources) return;
 
         var monitors = MonitorTracker.Enumerate();
         var target = monitors.FirstOrDefault(m =>
@@ -415,9 +423,9 @@ public sealed class Engine : IDisposable
                 window.EnsureHost();
                 _windows[target.Device] = window;
             }
-            if (info) ResolveSources();
+            Log.Info($"Widget group: {WidgetsConfig.ConfigName(theme)}, clock={_config.Clock.Enabled}, info={info}, sources=[{string.Join(", ", _config.Info.Sources)}]");
             _group = new GroupOverlay(window.EnsureHost(), GroupThemes.For(theme), _config, target,
-                info ? _nowPlaying : null, info ? _battery : null,
+                _nowPlaying, _battery,
                 MonitorTracker.DpiScale(target, monitors), StyleFor(target.Device));
             _recordDevice = target.Device;
             _nowPlaying?.Refresh();
@@ -448,7 +456,10 @@ public sealed class Engine : IDisposable
         _group = null;
         _recordDevice = null;
         Log.Info($"Info widget: enabled={_config.Info.Enabled}, sources=[{string.Join(", ", _config.Info.Sources)}]");
-        if (!_config.Info.Enabled)
+        // The info text is gated by Info.Enabled; the record and the detached halo are not —
+        // a user who switches the text off in favour of art-only keeps the record, because the
+        // record is its own toggle. A source exists only while it is listed in Info.Sources.
+        if (!_config.Info.Enabled && !_config.Info.Disc.Enabled && !(_config.Info.Halo is { Enabled: true, Detached: true }))
         {
             DisposeSources();
             return;
@@ -474,7 +485,8 @@ public sealed class Engine : IDisposable
             var sources = ResolveSources();
             double dpi = MonitorTracker.DpiScale(target, monitors);
             var style = StyleFor(target.Device);
-            _info = new InfoOverlay(window.EnsureHost(), _config.Info, target, sources, _battery, dpi, style);
+            if (_config.Info.Enabled)
+                _info = new InfoOverlay(window.EnsureHost(), _config.Info, target, sources, _battery, dpi, style);
 
             // Detached: the halo gets its own overlay instead of being drawn into the info
             // bitmap. Requires the battery source to exist — no battery in Sources, no ring,

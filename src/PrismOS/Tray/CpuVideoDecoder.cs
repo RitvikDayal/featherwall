@@ -115,7 +115,9 @@ public sealed class CpuVideoDecoder : IDisposable
     {
         using var attributes = MediaFactory.MFCreateAttributes(4);
         attributes.Set(SourceReaderAttributeKeys.DisableDxva, true);
-        attributes.Set(SourceReaderAttributeKeys.EnableVideoProcessing, true);
+        // The plain video processor rejects every scaled frame size with MF_E_INVALIDMEDIATYPE,
+        // but the advanced one scales into RGB32 fine — that is what keeps this at 480p on CPU.
+        attributes.Set(SourceReaderAttributeKeys.EnableAdvancedVideoProcessing, true);
 
         var reader = MediaFactory.MFCreateSourceReaderFromURL(path, attributes);
         var native = reader.GetNativeMediaType((int)SourceReaderIndex.FirstVideoStream, 0);
@@ -124,11 +126,11 @@ public sealed class CpuVideoDecoder : IDisposable
         uint height = (uint)(packedSize & 0xFFFFFFFF);
         native.Dispose();
 
-        // The software video processor refuses every scaled request on this machine
-        // (MF_E_INVALIDMEDIATYPE for any frame size but the native one), so the preview
-        // decodes at native size and GDI+ downscales on paint.
-        _width = (int)width;
-        _height = (int)height;
+        // 480p software preview: the advanced video processor scales into RGB32 for us,
+        // halving the pixel count (and the work) against the native 1080p decode.
+        double scale = Math.Min(1.0, Math.Min(854.0 / Math.Max(width, 1), 480.0 / Math.Max(height, 1)));
+        _width = Math.Max(2, (int)Math.Round(width * scale) & ~1);
+        _height = Math.Max(2, (int)Math.Round(height * scale) & ~1);
 
         using var outType = MediaFactory.MFCreateMediaType();
         outType.Set(MediaTypeAttributeKeys.MajorType, MediaTypeGuids.Video);
