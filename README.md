@@ -143,8 +143,9 @@ desktop, so it can't drift from the real thing.
 | ![Clock settings](docs/media/settings-clock.png) | ![Battery halo settings](docs/media/settings-battery.png) | ![Now-playing record settings](docs/media/settings-music.png) |
 
 **The wallpaper page shows what is actually on your screen.** It previews the wallpaper on the
-display you pick — the image itself, or the frame captured from a video — and lets you change it
-from there: browse for a file, or open the gallery as a list with each wallpaper's resolution,
+display you pick — an image shows itself, a video **plays live and looped inside the panel**, through
+the same hardware-decoded pipeline the desktop uses, always muted — and lets you change it from
+there: browse for a file, or open the gallery as a list with each wallpaper's resolution,
 size and licence. A wallpaper can be applied to one display or to all of them, so a second screen
 does not have to show the same thing as the first.
 
