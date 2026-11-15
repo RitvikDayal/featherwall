@@ -269,6 +269,10 @@ public sealed class AppConfig
     public FitMode Fit { get; set; } = FitMode.Fill;
     public bool MuteVideo { get; set; } = true;
     public double Volume { get; set; } = 0.3;
+    /// <summary>Settings-panel video preview plays live in the panel. Off means it shows the
+    /// captured still instead — decoding a video in the panel wakes the GPU and NVIDIA's
+    /// overlay.</summary>
+    public bool LiveVideoPreview { get; set; } = true;
     public ClockConfig Clock { get; set; } = new();
     public InfoConfig Info { get; set; } = new();
     public PauseConfig Pause { get; set; } = new();
@@ -318,6 +322,7 @@ public sealed class AppConfig
         Fit = defaults.Fit;
         MuteVideo = defaults.MuteVideo;
         Volume = defaults.Volume;
+        LiveVideoPreview = defaults.LiveVideoPreview;
         Clock = defaults.Clock;
         Info = defaults.Info;
         Pause = defaults.Pause;

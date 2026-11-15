@@ -84,7 +84,9 @@ public sealed class WallpaperPreview : Control
         Invalidate();
     }
 
-    private static bool IsVideoPath(string path) =>
+    /// <summary>True for extensions the video pipeline handles. Public so the settings panel
+    /// can pick a still frame instead when the live preview is off.</summary>
+    public static bool IsVideoPath(string path) =>
         VideoExtensions.Contains(Path.GetExtension(path));
 
     // ---- video mode -------------------------------------------------------------------------

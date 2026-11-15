@@ -1159,10 +1159,17 @@ public sealed class SettingsForm : Form
         var path = _engine.Config.WallpaperFor(device);
         bool exists = path is not null && File.Exists(path);
 
-        _wallpaperPreview.SetSource(_engine.WallpaperPreviewPath(device));
+        // A video plays live in the panel only with the live preview enabled; otherwise it
+        // shows the captured still, the same frame the Style tiles use.
+        string? previewSource = path;
+        bool liveVideo = exists && _config.LiveVideoPreview && WallpaperPreview.IsVideoPath(path!);
+        if (exists && !liveVideo && WallpaperPreview.IsVideoPath(path!))
+            previewSource = _engine.WallpaperStillPath(device);
+        _wallpaperPreview.SetSource(previewSource);
         _wallpaperPreview.Caption = path is not null && exists ? Path.GetFileName(path) : "";
         _wallpaperPreview.Placeholder = path is null ? "No wallpaper on this display"
             : !exists ? $"Not found: {Path.GetFileName(path)}"
+            : !liveVideo && WallpaperPreview.IsVideoPath(path!) ? "Live preview is off — no still frame captured yet. Turn on Live video preview in Behaviour."
             : "Loading preview…";
 
         var credit = _engine.CurrentWallpaperCreditFor(device);
@@ -1248,6 +1255,7 @@ public sealed class SettingsForm : Form
         if (_batteryAvailable)
             rows.AddRow("Pause on battery saver", Check(pause.OnBatterySaver, v => { pause.OnBatterySaver = v; _engine.SaveConfig(); }));
         rows.AddRow("Pause in remote desktop", Check(pause.OnRemoteSession, v => { pause.OnRemoteSession = v; _engine.SaveConfig(); }));
+        rows.AddRow("Live video preview", Check(_config.LiveVideoPreview, v => { _config.LiveVideoPreview = v; _engine.SaveConfig(); RefreshWallpaperSection(); }));
         rows.AddRow("Start with Windows", Check(Autostart.IsEnabled(), Autostart.SetEnabled));
 
         var reset = new Button

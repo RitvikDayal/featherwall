@@ -873,6 +873,20 @@ public sealed class Engine : IDisposable
         return File.Exists(path) ? path : null;
     }
 
+    /// <summary>The still that stands in for a video wallpaper: the frame the engine captured
+    /// when the wallpaper loaded. Per monitor, so "*" is the primary's. Null if none was written
+    /// yet.</summary>
+    public string? WallpaperStillPath(string monitorDevice)
+    {
+        string device = monitorDevice == "*"
+            ? MonitorTracker.Enumerate().FirstOrDefault(m => m.Primary)?.Device ?? monitorDevice
+            : monitorDevice;
+        var frame = StaticPath(device);
+        return File.Exists(frame) ? frame : null;
+    }
+
+    /// <summary>The monitor to preview, for call sites that want the same device the
+    /// wallpaper targets (re-applied on resume).</summary>
     private string PreviewDevice()
     {
         var monitors = MonitorTracker.Enumerate();
