@@ -19,7 +19,7 @@ namespace PrismOS.Tray;
 public sealed class SettingsForm : Form
 {
     private const int LabelColumnWidth = 200;
-    private const int ContentWidth = 476;
+    private const int ContentWidth = 640;
     private const int RailWidth = 140;
     private const int TabHeight = 38;
     private const int FooterHeight = 58;
@@ -306,7 +306,7 @@ public sealed class SettingsForm : Form
         {
             var tile = new ThemeTile(theme, (t, size) => ThemePreview.Render(t, size, _accent, _backdrop.Current, _config))
             {
-                Size = new Size(200, 138),
+                Size = new Size(192, 132),
                 Margin = new Padding(0, 0, 10, 10),
             };
             tile.Click += (_, _) =>
@@ -1245,7 +1245,8 @@ public sealed class SettingsForm : Form
         var pause = _config.Pause;
 
         rows.AddRow("Pause on fullscreen", Check(pause.OnFullscreen, v => { pause.OnFullscreen = v; _engine.SaveConfig(); }));
-        rows.AddRow("Pause on battery saver", Check(pause.OnBatterySaver, v => { pause.OnBatterySaver = v; _engine.SaveConfig(); }));
+        if (_batteryAvailable)
+            rows.AddRow("Pause on battery saver", Check(pause.OnBatterySaver, v => { pause.OnBatterySaver = v; _engine.SaveConfig(); }));
         rows.AddRow("Pause in remote desktop", Check(pause.OnRemoteSession, v => { pause.OnRemoteSession = v; _engine.SaveConfig(); }));
         rows.AddRow("Start with Windows", Check(Autostart.IsEnabled(), Autostart.SetEnabled));
 
