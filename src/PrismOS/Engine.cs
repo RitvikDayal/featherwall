@@ -1173,6 +1173,15 @@ public sealed class Engine : IDisposable
                             _engine._host.ValidateLayer();
                         }
                     }
+                    // Freeze the wallpaper at frame 0 before the lock screen draws and wake it
+                    // with the ease on unlock — the static image and the first live frame match.
+                    if (_engine._config.Widgets.WakeTransition)
+                    {
+                        if ((int)wParam == WTS_SESSION_LOCK)
+                            foreach (var window in _engine._windows.Values) window.Renderer?.FreezeFrameAtZero();
+                        else if ((int)wParam == WTS_SESSION_UNLOCK)
+                            foreach (var window in _engine._windows.Values) window.Renderer?.WakeTransition();
+                    }
                     return IntPtr.Zero;
                 case WM_POWERBROADCAST when (int)wParam == PBT_APMRESUMEAUTOMATIC:
                     Log.Info("Resumed from sleep — refreshing widgets and validating layer");

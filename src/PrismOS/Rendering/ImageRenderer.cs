@@ -17,6 +17,8 @@ public sealed class ImageRenderer : IWallpaperRenderer
     private readonly CompositionSurface _surface;
     private readonly string? _staticFramePath;
     private readonly Action? _onStaticFrame;
+    private readonly CompositionHost _host;
+    private readonly PrismOS.Widgets.WakeEase _wake;
     private Bitmap? _canvas;            // reused draw target sized to the window
     private Image? _animated;           // original image when it is an animated GIF
     private FitRect _rect;
@@ -31,7 +33,9 @@ public sealed class ImageRenderer : IWallpaperRenderer
         _fit = fit;
         _staticFramePath = staticFramePath;
         _onStaticFrame = onStaticFrame;
+        _host = host;
         _surface = host.CreateContent(width, height);
+        _wake = new PrismOS.Widgets.WakeEase(_surface, _host, width, height);
     }
 
     public void Load(string path)
@@ -120,6 +124,10 @@ public sealed class ImageRenderer : IWallpaperRenderer
 
     public void Paint(IntPtr hdc) { /* composition-presented */ }
 
+    public void FreezeFrameAtZero() => _wake.ApplyLocked();
+
+    public void WakeTransition() => _wake.Start();
+
     public void Pause()
     {
         lock (_sync)
@@ -150,6 +158,7 @@ public sealed class ImageRenderer : IWallpaperRenderer
         {
             if (_disposed) return;
             _disposed = true;
+            _wake.Dispose();
             if (_animated is not null)
             {
                 if (_animating) ImageAnimator.StopAnimate(_animated, OnFrameChanged);

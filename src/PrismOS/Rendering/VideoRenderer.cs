@@ -20,6 +20,7 @@ public sealed class VideoRenderer : IWallpaperRenderer
 
     private CompositionSurface _surfaceHost;
     private IDirect3DSurface? _surface;
+    private PrismOS.Widgets.WakeEase? _wake;
 
     private MediaPlayer? _player;
     private MediaSource? _source;
@@ -54,6 +55,7 @@ public sealed class VideoRenderer : IWallpaperRenderer
 
         _surfaceHost = host.CreateContent(width, height);
         WrapBackBuffer();
+        _wake = new PrismOS.Widgets.WakeEase(_surfaceHost, _hostComposition, width, height);
 
         _player = new MediaPlayer
         {
@@ -128,6 +130,7 @@ public sealed class VideoRenderer : IWallpaperRenderer
                     _surface?.Dispose();
                     _surface = null;
                     _surfaceHost = _hostComposition.CreateContent(fit.Width, fit.Height, fit.X, fit.Y);
+                    _wake = new PrismOS.Widgets.WakeEase(_surfaceHost, _hostComposition, fit.Width, fit.Height);
                     WrapBackBuffer();
                     _targetRect = null;
                     _staticCropX = -fit.X; // visible monitor region within the oversized surface
@@ -216,10 +219,10 @@ public sealed class VideoRenderer : IWallpaperRenderer
                     sender.CopyFrameToVideoSurface(_surface);
                 }
 
-                // Snapshot a settled frame for the static desktop-switch fallback, before
-                // Present (flip-model backbuffer is undefined afterward). Skip the first few
-                // frames — the earliest can predate the video dimensions settling.
-                if (!_staticCaptured && _staticFramePath is not null && ++_frameCount >= 3)
+                // Snapshot the first settled frame for the static fallback, before Present
+                // (flip-model backbuffer is undefined afterward). Frame 0, so the still the
+                // lock screen shows is the one the wake resumes from.
+                if (!_staticCaptured && _staticFramePath is not null && ++_frameCount >= 1)
                 {
                     _staticCaptured = true;
                     try
@@ -262,6 +265,45 @@ public sealed class VideoRenderer : IWallpaperRenderer
     {
         _pauseDeferred = false;
         _player?.Play();
+    }
+
+    /// <summary>Lock: seek to frame 0, pause, snap to the frozen wake state. The still on
+    /// the lock screen and the first frame of the live wallpaper match from here.</summary>
+    public void FreezeFrameAtZero()
+    {
+        try
+        {
+            _player?.Pause();
+            if (_player is not null)
+                _player.PlaybackSession.Position = TimeSpan.Zero;
+        }
+        catch (Exception ex) { Log.Warn($"Video freeze at frame 0 failed: {ex.Message}"); }
+        _wake?.ApplyLocked();
+    }
+
+    public void WakeTransition()
+    {
+        // Resume at a slowed rate and ramp back up. Delay 350 ms matches the Windows lock
+        // fade-out; playbackRate and the scale/dim ramp run together.
+        _wake?.Start();
+        try { _player?.PlaybackSession.PlaybackRate = 0.2f; } catch (Exception ex) { Log.Warn($"Wake rate reset failed: {ex.Message}"); }
+
+        System.Threading.Timer? rampTimer = null;
+        rampTimer = new System.Threading.Timer(_ =>
+        {
+            try
+            {
+                var session = _player?.PlaybackSession;
+                if (session is null) { rampTimer?.Dispose(); return; }
+                float current = (float)session.PlaybackRate;
+                if (current >= 1.0f) { rampTimer?.Dispose(); return; }
+                // ~0.8 rate over ~650 ms in 33 ms ticks.
+                float step = 0.8f / (650f / 33f);
+                session.PlaybackRate = Math.Min(1.0f, current + step);
+                if (session.PlaybackRate >= 1.0f) rampTimer?.Dispose();
+            }
+            catch (Exception ex) { Log.Warn($"Rate ramp step failed: {ex.Message}"); rampTimer?.Dispose(); }
+        }, null, 350, 33);
     }
 
     public void Paint(IntPtr hdc) { /* composition-presented; nothing to do on WM_PAINT */ }
@@ -313,6 +355,8 @@ public sealed class VideoRenderer : IWallpaperRenderer
             }
             _surface?.Dispose();
             _surface = null;
+            _wake?.Dispose();
+            _wake = null;
             // The content surface and host belong to the WallpaperWindow.
         }
     }

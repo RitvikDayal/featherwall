@@ -119,6 +119,11 @@ public sealed class WidgetsConfig
     /// On by default since the music pill rework; flip in Behaviour for weaker machines.</summary>
     public bool Blur { get; set; } = true;
 
+    /// <summary>Lock the desktop into frame 0 before the lock screen shows, ease it back open on
+    /// wake, and ramp video playback from 0.2x to 1.0x over ~650 ms. Off keeps the plain
+    /// start/stop behaviour at unlock.</summary>
+    public bool WakeTransition { get; set; } = true;
+
     /// <summary>Also apply the wallpaper to the lock screen. Windows 10/11 paint the lock screen
     /// from a static image policy key, so for a video wallpaper this uses the captured still;
     /// an image wallpaper is used as-is. Off skips the write entirely (without removing any

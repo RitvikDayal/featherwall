@@ -1258,6 +1258,7 @@ public sealed class SettingsForm : Form
         rows.AddRow("Live video preview", Check(_config.LiveVideoPreview, v => { _config.LiveVideoPreview = v; _engine.SaveConfig(); RefreshWallpaperSection(); }));
         rows.AddRow("Blur background (frosted glass)", Check(_config.Widgets.Blur, v => { _config.Widgets.Blur = v; _engine.SaveConfig(); _engine.ReapplyWallpaperAndWidgets(); }));
         rows.AddRow("Show on lock screen", Check(_config.Widgets.LockScreen, v => { _config.Widgets.LockScreen = v; _engine.SaveConfig(); if (v) _engine.ApplyLockScreenWallpaper(); }));
+        rows.AddRow("Wake-up transition", Check(_config.Widgets.WakeTransition, v => { _config.Widgets.WakeTransition = v; _engine.SaveConfig(); }));
         rows.AddRow("Start with Windows", Check(Autostart.IsEnabled(), Autostart.SetEnabled));
 
         var reset = new Button
