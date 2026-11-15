@@ -27,6 +27,22 @@ internal static class Program
         if (args.Contains("--diag"))
             return RunDiagnostics();
 
+        if (args.Contains("--set-lockscreen"))
+        {
+            // Elevated re-launch: write the policy keys for the file we were given and exit.
+            // Nothing else to do here — no wallpaper engine, no window.
+            Log.Init();
+            int idx = Array.IndexOf(args, "--set-lockscreen");
+            string? image = idx + 1 < args.Length ? args[idx + 1] : null;
+            if (image is null || !File.Exists(image))
+            {
+                Log.Error("--set-lockscreen: missing or unreadable image argument");
+                return 1;
+            }
+            var result = Desktop.LockScreenWallpaper.SetElevated(image);
+            Log.Info($"Elevated lock screen write: {result}");
+            return result == Desktop.LockScreenWallpaper.Result.Ok ? 0 : 1;        }
+
         if (args.Contains("--exit"))
         {
             var running = User32.FindWindowW("PrismOSMessage", null);

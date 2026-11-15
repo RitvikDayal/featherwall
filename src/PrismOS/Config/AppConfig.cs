@@ -119,6 +119,12 @@ public sealed class WidgetsConfig
     /// On by default since the music pill rework; flip in Behaviour for weaker machines.</summary>
     public bool Blur { get; set; } = true;
 
+    /// <summary>Also apply the wallpaper to the lock screen. Windows 10/11 paint the lock screen
+    /// from a static image policy key, so for a video wallpaper this uses the captured still;
+    /// an image wallpaper is used as-is. Off skips the write entirely (without removing any
+    /// previously-set policy image).</summary>
+    public bool LockScreen { get; set; } = true;
+
     /// <summary>The group themes: one position and one monitor for the whole set.</summary>
     public static bool IsGroup(WidgetTheme theme) =>
         theme is WidgetTheme.GlassDock or WidgetTheme.Orbit or WidgetTheme.Poster

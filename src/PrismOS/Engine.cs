@@ -62,6 +62,7 @@ public sealed class Engine : IDisposable
     private NowPlayingSource? _nowPlaying;
     private PlaybackMonitor? _playback;
     private bool _reapplying;
+    private bool _lockScreenHintShown;
     private string _originalWallpaper = "";
 
     private static string StaticDir => Path.Combine(Log.Directory, "static");
@@ -138,6 +139,7 @@ public sealed class Engine : IDisposable
             }
         }
         RecreateWidgets();
+        ApplyLockScreenWallpaper();
     }
 
     private void ApplyToMonitor(MonitorInfo monitor, string path)
@@ -170,6 +172,9 @@ public sealed class Engine : IDisposable
             {
                 try { VirtualDesktopWallpaper.SetAll(staticPath); }
                 catch (Exception ex) { Log.Error("Set per-desktop fallback failed", ex); }
+                // The frame is fresh — push it to the lock screen policy key too; ApplyFromConfig
+                // called before the frame existed produced no usable source, so it did nothing.
+                try { ApplyLockScreenWallpaper(); } catch (Exception ex) { Log.Warn($"Lock screen update after frame capture failed: {ex.Message}"); }
             }
 
             // Rebuilt only when this monitor's accent actually changed: a re-apply of the same
@@ -225,6 +230,7 @@ public sealed class Engine : IDisposable
             _config.Assign(monitorDevice, path);
             ConfigStore.Save(_config);
             if (_clock is null && _info is null && _halo is null && _record is null && _group is null) RecreateWidgets();
+            ApplyLockScreenWallpaper();
             WallpaperChanged?.Invoke();
         }
     }
@@ -929,6 +935,62 @@ public sealed class Engine : IDisposable
         if (ImageExtensions.Contains(Path.GetExtension(path))) return File.Exists(path) ? path : null;
         var frame = StaticPath(monitor.Device);
         return File.Exists(frame) ? frame : null;
+    }
+
+    /// <summary>Applies the configured wallpaper to the lock screen as well. The lock screen
+    /// shows a static picture; a video wallpaper is swapped for the captured frame.
+    /// Off means the checkbox is off, not "leave the old one alone" — we simply never write the key.</summary>
+    public void ApplyLockScreenWallpaper()
+    {
+        if (!_config.Widgets.LockScreen) return;
+        try
+        {
+            var monitors = MonitorTracker.Enumerate();
+            var target = monitors.FirstOrDefault(m => m.Primary) ?? monitors.FirstOrDefault();
+            if (target is null) return;
+            var configImage = _config.WallpaperFor(target.Device);
+            if (configImage is null) return;
+
+            string? source = MonitorStillPath(target);
+            if (source is null) { Log.Info("Lock screen unchanged: no usable image captured yet"); return; }
+
+            var result = Desktop.LockScreenWallpaper.Set(source, Desktop.LockScreenWallpaper.AppImagePath);
+            switch (result)
+            {
+                case Desktop.LockScreenWallpaper.Result.Ok:
+                    Log.Info("Lock screen image updated from configured wallpaper");
+                    break;
+                case Desktop.LockScreenWallpaper.Result.NeedsElevation:
+                    if (!_lockScreenHintShown && _tray is not null)
+                    {
+                        _lockScreenHintShown = true;
+                        _tray.ShowBalloon(
+                            "PrismOS isn't on the lock screen",
+                            "Windows needs admin once to write the lock screen image policy. Click to elevate.",
+                            () => RunOnMainThread(ElevateLockScreenWrite));
+                    }
+                    break;
+                case Desktop.LockScreenWallpaper.Result.Failed:
+                    Log.Warn("Lock screen write failed; image left unchanged");
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            Common.Log.Warn($"Lock screen apply failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>The balloon's click action: re-launch PrismOS elevated just to write the policy
+    /// key, nothing else starts. UAC belongs to us, not to any helper we ship.</summary>
+    private void ElevateLockScreenWrite()
+    {
+        var result = Desktop.LockScreenWallpaper.SetViaElevation(Desktop.LockScreenWallpaper.AppImagePath);
+        Log.Info($"Lock screen elevation result: {result}");
+        if (result == Desktop.LockScreenWallpaper.Result.Ok)
+            _tray?.ShowBalloon("Lock screen updated", "Your wallpaper now shows on the lock screen too.");
+        else
+            _tray?.ShowBalloon("Lock screen kept as is", "Elevation was declined or failed; see the log.");
     }
 
     /// <summary>The monitor to preview, for call sites that want the same device the
