@@ -13,12 +13,12 @@ namespace PrismOS.Tray;
 /// process with the GPU — which is the only reliable way to keep the NVIDIA App overlay from
 /// flagging the preview.
 ///
-/// The decode runs on a background thread; frames are bitmaps sized for the panel. The UI
-/// thread owns drawing them and never sees a Media Foundation call.</summary>
+/// The decode runs on a background thread at native size (the software video processor
+/// refuses scaled requests outright); frames reach the panel as RGB32 bitmaps and GDI+
+/// downscales them on paint. The UI thread never sees a Media Foundation call.</summary>
 public sealed class CpuVideoDecoder : IDisposable
 {
     private readonly string _path;
-    private readonly int _maxPixels;
     private readonly Thread _thread;
     private readonly CancellationTokenSource _stop = new();
     private volatile bool _paused;
@@ -34,10 +34,9 @@ public sealed class CpuVideoDecoder : IDisposable
     /// instead of a black hole in the panel.</summary>
     public string? Error { get; private set; }
 
-    public CpuVideoDecoder(string path, int maxPixels = 640)
+    public CpuVideoDecoder(string path)
     {
         _path = path;
-        _maxPixels = maxPixels;
         _thread = new Thread(DecodeLoop) { IsBackground = true, Name = "CpuVideoPreview" };
     }
 
@@ -125,9 +124,11 @@ public sealed class CpuVideoDecoder : IDisposable
         uint height = (uint)(packedSize & 0xFFFFFFFF);
         native.Dispose();
 
-        double scale = Math.Min(1.0, _maxPixels / (double)Math.Max(width, 1));
-        _width = Math.Max(2, (int)Math.Round(width * scale));
-        _height = Math.Max(2, (int)Math.Round(height * scale));
+        // The software video processor refuses every scaled request on this machine
+        // (MF_E_INVALIDMEDIATYPE for any frame size but the native one), so the preview
+        // decodes at native size and GDI+ downscales on paint.
+        _width = (int)width;
+        _height = (int)height;
 
         using var outType = MediaFactory.MFCreateMediaType();
         outType.Set(MediaTypeAttributeKeys.MajorType, MediaTypeGuids.Video);

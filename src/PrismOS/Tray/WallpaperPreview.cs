@@ -79,7 +79,7 @@ public sealed class WallpaperPreview : Control
         }
         if (IsVideoPath(path))
         {
-            _decoder = new CpuVideoDecoder(path, MaxPreviewPixels);
+            _decoder = new CpuVideoDecoder(path);
             _decoder.FrameReady += OnFrameReady;
             if (Visible) _decoder.Start();
             _placeholder = "Loading preview…";
