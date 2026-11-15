@@ -643,81 +643,21 @@ public sealed class Engine : IDisposable
     // ---- tray menu ---------------------------------------------------------------------------
 
     private const uint CmdExit = 1;
-    private const uint CmdPick = 2;
-    private const uint CmdClockEnabled = 3;
-    private const uint CmdClock24h = 4;
-    private const uint CmdClockSeconds = 5;
-    private const uint CmdClockDate = 6;
-    private const uint CmdMute = 7;
-    private const uint CmdAutostart = 8;
-    private const uint CmdOpenConfig = 9;
-    private const uint CmdDiagnostics = 10;
-    private const uint CmdPauseFullscreen = 11;
-    private const uint CmdPauseBattery = 12;
-    private const uint CmdSettings = 13;
-    private const uint CmdFitBase = 20;      // + (int)FitMode
-    private const uint CmdAnchorBase = 30;   // + (int)ClockAnchor
-    private const uint CmdThemeBase = 40;    // + (int)WidgetTheme
-    private const uint CmdGalleryBase = 2000;
+    private const uint CmdOpen = 2;
+    private const uint CmdRefresh = 3;
 
+    /// <summary>The tray menu is deliberately three items. All management lives in the app:
+    /// clicking PrismOS opens the window with everything, and right-clicking is not a second,
+    /// worse control panel.</summary>
     private void ShowTrayMenu()
     {
         if (_messageWindow is null) return;
 
         IntPtr menu = User32.CreatePopupMenu();
-        IntPtr fitMenu = User32.CreatePopupMenu();
-        IntPtr clockMenu = User32.CreatePopupMenu();
-        IntPtr anchorMenu = User32.CreatePopupMenu();
-        IntPtr galleryMenu = User32.CreatePopupMenu();
-        IntPtr pauseMenu = User32.CreatePopupMenu();
-        IntPtr themeMenu = User32.CreatePopupMenu();
         try
         {
-            User32.AppendMenuW(menu, MF_STRING, CmdPick, "Set wallpaper…");
-
-            foreach (var (entry, index) in _gallery.Manifest.Entries.Select((e, i) => (e, i)))
-            {
-                bool cached = _gallery.LocalPathIfDownloaded(entry) is not null;
-                string label = cached
-                    ? $"{entry.Title}"
-                    : $"{entry.Title}  ({entry.SizeLabel} download)";
-                User32.AppendMenuW(galleryMenu, MF_STRING, CmdGalleryBase + (uint)index, label);
-            }
-            User32.AppendMenuW(menu, MF_POPUP, (nuint)galleryMenu, "Gallery (public-domain)");
-
-            foreach (var mode in Enum.GetValues<FitMode>())
-                User32.AppendMenuW(fitMenu, MF_STRING | (_config.Fit == mode ? MF_CHECKED : 0),
-                    CmdFitBase + (uint)mode, mode.ToString());
-            User32.AppendMenuW(menu, MF_POPUP, (nuint)fitMenu, "Fit mode");
-
-            User32.AppendMenuW(menu, MF_STRING | (_config.MuteVideo ? MF_CHECKED : 0), CmdMute, "Mute video");
-            User32.AppendMenuW(menu, MF_SEPARATOR, 0, null);
-
-            User32.AppendMenuW(clockMenu, MF_STRING | (_config.Clock.Enabled ? MF_CHECKED : 0), CmdClockEnabled, "Show clock");
-            User32.AppendMenuW(clockMenu, MF_STRING | (_config.Clock.TwentyFourHour ? MF_CHECKED : 0), CmdClock24h, "24-hour");
-            User32.AppendMenuW(clockMenu, MF_STRING | (_config.Clock.ShowSeconds ? MF_CHECKED : 0), CmdClockSeconds, "Show seconds");
-            User32.AppendMenuW(clockMenu, MF_STRING | (_config.Clock.ShowDate ? MF_CHECKED : 0), CmdClockDate, "Show date");
-            foreach (var anchor in Enum.GetValues<ClockAnchor>())
-                User32.AppendMenuW(anchorMenu, MF_STRING | (_config.Clock.Anchor == anchor ? MF_CHECKED : 0),
-                    CmdAnchorBase + (uint)anchor, PrettyAnchor(anchor));
-            User32.AppendMenuW(clockMenu, MF_POPUP, (nuint)anchorMenu, "Position");
-            User32.AppendMenuW(menu, MF_POPUP, (nuint)clockMenu, "Clock");
-
-            var currentTheme = _config.Widgets.ResolveTheme();
-            foreach (var theme in Enum.GetValues<WidgetTheme>())
-                User32.AppendMenuW(themeMenu, MF_STRING | (currentTheme == theme ? MF_CHECKED : 0),
-                    CmdThemeBase + (uint)theme, WidgetsConfig.DisplayName(theme));
-            User32.AppendMenuW(menu, MF_POPUP, (nuint)themeMenu, "Widget style");
-
-            User32.AppendMenuW(pauseMenu, MF_STRING | (_config.Pause.OnFullscreen ? MF_CHECKED : 0), CmdPauseFullscreen, "Pause when a fullscreen app is active");
-            User32.AppendMenuW(pauseMenu, MF_STRING | (_config.Pause.OnBatterySaver ? MF_CHECKED : 0), CmdPauseBattery, "Pause on battery saver");
-            User32.AppendMenuW(menu, MF_POPUP, (nuint)pauseMenu, "Auto-pause");
-
-            User32.AppendMenuW(menu, MF_SEPARATOR, 0, null);
-            User32.AppendMenuW(menu, MF_STRING, CmdSettings, "Settings…");
-            User32.AppendMenuW(menu, MF_STRING | (Autostart.IsEnabled() ? MF_CHECKED : 0), CmdAutostart, "Run at startup");
-            User32.AppendMenuW(menu, MF_STRING, CmdOpenConfig, "Open config file");
-            User32.AppendMenuW(menu, MF_STRING, CmdDiagnostics, "Diagnostics");
+            User32.AppendMenuW(menu, MF_STRING, CmdOpen, "Open PrismOS");
+            User32.AppendMenuW(menu, MF_STRING, CmdRefresh, "Refresh");
             User32.AppendMenuW(menu, MF_SEPARATOR, 0, null);
             User32.AppendMenuW(menu, MF_STRING, CmdExit, "Exit PrismOS");
 
@@ -728,22 +668,9 @@ public sealed class Engine : IDisposable
         }
         finally
         {
-            User32.DestroyMenu(menu); // destroys submenus too
+            User32.DestroyMenu(menu);
         }
     }
-
-    private static string PrettyAnchor(ClockAnchor anchor) => anchor switch
-    {
-        ClockAnchor.TopLeft => "Top left",
-        ClockAnchor.TopCenter => "Top center",
-        ClockAnchor.TopRight => "Top right",
-        ClockAnchor.CenterLeft => "Center left",
-        ClockAnchor.Center => "Center",
-        ClockAnchor.CenterRight => "Center right",
-        ClockAnchor.BottomLeft => "Bottom left",
-        ClockAnchor.BottomCenter => "Bottom center",
-        _ => "Bottom right",
-    };
 
     private void HandleCommand(uint cmd)
     {
@@ -752,74 +679,13 @@ public sealed class Engine : IDisposable
             case CmdExit:
                 User32.PostQuitMessage(0);
                 return;
-            case CmdPick:
-                if (FilePicker.PickMedia(_messageWindow!.Hwnd) is { } path)
-                    ApplyUserSelection(path);
-                return;
-            case CmdClockEnabled:
-                _config.Clock.Enabled = !_config.Clock.Enabled;
-                SaveAndRefreshClockOnly();
-                return;
-            case CmdClock24h:
-                _config.Clock.TwentyFourHour = !_config.Clock.TwentyFourHour;
-                SaveAndRefreshClockOnly();
-                return;
-            case CmdClockSeconds:
-                _config.Clock.ShowSeconds = !_config.Clock.ShowSeconds;
-                SaveAndRefreshClockOnly();
-                return;
-            case CmdClockDate:
-                _config.Clock.ShowDate = !_config.Clock.ShowDate;
-                SaveAndRefreshClockOnly();
-                return;
-            case CmdMute:
-                _config.MuteVideo = !_config.MuteVideo;
-                ApplyAudioSettings();
-                return;
-            case CmdSettings:
+            case CmdOpen:
                 OpenSettings();
                 return;
-            case CmdAutostart:
-                Autostart.SetEnabled(!Autostart.IsEnabled());
+            case CmdRefresh:
+                Log.Info("Refresh requested from tray menu");
+                ReapplyAll();
                 return;
-            case CmdOpenConfig:
-                ConfigStore.Save(_config);
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(ConfigStore.ConfigPath) { UseShellExecute = true });
-                return;
-            case CmdDiagnostics:
-                User32.MessageBoxW(IntPtr.Zero, Diagnostics(), "PrismOS diagnostics", 0x40 /* MB_ICONINFORMATION */);
-                return;
-            case CmdPauseFullscreen:
-                _config.Pause.OnFullscreen = !_config.Pause.OnFullscreen;
-                ConfigStore.Save(_config);
-                return;
-            case CmdPauseBattery:
-                _config.Pause.OnBatterySaver = !_config.Pause.OnBatterySaver;
-                ConfigStore.Save(_config);
-                return;
-        }
-
-        if (cmd >= CmdFitBase && cmd < CmdFitBase + 10)
-        {
-            _config.Fit = (FitMode)(cmd - CmdFitBase);
-            ConfigStore.Save(_config);
-            ReapplyAll();
-            return;
-        }
-        if (cmd >= CmdAnchorBase && cmd < CmdAnchorBase + 10)
-        {
-            _config.Clock.Anchor = (ClockAnchor)(cmd - CmdAnchorBase);
-            SaveAndRefreshClockOnly();
-            return;
-        }
-        if (cmd >= CmdThemeBase && cmd < CmdThemeBase + 10)
-        {
-            SetWidgetTheme((WidgetTheme)(cmd - CmdThemeBase), "tray");
-            return;
-        }
-        if (cmd >= CmdGalleryBase && cmd < CmdGalleryBase + (uint)_gallery.Manifest.Entries.Count)
-        {
-            ApplyGalleryEntry(_gallery.Manifest.Entries[(int)(cmd - CmdGalleryBase)]);
         }
     }
 
@@ -1150,7 +1016,7 @@ public sealed class Engine : IDisposable
                     _engine._tray?.Clicks.OnClick();
                 else if (mouse is WM_RBUTTONUP or WM_CONTEXTMENU)
                     _engine.ShowTrayMenu();
-                else if (mouse == WM_LBUTTONDBLCLK)
+                else if (mouse == WM_LBUTTONDBLCLK || mouse == WM_LBUTTONUP)
                     _engine.OpenSettings();
                 return IntPtr.Zero;
             }
@@ -1253,8 +1119,23 @@ public static class Autostart
     {
         using var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(RunKey);
         if (enabled && Environment.ProcessPath is { } exe)
-            key.SetValue(ValueName, $"\"{exe}\"");
+            // --silent: a login start attaches the wallpaper in the background and does not
+            // open the window. Opening PrismOS yourself is how it opens the window.
+            key.SetValue(ValueName, $"\"{exe}\" --silent");
         else
             key.DeleteValue(ValueName, throwOnMissingValue: false);
+    }
+
+    /// <summary>An earlier version registered the bare exe for login start, which would pop the
+    /// settings window at every sign-in. Rewrite the value with --silent once at startup.</summary>
+    public static void EnsureSilentFlag()
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RunKey, writable: true);
+            if (key?.GetValue(ValueName) is not string value || value.Contains("--silent", StringComparison.OrdinalIgnoreCase)) return;
+            key.SetValue(ValueName, $"{value} --silent");
+        }
+        catch { /* best effort; worst case the window opens once at login */ }
     }
 }

@@ -1247,7 +1247,7 @@ public sealed class SettingsForm : Form
         rows.AddRow("Pause on fullscreen", Check(pause.OnFullscreen, v => { pause.OnFullscreen = v; _engine.SaveConfig(); }));
         rows.AddRow("Pause on battery saver", Check(pause.OnBatterySaver, v => { pause.OnBatterySaver = v; _engine.SaveConfig(); }));
         rows.AddRow("Pause in remote desktop", Check(pause.OnRemoteSession, v => { pause.OnRemoteSession = v; _engine.SaveConfig(); }));
-        rows.AddRow("Run at startup", Check(Autostart.IsEnabled(), Autostart.SetEnabled));
+        rows.AddRow("Start with Windows", Check(Autostart.IsEnabled(), Autostart.SetEnabled));
 
         var reset = new Button
         {
@@ -1334,6 +1334,51 @@ public sealed class SettingsForm : Form
         row.Controls.Add(check);
         row.Controls.Add(status);
         rows.AddRow("Updates", row);
+
+        // The two things that used to live behind right-click live here, with the rest of the
+        // management this window exists for.
+        var aux = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.LeftToRight,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Theme.Colors.Card,
+            Margin = new Padding(0, 2, 0, 2),
+        };
+        var openConfig = new Button
+        {
+            Text = "Open config file",
+            AutoSize = true,
+            Height = 28,
+            FlatStyle = FlatStyle.Flat,
+            BackColor = Theme.Colors.Control,
+            ForeColor = Theme.Colors.Text,
+        };
+        openConfig.FlatAppearance.BorderColor = Theme.Colors.Border;
+        openConfig.Click += (_, _) =>
+        {
+            try
+            {
+                _engine.SaveConfig();
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(ConfigStore.ConfigPath) { UseShellExecute = true });
+            }
+            catch (Exception ex) { Common.Log.Warn($"Could not open the config file: {ex.Message}"); }
+        };
+        var diagnostics = new Button
+        {
+            Text = "Diagnostics",
+            AutoSize = true,
+            Height = 28,
+            FlatStyle = FlatStyle.Flat,
+            BackColor = Theme.Colors.Control,
+            ForeColor = Theme.Colors.Text,
+        };
+        diagnostics.FlatAppearance.BorderColor = Theme.Colors.Border;
+        diagnostics.Click += (_, _) =>
+            User32.MessageBoxW(Handle, _engine.Diagnostics(), "PrismOS diagnostics", 0x40 /* MB_ICONINFORMATION */);
+        aux.Controls.Add(openConfig);
+        aux.Controls.Add(diagnostics);
+        rows.AddRow("Files", aux);
 
         return card;
     }

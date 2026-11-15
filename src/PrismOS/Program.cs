@@ -40,6 +40,7 @@ internal static class Program
         // are copied in first, so they count as "ran before" too.
         bool migrated = LegacyMigration.Migrate();
         bool ranBefore = migrated || ConfigStore.RanBefore(Log.Directory);
+        Autostart.EnsureSilentFlag();
 
         Log.Init();
         Log.Info($"PrismOS starting (pid {Environment.ProcessId})");
@@ -63,8 +64,7 @@ internal static class Program
             }
             // Not found, or refused (an elevated copy will not take messages from this one).
             if (!posted)
-                User32.MessageBoxW(IntPtr.Zero, "PrismOS is already running — look for the feather icon in the tray.",
-                    "PrismOS", 0x40);
+                User32.MessageBoxW(IntPtr.Zero, "PrismOS is already running.", "PrismOS", 0x40);
             return 0;
         }
 
@@ -115,7 +115,9 @@ internal static class Program
             engine = new Engine(config, configUnreadable);
             engine.Start();
 
-            if (args.Contains("--settings"))
+            // Opening PrismOS like an app opens the window; --silent is the login start, which
+            // attaches the wallpaper in the background and stays out of the way.
+            if (!args.Contains("--silent"))
                 engine.OpenSettings();
 
             while (User32.GetMessageW(out var msg, IntPtr.Zero, 0, 0) > 0)

@@ -67,11 +67,14 @@ dotnet build -c Release
 
 </details>
 
-A feather appears in your tray. Right-click it for **Set wallpaper**, **Gallery** or **Widget style**.
-Double-click it for settings.
+The PrismOS mark appears in your tray. Clicking it (or the **PrismOS** Start menu entry) opens
+the app with everything: wallpaper, gallery, clock, widgets, colours and behaviour — the window is
+the whole control panel, and there is nothing hidden in a menu. Right-clicking the tray icon gives
+you three items: **Open PrismOS**, **Refresh** (re-apply wallpaper and widgets) and **Exit PrismOS**.
 
 | Flag | Does |
 |---|---|
+| `--silent` | Starts without opening the window — used for startup with Windows |
 | `--settings` | Opens the settings panel |
 | `--diag` | Prints the detected desktop topology and monitor layout |
 | `--exit` | Stops the running instance |
@@ -82,7 +85,7 @@ Double-click it for settings.
 
 ## Seven widget styles
 
-Pick one from the tray or the **Style page** in settings. The accent comes from your wallpaper,
+Pick one on the **Style page** in settings. The accent comes from your wallpaper,
 or you choose it. Size goes from 50 to 300%.
 
 | Classic | Editorial | Glass dock |
@@ -212,7 +215,7 @@ of public domain and CC0 media from NASA and Wikimedia Commons, downloaded strai
 
 ## Configuration
 
-The tray and settings panel cover the common cases. Everything lives in
+The settings panel covers the common cases. Everything lives in
 `%APPDATA%\PrismOS\config.json`, and logs go to `%LOCALAPPDATA%\PrismOS\prismos.log`.
 
 <details>
