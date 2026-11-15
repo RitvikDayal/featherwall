@@ -54,6 +54,17 @@ public sealed class SettingsForm : Form
     private Button? _accentSwatch;
     private Label? _accentHex;
 
+    // ---- wallpaper page -------------------------------------------------------------------
+    /// <summary>The preview of what is on the selected display.</summary>
+    private WallpaperPreview? _wallpaperPreview;
+    /// <summary>The device each entry in the display list points at: "*" for all displays, or a
+    /// monitor device name. The list is rebuilt when the page is built, so a display that was
+    /// plugged in afterwards is picked up the next time the panel opens.</summary>
+    private readonly List<string> _wallpaperTargets = [];
+    private int _wallpaperTargetIndex;
+    private Panel? _wallpaperCreditHost;
+    private Label? _wallpaperCreditCaption;
+
     private Button _colorButton = null!;
     private Label _colorHex = null!;
 
@@ -64,6 +75,7 @@ public sealed class SettingsForm : Form
         (_accent, _accentSource) = engine.CurrentAccent();
         engine.AccentChanged += OnAccentChanged;
         engine.WidgetsChanged += OnWidgetsChanged;
+        engine.WallpaperChanged += OnWallpaperChanged;
         _preview = new ClockPreview(_config.Clock, CurrentStyle);
 
         Text = "PrismOS";
@@ -201,6 +213,8 @@ public sealed class SettingsForm : Form
     {
         base.OnShown(e);
         ResizeToActivePage();
+        // The wallpaper may have changed while this panel was closed.
+        RefreshWallpaperSection();
         CenterToScreen();
         // Spawned from the tray, our process may not hold foreground rights — force it.
         TopMost = true;
@@ -437,10 +451,19 @@ public sealed class SettingsForm : Form
         RefreshStyle();
     }
 
+    /// <summary>The wallpaper changed from the tray or the gallery while this window was open:
+    /// the preview shows what is there now, not what was there when the panel opened.</summary>
+    private void OnWallpaperChanged()
+    {
+        if (IsDisposed) return;
+        RefreshWallpaperSection();
+    }
+
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
         _engine.AccentChanged -= OnAccentChanged;
         _engine.WidgetsChanged -= OnWidgetsChanged;
+        _engine.WallpaperChanged -= OnWallpaperChanged;
         _backdrop.Dispose();
         base.OnFormClosed(e);
     }
@@ -967,9 +990,64 @@ public sealed class SettingsForm : Form
         _engine.RefreshWidgets();
     }
 
+    /// <summary>The wallpaper page: what is on the screen, and how to change it.
+    ///
+    /// Until now the only way to set a wallpaper was the tray's "Set wallpaper…" item, which
+    /// opened a file dialog and nothing else — no way to see what was there, no way to pick a
+    /// display, and no way to reach the gallery without the tray. This page does all three: it
+    /// shows the wallpaper as it is on the chosen display, applies a new one to that display
+    /// alone or to all of them, and opens the gallery as a list rather than a submenu.</summary>
     private Control BuildWallpaperSection()
     {
         var (card, rows) = NewSection("Wallpaper");
+
+        _wallpaperPreview = new WallpaperPreview
+        {
+            Width = ContentWidth - 32,
+            Height = 249,
+            Margin = new Padding(0, 0, 0, 12),
+        };
+        card.Controls.Add(_wallpaperPreview);
+        card.Controls.SetChildIndex(_wallpaperPreview, 1);
+
+        rows.AddRow("Display", BuildWallpaperTargetChoice());
+
+        var actions = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.LeftToRight,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Theme.Colors.Card,
+            Margin = new Padding(0, 2, 0, 2),
+        };
+        var browse = new Button
+        {
+            Text = "Browse…",
+            Width = 96,
+            Height = 28,
+            FlatStyle = FlatStyle.Flat,
+            BackColor = Theme.Colors.Control,
+            ForeColor = Theme.Colors.Text,
+            Margin = new Padding(0, 0, 8, 0),
+        };
+        browse.FlatAppearance.BorderColor = Theme.Colors.Border;
+        browse.Click += (_, _) => BrowseForWallpaper();
+
+        var gallery = new Button
+        {
+            Text = "Gallery…",
+            Width = 96,
+            Height = 28,
+            FlatStyle = FlatStyle.Flat,
+            BackColor = Theme.Colors.Control,
+            ForeColor = Theme.Colors.Text,
+        };
+        gallery.FlatAppearance.BorderColor = Theme.Colors.Border;
+        gallery.Click += (_, _) => OpenGallery();
+
+        actions.Controls.Add(browse);
+        actions.Controls.Add(gallery);
+        rows.AddRow("Change wallpaper", actions);
 
         rows.AddRow("Fit mode", Choice(["Fill (crop)", "Fit (letterbox)", "Stretch"], (int)_config.Fit, i =>
         {
@@ -983,10 +1061,77 @@ public sealed class SettingsForm : Form
             _engine.ApplyAudioSettings();
         }, "%"));
 
-        if (_engine.CurrentWallpaperCredit is { } credit)
-            rows.AddRow("Credit", BuildCredit(credit));
+        _wallpaperCreditHost = new Panel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Theme.Colors.Card,
+            Margin = new Padding(0),
+        };
+        _wallpaperCreditCaption = rows.AddRowLabel("Credit", _wallpaperCreditHost);
 
+        RefreshWallpaperSection();
         return card;
+    }
+
+    /// <summary>Which display the page is about, and where a newly chosen wallpaper goes.
+    ///
+    /// One list, doing both jobs, rather than a "show display" and an "apply to" that could
+    /// disagree: the thing you are looking at is the thing you are changing.</summary>
+    private Control BuildWallpaperTargetChoice()
+    {
+        var targets = WallpaperTargets.Build(Desktop.MonitorTracker.Enumerate());
+        _wallpaperTargets.Clear();
+        _wallpaperTargets.AddRange(targets.Select(t => t.Device));
+
+        return Choice([.. targets.Select(t => t.Label)], 0, i =>
+        {
+            if (_loading) return;
+            _wallpaperTargetIndex = i;
+            RefreshWallpaperSection();
+        });
+    }
+
+    /// <summary>The device the page is about: "*" for every display, or a monitor's device name.</summary>
+    private string CurrentWallpaperTarget() =>
+        _wallpaperTargetIndex >= 0 && _wallpaperTargetIndex < _wallpaperTargets.Count
+            ? _wallpaperTargets[_wallpaperTargetIndex]
+            : "*";
+
+    private string CurrentWallpaperTargetLabel() => WallpaperTargets.Describe(CurrentWallpaperTarget());
+
+    /// <summary>Redraws the preview and the credit for the selected display.</summary>
+    private void RefreshWallpaperSection()
+    {
+        if (_wallpaperPreview is null) return;
+        string device = CurrentWallpaperTarget();
+        var path = _engine.Config.WallpaperFor(device);
+
+        _wallpaperPreview.SetSource(_engine.WallpaperPreviewPath(device));
+        _wallpaperPreview.Caption = path is null ? "" : Path.GetFileName(path);
+        _wallpaperPreview.Placeholder = "No wallpaper on this display";
+
+        var credit = _engine.CurrentWallpaperCreditFor(device);
+        if (_wallpaperCreditHost is not null)
+        {
+            ControlTree.ClearAndDispose(_wallpaperCreditHost);
+            if (credit is not null) _wallpaperCreditHost.Controls.Add(BuildCredit(credit));
+        }
+        if (_wallpaperCreditCaption is not null) _wallpaperCreditCaption.Visible = credit is not null;
+    }
+
+    private void BrowseForWallpaper()
+    {
+        if (FilePicker.PickMedia(Handle) is not { } path) return;
+        _engine.ApplyUserSelection(path, CurrentWallpaperTarget());
+        RefreshWallpaperSection();
+    }
+
+    private void OpenGallery()
+    {
+        using var form = new GalleryForm(_engine, CurrentWallpaperTarget(), CurrentWallpaperTargetLabel());
+        form.ShowDialog(this);
+        RefreshWallpaperSection();
     }
 
     /// <summary>Shows who made the current gallery wallpaper, with a link to the source page.

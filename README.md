@@ -142,6 +142,12 @@ desktop, so it can't drift from the real thing.
 |---|---|---|
 | ![Clock settings](docs/media/settings-clock.png) | ![Battery halo settings](docs/media/settings-battery.png) | ![Now-playing record settings](docs/media/settings-music.png) |
 
+**The wallpaper page shows what is actually on your screen.** It previews the wallpaper on the
+display you pick — the image itself, or the frame captured from a video — and lets you change it
+from there: browse for a file, or open the gallery as a list with each wallpaper's resolution,
+size and licence. A wallpaper can be applied to one display or to all of them, so a second screen
+does not have to show the same thing as the first.
+
 Also: MP4, MOV, AVI, WMV and WebM video with seamless, hardware-decoded loops; PNG, JPEG, BMP, TIFF
 and animated GIF images; per-monitor wallpapers; Fill, Fit and Stretch; DPI-aware sizing on mixed
 displays. It re-attaches if explorer.exe restarts and puts your old wallpaper back when it exits.

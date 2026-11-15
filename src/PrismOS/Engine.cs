@@ -222,6 +222,7 @@ public sealed class Engine : IDisposable
             _config.Assign(monitorDevice, path);
             ConfigStore.Save(_config);
             if (_clock is null && _info is null && _halo is null && _record is null && _group is null) RecreateWidgets();
+            WallpaperChanged?.Invoke();
         }
     }
 
@@ -898,9 +899,39 @@ public sealed class Engine : IDisposable
 
     /// <summary>Credit for the wallpaper currently in use, or null when it is the user's own file.
     /// Surfaced in the settings panel so gallery media is actually attributed on screen.</summary>
-    public GalleryEntry? CurrentWallpaperCredit =>
-        _gallery.EntryForPath(_config.WallpaperFor(
-            MonitorTracker.Enumerate().FirstOrDefault(m => m.Primary)?.Device ?? "*"));
+    public GalleryEntry? CurrentWallpaperCredit => CurrentWallpaperCreditFor(
+        MonitorTracker.Enumerate().FirstOrDefault(m => m.Primary)?.Device ?? "*");
+
+    /// <summary>The gallery entry behind the wallpaper on a given display, or null for the
+    /// user's own file. Per display, because a second display can be showing something else —
+    /// the credit belongs to what that display is showing.</summary>
+    public GalleryEntry? CurrentWallpaperCreditFor(string monitorDevice) =>
+        _gallery.EntryForPath(_config.WallpaperFor(monitorDevice));
+
+    /// <summary>The gallery entries, for the settings panel's gallery picker.</summary>
+    public IReadOnlyList<GalleryEntry> GalleryEntries => _gallery.Manifest.Entries;
+
+    /// <summary>Whether a gallery entry is already on disk, so applying it costs no download.</summary>
+    public bool IsGalleryDownloaded(GalleryEntry entry) => _gallery.LocalPathIfDownloaded(entry) is not null;
+
+    /// <summary>Downloads a gallery entry if it is not cached, and returns the local file.</summary>
+    public Task<string> DownloadGalleryEntryAsync(GalleryEntry entry, IProgress<double>? progress = null) =>
+        _gallery.EnsureDownloadedAsync(entry, progress);
+
+    /// <summary>The still that shows what is on a display: the image itself, or the frame the
+    /// engine captured from a video. Null when nothing is set there.</summary>
+    public string? WallpaperPreviewPath(string monitorDevice)
+    {
+        var path = _config.WallpaperFor(monitorDevice);
+        if (path is null) return null;
+        if (ImageExtensions.Contains(Path.GetExtension(path))) return path;
+        var frame = StaticPath(monitorDevice);
+        return File.Exists(frame) ? frame : null;
+    }
+
+    /// <summary>Raised when the wallpaper changes, so an open settings panel redraws its preview
+    /// instead of showing the wallpaper that was there when it opened.</summary>
+    public event Action? WallpaperChanged;
 
     public void SaveConfig() => ConfigStore.Save(_config);
 
@@ -1024,7 +1055,7 @@ public sealed class Engine : IDisposable
         }
     }
 
-    private void ApplyGalleryEntry(GalleryEntry entry)
+    public void ApplyGalleryEntry(GalleryEntry entry)
     {
         if (_gallery.LocalPathIfDownloaded(entry) is { } cached)
         {
