@@ -25,6 +25,10 @@ public sealed class CompositionHost : IDisposable
 {
     public ID3D11Device Device { get; private set; } = null!;
     public ID3D11DeviceContext Context { get; private set; } = null!;
+    /// <summary>The wallpaper render surface's own HWND. Child windows of it are composed
+    /// inside the wallpaper's visual and receive the clicks a WS_EX_NOREDIRECTIONBITMAP
+    /// top-level sibling never sees.</summary>
+    public IntPtr Hwnd { get; private set; }
 
     private IDXGIFactory2 _dxgiFactory = null!;
     private ID2D1Factory _d2dFactory = null!;
@@ -54,6 +58,7 @@ public sealed class CompositionHost : IDisposable
 
     public CompositionHost(IntPtr hwnd)
     {
+        Hwnd = hwnd;
         D3D11.D3D11CreateDevice(null, DriverType.Hardware,
             DeviceCreationFlags.BgraSupport | DeviceCreationFlags.VideoSupport,
             null, out ID3D11Device? device).CheckError();

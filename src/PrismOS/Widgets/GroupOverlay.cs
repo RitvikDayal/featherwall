@@ -358,10 +358,12 @@ public sealed class GroupOverlay : IDisposable
             _hitWindow?.Hide();
             return;
         }
-        _hitWindow ??= new RecordHitWindow(SendMediaCommand);
+        _hitWindow ??= new RecordHitWindow(_host.Hwnd, SendMediaCommand);
 
-        int ox = _monitor.Bounds.Left + record.Bounds.X;
-        int oy = _monitor.Bounds.Top + record.Bounds.Y;
+        // Panel bounds are monitor-relative, and the host surface is the monitor-filling
+        // parent window, so buttons land at the same offsets in the parent's client area.
+        int ox = record.Bounds.X;
+        int oy = record.Bounds.Y;
         var buttons = record.Buttons!.Select(b => new Rectangle(ox + b.X, oy + b.Y, b.Width, b.Height)).ToArray();
         var band = new Rectangle(buttons[0].X, oy, buttons[^1].Right - buttons[0].X, record.Bounds.Height);
         _hitWindow.Reposition(band, buttons);

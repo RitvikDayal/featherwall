@@ -219,11 +219,12 @@ public sealed class NowPlayingOverlay : IDisposable
     private void PositionHitWindow(MusicStrip.Metrics metrics, Interop.POINT screenPos, int pad)
     {
         if (_hitWindow is null)
-            _hitWindow = new RecordHitWindow(SendMediaCommand);
+            _hitWindow = new RecordHitWindow(_host.Hwnd, SendMediaCommand);
 
-        int ox = screenPos.X + pad;
-        int oy = screenPos.Y + pad;
-        var band = new Rectangle(ox + metrics.PrevBox.X, oy,
+        // The buttons land relative to the host surface's client area; the parent covers the monitor.
+        int ox = screenPos.X - _monitor.Bounds.Left;
+        int oy = screenPos.Y - _monitor.Bounds.Top;
+        var band = new Rectangle(ox + metrics.PrevBox.X, oy + metrics.PrevBox.Y,
             metrics.NextBox.Right - metrics.PrevBox.X, metrics.Size.Height);
         var buttons = new Rectangle[]
         {
