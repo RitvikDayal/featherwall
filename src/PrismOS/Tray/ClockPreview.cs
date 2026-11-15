@@ -107,7 +107,7 @@ public sealed class ClockPreview : Control
 
         using var surface = new Bitmap(m.Total.Width, m.Total.Height, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
         using (var sg = Graphics.FromImage(surface))
-            PrismOS.Widgets.Themes.Editorial.PaintClock(sg, m, style.Accent);
+            PrismOS.Widgets.Themes.Editorial.PaintClock(sg, m, style.Accent, ClockRenderer.ParseColor(_config.Color));
         PrismOS.Widgets.Themes.BakedShadow.DrawBehind(surface, PrismOS.Widgets.Themes.ShadowRecipe.Default, scale);
 
         var pos = ClockLayout.Position(

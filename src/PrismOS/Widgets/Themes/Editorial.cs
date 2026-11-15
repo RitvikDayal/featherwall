@@ -84,7 +84,7 @@ public static class Editorial
         return new ClockMetrics(time, date, dateBox, timeBox, rule, new Size(width, height), scale);
     }
 
-    public static void PaintClock(Graphics g, in ClockMetrics m, Color accent)
+    public static void PaintClock(Graphics g, in ClockMetrics m, Color accent, Color clockInk)
     {
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
@@ -97,7 +97,7 @@ public static class Editorial
         }
 
         using (var timeFont = ThemeFonts.Create(ThemeFonts.DisplayLight, TimePx * m.Scale))
-        using (var ink = new SolidBrush(Ink))
+        using (var ink = new SolidBrush(clockInk))
             ThemeFonts.DrawTracked(g, m.Time, timeFont, ink, m.TimeBox.X, m.TimeBox.Y - TrimTop * TimePx * m.Scale,
                                    TimePx * m.Scale * TimeTracking);
 

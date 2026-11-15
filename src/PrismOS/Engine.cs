@@ -507,6 +507,12 @@ public sealed class Engine : IDisposable
     /// <summary>Config source names to sources, in the configured order. An unknown name is
     /// logged and skipped rather than throwing, so a config written by a later version still
     /// starts this one.</summary>
+    /// <summary>True when this machine has a battery. Cached: a machine without one today is not
+    /// going to grow one between settings panels, and every battery surface hides itself behind
+    /// this — the page in Settings, the rows on the Info page, and the battery source the widgets
+    /// read. The config keeps a desktop's settings untouched.</summary>
+    public bool BatteryAvailable { get; } = BatterySource.IsAvailable();
+
     private IReadOnlyList<IWidgetSource> ResolveSources()
     {
         var ordered = new List<IWidgetSource>();
@@ -515,6 +521,11 @@ public sealed class Engine : IDisposable
             switch (name.Trim().ToLowerInvariant())
             {
                 case "battery":
+                    if (!BatteryAvailable)
+                    {
+                        Common.Log.Info("Battery source skipped: this machine reports no battery");
+                        break;
+                    }
                     ordered.Add(_battery ??= new BatterySource());
                     break;
                 case "nowplaying":
@@ -919,13 +930,20 @@ public sealed class Engine : IDisposable
         _gallery.EnsureDownloadedAsync(entry, progress);
 
     /// <summary>The still that shows what is on a display: the image itself, or the frame the
-    /// engine captured from a video. Null when nothing is set there.</summary>
+    /// engine captured from a video. Null when nothing is set there.
+    ///
+    /// The video frame is per monitor, so the "all displays" choice resolves to the primary's
+    /// frame — there is no frame for "*". The displays' video plays on the monitor its wallpaper
+    /// layer is on, and on a single-monitor desktop that is the primary.</summary>
     public string? WallpaperPreviewPath(string monitorDevice)
     {
         var path = _config.WallpaperFor(monitorDevice);
-        if (path is null) return null;
+        if (path is null || !File.Exists(path)) return null;
         if (ImageExtensions.Contains(Path.GetExtension(path))) return path;
-        var frame = StaticPath(monitorDevice);
+        var frameDevice = monitorDevice == "*"
+            ? MonitorTracker.Enumerate().FirstOrDefault(m => m.Primary)?.Device ?? monitorDevice
+            : monitorDevice;
+        var frame = StaticPath(frameDevice);
         return File.Exists(frame) ? frame : null;
     }
 

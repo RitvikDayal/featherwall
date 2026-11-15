@@ -4,6 +4,45 @@ using Xunit;
 
 namespace PrismOS.Tests;
 
+/// <summary>Whether this machine has a battery at all. A desktop reports none, and the settings
+/// panel and every battery surface hide themselves rather than show a dead row.</summary>
+public class BatteryAvailabilityTests
+{
+    private static SYSTEM_POWER_STATUS Status(byte ac, byte flag, byte percent) =>
+        new() { ACLineStatus = ac, BatteryFlag = flag, BatteryLifePercent = percent };
+
+    [Fact]
+    public void ADesktopHasNoBattery()
+    {
+        // BatteryFlag 128 is "no system battery" — every desktop PC.
+        Assert.False(BatterySource.HasBattery(Status(ac: 1, flag: 128, percent: 255)));
+    }
+
+    [Fact]
+    public void AnUnknownLevelIsNotABattery()
+    {
+        Assert.False(BatterySource.HasBattery(Status(ac: 1, flag: 1, percent: 255)));
+    }
+
+    [Fact]
+    public void AnUnknownFlagIsNotABattery()
+    {
+        Assert.False(BatterySource.HasBattery(Status(ac: 1, flag: 255, percent: 100)));
+    }
+
+    [Fact]
+    public void ALaptopOnPowerHasOne()
+    {
+        Assert.True(BatterySource.HasBattery(Status(ac: 1, flag: 8, percent: 100)));
+    }
+
+    [Fact]
+    public void ALaptopOnBatteryHasOne()
+    {
+        Assert.True(BatterySource.HasBattery(Status(ac: 0, flag: 1, percent: 50)));
+    }
+}
+
 /// <summary>What the battery widget shows, as a pure function of what Windows reports.
 /// Null means "show nothing" — a desktop has no battery, and a line reading "N/A" is worse
 /// than no line.</summary>

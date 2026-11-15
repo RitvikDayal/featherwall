@@ -21,7 +21,6 @@ public sealed class Orbit : IGroupTheme
     private const float TimePx = 96f, DatePx = 19f, CaptionPx = 15f;
 
     private static readonly Color Disc = Color.FromArgb(97, 10, 8, 16);
-    private static readonly Color Ink = Color.FromArgb(245, 255, 255, 255);
 
     /// <summary>How far through the hour, 0 to 1 — the dial's accent arc.</summary>
     public static float HourFraction(DateTime now) => (now.Minute * 60 + now.Second) / 3600f;
@@ -145,10 +144,10 @@ public sealed class Orbit : IGroupTheme
         float stack = ts.Height + (date is null ? 0 : gap + ds.Height);
         float y = cy - stack / 2f;
 
-        using (var ink = new SolidBrush(Ink))
+        using (var ink = new SolidBrush(GroupThemes.ClockInk(input.Clock)))
             g.DrawString(time, useTime, ink, cx - ts.Width / 2f, y, ThemeFonts.Tight);
         if (date is null) return;
-        using var dim = new SolidBrush(Color.FromArgb(191, 255, 255, 255));
+        using var dim = new SolidBrush(GroupThemes.DateInk(input.Clock));
         ThemeFonts.DrawTracked(g, date, dateFont, dim, cx - ds.Width / 2f, y + ts.Height + gap, dateTracking);
     }
 

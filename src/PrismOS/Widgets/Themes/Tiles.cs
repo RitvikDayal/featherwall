@@ -115,10 +115,10 @@ public sealed class Tiles : IGroupTheme
         using (var rim = new Pen(Color.FromArgb(64, 255, 255, 255), Math.Max(1.5f * k, 1f))) g.DrawPolygon(rim, points.ToArray());
 
         var (hour, minute) = HandAngles(input.Now);
-        Hand(g, cx, cy, hour, 46 * k, Math.Max(7 * k, 2f), Ink);
+        Hand(g, cx, cy, hour, 46 * k, Math.Max(7 * k, 2f), GroupThemes.ClockInk(input.Clock));
         Hand(g, cx, cy, minute, 64 * k, Math.Max(4 * k, 1.5f), input.Accent);
         if (input.Clock.ShowSeconds)
-            Hand(g, cx, cy, input.Now.Second * 6f, 70 * k, Math.Max(1.5f * k, 1f), Color.FromArgb(160, 255, 255, 255));
+            Hand(g, cx, cy, input.Now.Second * 6f, 70 * k, Math.Max(1.5f * k, 1f), GroupThemes.Dim(GroupThemes.ClockInk(input.Clock), 0.63f));
         float dot = 6 * k;
         using var centre = new SolidBrush(input.Accent);
         g.FillEllipse(centre, cx - dot, cy - dot, dot * 2, dot * 2);
@@ -137,8 +137,8 @@ public sealed class Tiles : IGroupTheme
         float labelPx = GroupThemes.Text(LabelPx, s), labelTracking = labelPx * 0.12f;
         using var labelFont = ThemeFonts.Create(ThemeFonts.TextSemibold, labelPx);
         using var bigFont = ThemeFonts.Create(ThemeFonts.DisplaySemibold, GroupThemes.U(BigPx, s));
-        using var label = new SolidBrush(Label);
-        using var ink = new SolidBrush(Ink);
+        using var label = new SolidBrush(GroupThemes.Dim(GroupThemes.DateInk(input.Clock), 0.55f));
+        using var ink = new SolidBrush(GroupThemes.DateInk(input.Clock));
 
         float x = box.X + inner, y = box.Y + inner, maxW = box.Width - inner * 2;
         string day = GroupThemes.FitText(g, input.Now.ToString("dddd", culture).ToUpper(culture), labelFont, maxW, labelTracking);

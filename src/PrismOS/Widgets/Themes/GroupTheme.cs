@@ -55,6 +55,18 @@ public static class GroupThemes
 
     internal static int Pad(float scale) => (int)Math.Ceiling(ShadowRecipe.Default.Pad * Math.Max(scale, 0.05f));
 
+    /// <summary>The time's drawn colour: the configured Clock.Color. The themes used to hard-code
+    /// a white ink here, which made the Clock page's colour swatch a no-op in every theme but
+    /// Classic.</summary>
+    internal static Color ClockInk(ClockConfig clock) => ClockRenderer.ParseColor(clock.Color);
+
+    /// <summary>The date's drawn colour: the configured DateColor, or the time's colour dimmed by
+    /// DateOpacity — exactly Classic's rule.</summary>
+    internal static Color DateInk(ClockConfig clock) => ClockRenderer.DateColorFor(clock, ClockInk(clock));
+
+    internal static Color Dim(Color color, float opacity) =>
+        Color.FromArgb((int)Math.Round(color.A * Math.Clamp(opacity, 0f, 1f)), color.R, color.G, color.B);
+
     /// <summary>A size from the mockup, in its units, at this scale.</summary>
     internal static float U(float mockupUnits, float scale) => mockupUnits * MockupUnit * scale;
 

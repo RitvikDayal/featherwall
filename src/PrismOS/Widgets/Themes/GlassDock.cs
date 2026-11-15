@@ -162,14 +162,14 @@ public sealed class GlassDock : IGroupTheme
                         }
                         break;
                     case Kind.Time:
-                        using (var ink = new SolidBrush(Color.FromArgb(245, 255, 255, 255)))
+                        using (var ink = new SolidBrush(GroupThemes.ClockInk(input.Clock)))
                             ThemeFonts.DrawTracked(g, time, timeFont, ink, box.X + (box.Width - actualTimeWidth) / 2f, box.Y,
                                                    -0.01f * timeFont.Size);
                         break;
                     case Kind.Date:
                         using (var accent = new SolidBrush(input.Accent))
                             ThemeFonts.DrawTracked(g, day, dateFont, accent, box.X, box.Y, dateTracking);
-                        using (var dim = new SolidBrush(Color.FromArgb(158, 255, 255, 255)))
+                        using (var dim = new SolidBrush(GroupThemes.DateInk(input.Clock)))
                             ThemeFonts.DrawTracked(g, date, dateFont, dim, box.X, box.Y + daySize.Height, dateTracking);
                         break;
                     case Kind.Battery:

@@ -490,4 +490,6 @@ scripts/bench/results/*.json
 # The macOS-flavoured `Icon` pattern above swallows this one directory; it holds the 
 # reproducible generator for prismos.ico, which must be committed.
 !scripts/icon/
-!scripts/icon/**
+!scripts/icon/IconGen/IconGen.csproj
+!scripts/icon/IconGen/Program.cs
+

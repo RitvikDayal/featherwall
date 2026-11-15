@@ -121,7 +121,7 @@ public sealed class ClockOverlay : IDisposable
                 shadowScale = _style.Size * (float)_dpiScale;
                 var editorial = Editorial.MeasureClock(_config, DateTime.Now, shadowScale);
                 total = editorial.Total;
-                paint = g => Editorial.PaintClock(g, editorial, _style.Accent);
+                paint = g => Editorial.PaintClock(g, editorial, _style.Accent, _color);
             }
             else
             {

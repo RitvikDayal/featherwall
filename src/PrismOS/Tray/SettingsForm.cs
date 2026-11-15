@@ -26,6 +26,10 @@ public sealed class SettingsForm : Form
 
     private readonly Engine _engine;
     private readonly AppConfig _config;
+
+    /// <summary>Whether this machine has a battery. When it does not, the Battery page and the
+    /// battery source rows do not appear — a desktop would show nothing on them forever.</summary>
+    private readonly bool _batteryAvailable;
     private readonly ClockPreview _preview;
     private bool _loading = true;
     private readonly BackdropHolder _backdrop = new();
@@ -73,6 +77,7 @@ public sealed class SettingsForm : Form
     {
         _engine = engine;
         _config = engine.Config;
+        _batteryAvailable = engine.BatteryAvailable;
         (_accent, _accentSource) = engine.CurrentAccent();
         engine.AccentChanged += OnAccentChanged;
         engine.WidgetsChanged += OnWidgetsChanged;
@@ -170,7 +175,7 @@ public sealed class SettingsForm : Form
         AddPage(host, rail, "Clock", BuildClockSection());
         AddPage(host, rail, "Date", BuildDateSection());
         AddPage(host, rail, "Info", BuildInfoSection());
-        AddPage(host, rail, "Battery", BuildHaloSection());
+        if (_batteryAvailable) AddPage(host, rail, "Battery", BuildHaloSection());
         AddPage(host, rail, "Music", BuildDiscSection());
         AddPage(host, rail, "Wallpaper", BuildWallpaperSection());
         AddPage(host, rail, "Behaviour", BuildBehaviorSection());
@@ -690,9 +695,13 @@ public sealed class SettingsForm : Form
 
         rows.AddRow("Show info widget", Check(info.Enabled, v => { info.Enabled = v; ApplyInfo(); }));
         rows.AddRow("Now playing", Check(HasSource("nowPlaying"), v => { SetSource("nowPlaying", v); ApplyInfo(); }));
-        rows.AddRow("Battery", Check(HasSource("battery"), v => { SetSource("battery", v); ApplyInfo(); }));
-        rows.AddRow("Order", Choice(["Now playing first", "Battery first"], NowPlayingIsFirst() ? 0 : 1,
-            i => { SetOrder(nowPlayingFirst: i == 0); ApplyInfo(); }));
+
+        if (_batteryAvailable)
+        {
+            rows.AddRow("Battery", Check(HasSource("battery"), v => { SetSource("battery", v); ApplyInfo(); }));
+            rows.AddRow("Order", Choice(["Now playing first", "Battery first"], NowPlayingIsFirst() ? 0 : 1,
+                i => { SetOrder(nowPlayingFirst: i == 0); ApplyInfo(); }));
+        }
         rows.AddRow("Max characters", Spinner(10, 200, info.MaxCharacters,
             v => { info.MaxCharacters = v; ApplyInfo(); }, "chars"));
         rows.AddClassicOnly("Drop shadow", Check(info.Shadow, v => { info.Shadow = v; ApplyInfo(); }));
@@ -1148,10 +1157,13 @@ public sealed class SettingsForm : Form
         if (_wallpaperPreview is null) return;
         string device = CurrentWallpaperTarget();
         var path = _engine.Config.WallpaperFor(device);
+        bool exists = path is not null && File.Exists(path);
 
         _wallpaperPreview.SetSource(_engine.WallpaperPreviewPath(device));
-        _wallpaperPreview.Caption = path is null ? "" : Path.GetFileName(path);
-        _wallpaperPreview.Placeholder = "No wallpaper on this display";
+        _wallpaperPreview.Caption = path is not null && exists ? Path.GetFileName(path) : "";
+        _wallpaperPreview.Placeholder = path is null ? "No wallpaper on this display"
+            : !exists ? $"Not found: {Path.GetFileName(path)}"
+            : "Saving the first frame of the wallpaper…";
 
         var credit = _engine.CurrentWallpaperCreditFor(device);
         if (_wallpaperCreditHost is not null)

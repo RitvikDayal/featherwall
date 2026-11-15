@@ -101,7 +101,7 @@ public sealed class Poster : IGroupTheme
             var state = g.Save();
             // Right-aligned stack, as the mockup sets it.
             g.TranslateTransform(pad, pad);
-            using (var outline = new Pen(Color.FromArgb(235, 255, 255, 255), stroke) { LineJoin = LineJoin.Round })
+            using (var outline = new Pen(GroupThemes.ClockInk(input.Clock), stroke) { LineJoin = LineJoin.Round })
             {
                 using var m = new Matrix();
                 m.Translate(blockW - hb.Right - stroke / 2f, -hb.Top + stroke / 2f);
@@ -117,7 +117,7 @@ public sealed class Poster : IGroupTheme
             }
             if (secondPath is not null)
             {
-                using var dim = new SolidBrush(Color.FromArgb(153, 255, 255, 255));
+                using var dim = new SolidBrush(GroupThemes.Dim(GroupThemes.ClockInk(input.Clock), 0.65f));
                 using var m = new Matrix();
                 m.Translate(blockW - sb.Right - stroke / 2f, lineH + mb.Bottom - hb.Top + lineH * 0.45f - sb.Top);
                 secondPath.Transform(m);
@@ -128,7 +128,7 @@ public sealed class Poster : IGroupTheme
                 // Clockwise quarter turn: the date reads top to bottom, like writing-mode vertical-rl.
                 g.TranslateTransform(blockW + dateGap + ds.Height, GroupThemes.U(18f, s));
                 g.RotateTransform(90f);
-                using var brush = new SolidBrush(Color.FromArgb(217, 255, 255, 255));
+                using var brush = new SolidBrush(GroupThemes.DateInk(input.Clock));
                 ThemeFonts.DrawTracked(g, date, dateFont, brush, 0, 0, tracking);
             }
             g.Restore(state);

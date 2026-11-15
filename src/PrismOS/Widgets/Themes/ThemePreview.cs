@@ -100,7 +100,7 @@ public static class ThemePreview
                                  Editorial.MeasureHalo(halo, SampleBattery, unit));
         var cm = Editorial.MeasureClock(config.Clock, SampleTime, scale);
         Place(g, cm.Total, (Canvas.Width - cm.Total.Width) / 2, Margin / 2,
-              bg => Editorial.PaintClock(bg, cm, accent), scale);
+              bg => Editorial.PaintClock(bg, cm, accent, ClockRenderer.ParseColor(config.Clock.Color)), scale);
 
         var rm = Editorial.MeasureRecord(disc, SampleTrack, scale);
         using var face = DiscRenderer.RenderFace(Math.Max(rm.DiscBox.Width, 1), null, accent);

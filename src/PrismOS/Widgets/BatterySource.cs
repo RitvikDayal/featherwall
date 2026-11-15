@@ -19,6 +19,16 @@ public sealed partial class BatterySource : IWidgetSource
     private const byte OnAcPower = 1;
     private const byte UnknownAcStatus = 255;
 
+    public static bool HasBattery(in SYSTEM_POWER_STATUS status) =>
+        (status.BatteryFlag & NoSystemBattery) == 0 && status.BatteryLifePercent != UnknownPercent;
+
+    /// <summary>True when Windows reports a battery at all. A desktop — or any machine with no
+    /// battery attached — gets an empty settings section and none of the halos; a machine whose
+    /// battery Windows cannot report gets the same, because a percentage it does not know is not
+    /// something to guess at.</summary>
+    public static bool IsAvailable() =>
+        Kernel32.GetSystemPowerStatus(out var status) && HasBattery(status);
+
     /// <summary>The decision table, once. Pure, so the whole of it is testable without a battery.
     ///
     /// ACLineStatus 255 is "Windows cannot tell". The charge is still known, so it is reported —

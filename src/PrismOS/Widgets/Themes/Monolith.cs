@@ -52,7 +52,7 @@ public sealed class Monolith : IGroupTheme
             var size = new Size((int)Math.Ceiling(day.Width) + pad * 2, (int)Math.Ceiling(day.Height) + pad * 2);
             var origin = GroupThemes.Place(input.WorkArea, size, anchor, margin);
             panels.Add(new GroupPanel("monolith-day", new Rectangle(origin, size), Rectangle.Empty,
-                g => PaintDay(g, lines, s, pad, size.Width - pad * 2, col, input.Accent)));
+                g => PaintDay(g, lines, input.Clock, s, pad, size.Width - pad * 2, col)));
         }
 
         var track = input.Track;
@@ -100,14 +100,14 @@ public sealed class Monolith : IGroupTheme
         return new SizeF(Math.Max(day.Width, Math.Max(date.Width, time.Width)), height);
     }
 
-    private static void PaintDay(Graphics g, DayText t, float s, int pad, float width, int col, Color accent)
+    private static void PaintDay(Graphics g, DayText t, ClockConfig clock, float s, int pad, float width, int col)
     {
         g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
         using var dayFont = ThemeFonts.Create(ThemeFonts.BahnCondensedLight, t.DayPx);
         using var dateFont = ThemeFonts.Create(ThemeFonts.BahnSemibold, GroupThemes.Text(LinePx, s));
         using var timeFont = ThemeFonts.Create(ThemeFonts.Bahn, GroupThemes.Text(LinePx, s));
-        using var ink = new SolidBrush(Ink);
-        using var accentBrush = new SolidBrush(accent);
+        using var ink = new SolidBrush(GroupThemes.ClockInk(clock));
+        using var dim = new SolidBrush(GroupThemes.DateInk(clock));
 
         float y = pad;
         float Line(string text, Font font, Brush brush, float tracking)
@@ -122,14 +122,14 @@ public sealed class Monolith : IGroupTheme
         if (t.Date is not null)
         {
             y += GroupThemes.U(DateGap, s);
-            y += Line(t.Date, dateFont, ink, dateFont.Size * LineTracking);
+            y += Line(t.Date, dateFont, dim, dateFont.Size * LineTracking);
             y += GroupThemes.U(TimeGap, s);
         }
         else
         {
             y += GroupThemes.U(DateGap, s);
         }
-        Line(t.Time, timeFont, accentBrush, timeFont.Size * LineTracking);
+        Line(t.Time, timeFont, ink, timeFont.Size * LineTracking);
     }
 
     // ---- the strip ---------------------------------------------------------------------------
