@@ -23,7 +23,6 @@ public sealed class Tiles : IGroupTheme
     private const float Cookie = 198f, BatteryRing = 90f;
     private const float LabelPx = 18f, BigPx = 56f, BatteryPx = 48f;
 
-    private static readonly Color Card = Color.FromArgb(184, 18, 20, 26);
     private static readonly Color Edge = Color.FromArgb(18, 255, 255, 255);
     private static readonly Color Ink = Color.FromArgb(245, 255, 255, 255);
     private static readonly Color Label = Color.FromArgb(140, 255, 255, 255);
@@ -44,6 +43,12 @@ public sealed class Tiles : IGroupTheme
         float width = col * 2 + gap;
         float batteryH = GroupThemes.U(BatteryRing, s) + inner * 2;
         var strip = track is null ? (GroupThemes.StripLayout?)null : GroupThemes.PaddedStrip(track.Value, input.Source, s);
+        float stripScale = s;
+        if (strip is { } fit && width < fit.Metrics.Size.Width)
+        {
+            stripScale = s * (width / fit.Metrics.Size.Width);
+            strip = GroupThemes.PaddedStrip(track!.Value, input.Source, stripScale);
+        }
 
         var cards = new List<(string Kind, RectangleF Box)>();
         float y = 0;
@@ -83,7 +88,7 @@ public sealed class Tiles : IGroupTheme
             g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
             foreach (var (kind, box) in cards)
             {
-                PaintCard(g, box, s);
+                PaintCard(g, box, s, input.Blur);
                 switch (kind)
                 {
                     case "clock": PaintClock(g, box, input, s); break;
@@ -91,9 +96,9 @@ public sealed class Tiles : IGroupTheme
                     case "music":
                         var musicSave = g.Save();
                         g.TranslateTransform(box.X + stripInnerX, box.Y);
-                        var innerStrip = MusicStrip.Measure(g, track!.Value, input.Source, s);
+                        var innerStrip = MusicStrip.Measure(g, track!.Value, input.Source, stripScale);
                         float phase = (Environment.TickCount64 % 100_000) / 100_000f;
-                        MusicStrip.Paint(g, innerStrip, track.Value, input.TrackArt, s, phase);
+                        MusicStrip.Paint(g, innerStrip, track.Value, input.TrackArt, stripScale, phase, input.Blur ? 150 : 216);
                         g.Restore(musicSave);
                         break;
                     case "battery": PaintBattery(g, box, input, s, inner); break;
@@ -101,13 +106,17 @@ public sealed class Tiles : IGroupTheme
             }
         }
 
-        return [new GroupPanel("tiles", new Rectangle(origin, size), Rectangle.Empty, Paint, buttons)];
+        IReadOnlyList<PanelBlur.Region>? cardRegions = input.Blur
+            ? cards.Select(c => new PanelBlur.Region(c.Box, GroupThemes.U(Radius, s))).ToArray()
+            : null;
+
+        return [new GroupPanel("tiles", new Rectangle(origin, size), Rectangle.Empty, Paint, buttons, cardRegions)];
     }
 
-    private static void PaintCard(Graphics g, RectangleF box, float s)
+    private static void PaintCard(Graphics g, RectangleF box, float s, bool blur)
     {
         using var path = Rounded(box, GroupThemes.U(Radius, s));
-        using (var fill = new SolidBrush(Card)) g.FillPath(fill, path);
+        using (var fill = new SolidBrush(Color.FromArgb(blur ? 120 : 184, 18, 20, 26))) g.FillPath(fill, path);
         using var edge = new Pen(Edge, 1f);
         g.DrawPath(edge, path);
     }

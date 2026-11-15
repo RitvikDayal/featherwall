@@ -1256,6 +1256,7 @@ public sealed class SettingsForm : Form
             rows.AddRow("Pause on battery saver", Check(pause.OnBatterySaver, v => { pause.OnBatterySaver = v; _engine.SaveConfig(); }));
         rows.AddRow("Pause in remote desktop", Check(pause.OnRemoteSession, v => { pause.OnRemoteSession = v; _engine.SaveConfig(); }));
         rows.AddRow("Live video preview", Check(_config.LiveVideoPreview, v => { _config.LiveVideoPreview = v; _engine.SaveConfig(); RefreshWallpaperSection(); }));
+        rows.AddRow("Blur background (frosted glass)", Check(_config.Widgets.Blur, v => { _config.Widgets.Blur = v; _engine.SaveConfig(); _engine.ReapplyWallpaperAndWidgets(); }));
         rows.AddRow("Start with Windows", Check(Autostart.IsEnabled(), Autostart.SetEnabled));
 
         var reset = new Button

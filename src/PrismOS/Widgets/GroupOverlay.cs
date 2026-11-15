@@ -34,6 +34,7 @@ public sealed class GroupOverlay : IDisposable
     }
 
     private readonly CompositionHost _host;
+    private readonly Func<MonitorInfo, string?>? _backdrop;
     private readonly IGroupTheme _theme;
     private readonly AppConfig _config;
     private readonly MonitorInfo _monitor;
@@ -62,9 +63,11 @@ public sealed class GroupOverlay : IDisposable
     private bool _hasStrip;
 
     public GroupOverlay(CompositionHost host, IGroupTheme theme, AppConfig config, MonitorInfo monitor,
-                        NowPlayingSource? nowPlaying, BatterySource? battery, double dpiScale, WidgetStyle style)
+                        NowPlayingSource? nowPlaying, BatterySource? battery, double dpiScale, WidgetStyle style,
+                        Func<MonitorInfo, string?>? backdrop = null)
     {
         _host = host;
+        _backdrop = backdrop;
         _theme = theme;
         _config = config;
         _monitor = monitor;
@@ -170,7 +173,8 @@ public sealed class GroupOverlay : IDisposable
             float scale = _style.Size * _dpi;
             var input = new GroupInput(DateTime.Now, _config.Clock, disc, halo, track, battery, _style.Accent,
                                        scale, _dpi, _config.Widgets.Position, work, _config.Info.MaxCharacters,
-                                       NowPlayingSource.FriendlySourceName(_nowPlaying?.SourceApp), _nowPlaying?.Art);
+                                       NowPlayingSource.FriendlySourceName(_nowPlaying?.SourceApp), _nowPlaying?.Art,
+                                       _config.Widgets.Blur);
 
             var panels = _theme.Layout(input);
             foreach (var gone in _panels.Keys.Except(panels.Select(p => p.Key)).ToList())
@@ -185,7 +189,14 @@ public sealed class GroupOverlay : IDisposable
                 layers.Group.SetOffset(panel.Bounds.X, panel.Bounds.Y);
 
                 using var bmp = new Bitmap(panel.Bounds.Width, panel.Bounds.Height, PixelFormat.Format32bppPArgb);
-                using (var g = Graphics.FromImage(bmp)) panel.Paint(g);
+                using (var g = Graphics.FromImage(bmp))
+                {
+                    // The frost under the cards: the blurred wallpaper, clipped to them.
+                    if (_config.Widgets.Blur && panel.CardRegions is { Count: > 0 }
+                        && _backdrop?.Invoke(_monitor) is { } stillPath && File.Exists(stillPath))
+                        PanelBlur.ApplyUnderPanel(g, _monitor, stillPath, panel.Bounds, panel.CardRegions);
+                    panel.Paint(g);
+                }
                 // A clock tick changes only the clock: the other panels paint the same pixels, so
                 // their shadow and present (the expensive part) are skipped.
                 var content = PanelContent.Hash(bmp);

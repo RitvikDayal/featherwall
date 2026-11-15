@@ -115,6 +115,10 @@ public sealed class WidgetsConfig
     /// <summary>The monitor the group themes draw on; "*" is the primary.</summary>
     public string Monitor { get; set; } = "*";
 
+    /// <summary>Frosted-glass widgets: the wallpaper shows through the pill and the cards.
+    /// On by default since the music pill rework; flip in Behaviour for weaker machines.</summary>
+    public bool Blur { get; set; } = true;
+
     /// <summary>The group themes: one position and one monitor for the whole set.</summary>
     public static bool IsGroup(WidgetTheme theme) =>
         theme is WidgetTheme.GlassDock or WidgetTheme.Orbit or WidgetTheme.Poster

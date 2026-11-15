@@ -100,14 +100,16 @@ public static class MusicStrip
             new Rectangle((int)nextX, (int)btnY, (int)btn, (int)btn));
     }
 
-    public static void Paint(Graphics g, in Metrics m, NowPlayingReading r, Bitmap? art, float scale, float eqPhase)
+    /// <summary><paramref name="cardAlpha"/> is the pill's fill opacity. The frosted
+    /// (blur-on) look uses a lower alpha so the blurred wallpaper shows through.</summary>
+    public static void Paint(Graphics g, in Metrics m, NowPlayingReading r, Bitmap? art, float scale, float eqPhase, int cardAlpha = 216)
     {
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
 
         // Card
         using var path = RoundedRect(new RectangleF(0, 0, m.Size.Width, m.Size.Height), Height * scale * 0.30f);
-        using (var brush = new SolidBrush(Color.FromArgb(216, 26, 30, 39)))
+        using (var brush = new SolidBrush(Color.FromArgb(Math.Clamp(cardAlpha, 0, 255), 26, 30, 39)))
             g.FillPath(brush, path);
         using (var border = new Pen(Color.FromArgb(26, 255, 255, 255), 1f))
             g.DrawPath(border, path);

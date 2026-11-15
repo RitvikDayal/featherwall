@@ -38,19 +38,24 @@ public sealed class NowPlayingOverlay : IDisposable
     private RecordHitWindow? _hitWindow;
     private SIZE _size;
     private float _phase;
+    private readonly Func<MonitorInfo, string?>? _backdrop;
+    private readonly bool _blur;
     private bool _disposed;
     private bool _suspended;   // display off
     private bool _covered;     // a window is over the desktop
     private bool _ticking;
 
     public NowPlayingOverlay(CompositionHost host, InfoConfig config, MonitorInfo monitor,
-                             NowPlayingSource source, double dpiScale = 1.0, WidgetStyle? style = null)
+                             NowPlayingSource source, double dpiScale = 1.0, WidgetStyle? style = null,
+                             Func<MonitorInfo, string?>? backdrop = null, bool blur = true)
     {
         _host = host;
         _config = config;
         _monitor = monitor;
         _dpiScale = dpiScale > 0 ? dpiScale : 1.0;
         _source = source;
+        _backdrop = backdrop;
+        _blur = blur;
         _style = style ?? WidgetStyle.Classic;
         _timer = new Timer(_ => Tick(), null, Timeout.Infinite, Timeout.Infinite);
 
@@ -194,8 +199,12 @@ public sealed class NowPlayingOverlay : IDisposable
             using var bmp = new Bitmap(size.Cx, size.Cy, PixelFormat.Format32bppPArgb);
             using (var g = Graphics.FromImage(bmp))
             {
+                if (_blur && _backdrop?.Invoke(_monitor) is { } still && File.Exists(still))
+                    PanelBlur.ApplyUnderPanel(g, _monitor, still,
+                        new Rectangle(screenPos.X - _monitor.Bounds.Left, screenPos.Y - _monitor.Bounds.Top, size.Cx, size.Cy),
+                        [new PanelBlur.Region(new RectangleF(pad, pad, metrics.Size.Width, metrics.Size.Height), metrics.Size.Height * 0.32f)]);
                 g.TranslateTransform(pad, pad);
-                MusicStrip.Paint(g, metrics, reading, _source.Art, scale, _phase);
+                MusicStrip.Paint(g, metrics, reading, _source.Art, scale, _phase, _blur ? 150 : 216);
                 g.ResetTransform();
                 BakedShadow.DrawBehind(bmp, ShadowRecipe.Default, scale);
             }

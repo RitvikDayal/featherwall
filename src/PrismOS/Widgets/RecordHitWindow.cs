@@ -43,11 +43,33 @@ public sealed class RecordHitWindow : Win32Window
             return;
         }
         User32.SetWindowPos(Hwnd, IntPtr.Zero, band.X, band.Y, band.Width, band.Height,
-            0x0004 | 0x0010 | 0x0040 /* SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW */);
+            SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
         User32.SetLayeredWindowAttributes(Hwnd, 0, 0, LwaAlpha);
+        PlaceAboveWallpaper(band);
     }
 
     public void Hide() => User32.ShowWindow(Hwnd, SwHide);
+
+    /// <summary>The wallpaper window covers the whole monitor, so left at the bottom of the
+    /// z-order chain the click target never sees a mouse message. Insert the hit window
+    /// directly above the wallpaper it covers (and below any application above the wallpaper),
+    /// which is exactly where the buttons should be clickable but nothing else.</summary>
+    private void PlaceAboveWallpaper(Rectangle band)
+    {
+        var center = new PointF(band.X + band.Width / 2f, band.Y + band.Height / 2f);
+        IntPtr prev = IntPtr.Zero;
+        while (true)
+        {
+            prev = User32.FindWindowExW(IntPtr.Zero, prev, Rendering.WallpaperWindow.ClassName, null);
+            if (prev == IntPtr.Zero) return;
+            if (User32.GetWindowRect(prev, out var r) && center.X >= r.Left && center.X < r.Right && center.Y >= r.Top && center.Y < r.Bottom)
+            {
+                User32.SetWindowPos(Hwnd, prev, 0, 0, 0, 0,
+                    SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
+                return;
+            }
+        }
+    }
 
     protected override IntPtr HandleMessage(uint msg, IntPtr wParam, IntPtr lParam)
     {

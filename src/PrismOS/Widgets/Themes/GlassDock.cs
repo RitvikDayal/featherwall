@@ -123,7 +123,7 @@ public sealed class GlassDock : IGroupTheme
             using var dateFont = ThemeFonts.Create(ThemeFonts.TextSemibold, datePx);
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-            PaintCapsule(g, capsule);
+            PaintCapsule(g, capsule, input.Blur);
             foreach (var (kind, box) in boxes)
             {
                 switch (kind)
@@ -137,7 +137,7 @@ public sealed class GlassDock : IGroupTheme
                         g.TranslateTransform(box.X, box.Y);
                         var inner = MusicStrip.Measure(g, track!.Value, input.Source, s);
                         float phase = (Environment.TickCount64 % 100_000) / 100_000f;
-                        MusicStrip.Paint(g, inner, track.Value, input.TrackArt, s, phase);
+                        MusicStrip.Paint(g, inner, track.Value, input.TrackArt, s, phase, input.Blur ? 150 : 216);
                         g.Restore(stripSave);
                         break;
                     case Kind.Time:
@@ -158,7 +158,8 @@ public sealed class GlassDock : IGroupTheme
             }
         }
 
-        return [new GroupPanel("dock", new Rectangle(origin, size), Rectangle.Empty, Paint, buttons)];
+        return [new GroupPanel("dock", new Rectangle(origin, size), Rectangle.Empty, Paint, buttons,
+            input.Blur ? [new PanelBlur.Region(capsule, capsule.Height / 2f)] : null)];
     }
 
     private static char WidestDigit(Graphics g, Font font)
@@ -173,10 +174,11 @@ public sealed class GlassDock : IGroupTheme
         return widest;
     }
 
-    private static void PaintCapsule(Graphics g, RectangleF r)
+    private static void PaintCapsule(Graphics g, RectangleF r, bool blur)
     {
         using var path = Capsule(r);
-        using (var glass = new LinearGradientBrush(r, Color.FromArgb(158, 28, 22, 40), Color.FromArgb(184, 12, 10, 18), 90f))
+        using (var glass = new LinearGradientBrush(r, blur ? Color.FromArgb(92, 28, 22, 40) : Color.FromArgb(158, 28, 22, 40),
+                                                     blur ? Color.FromArgb(108, 12, 10, 18) : Color.FromArgb(184, 12, 10, 18), 90f))
             g.FillPath(glass, path);
         using (var border = new Pen(Color.FromArgb(15, 255, 255, 255), 1f))
             g.DrawPath(border, path);

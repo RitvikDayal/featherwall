@@ -80,13 +80,16 @@ public sealed class Orbit : IGroupTheme
                 float phase = (Environment.TickCount64 % 100_000) / 100_000f;
                 var save = g.Save();
                 g.TranslateTransform(stripX, stripY);
-                MusicStrip.Paint(g, inner, t, input.TrackArt, s, phase);
+                MusicStrip.Paint(g, inner, t, input.TrackArt, s, phase, input.Blur ? 150 : 216);
                 g.Restore(save);
             }
             if (battery is not null) PaintBatteryRing(g, ring, input, s, caption, captionFont, tracking);
         }
 
-        return [new GroupPanel("orbit", new Rectangle(origin, size), Rectangle.Empty, Paint, buttons)];
+        IReadOnlyList<PanelBlur.Region>? cardRegions = strip is null ? null
+            : [new PanelBlur.Region(new RectangleF(stripX + strip.Value.Pad, stripY + strip.Value.Pad, strip.Value.Metrics.Size.Width, strip.Value.Metrics.Size.Height), strip.Value.Metrics.Size.Height * 0.3f)];
+
+        return [new GroupPanel("orbit", new Rectangle(origin, size), Rectangle.Empty, Paint, buttons, cardRegions)];
 
         static Rectangle Shift(Rectangle r, int dx, int dy) => new(r.X + dx, r.Y + dy, r.Width, r.Height);
     }

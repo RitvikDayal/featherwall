@@ -71,16 +71,20 @@ public sealed class Monolith : IGroupTheme
             var origin = GroupThemes.Place(input.WorkArea, size, stripAnchor, margin);
 
             Rectangle[]? buttons = null;
+            IReadOnlyList<PanelBlur.Region>? cardRegions = null;
             if (strip is { } sl && set.StripOrigin is { } so)
+            {
                 buttons =
                 [
                     new Rectangle(sl.Buttons[0].X + so.X + pad, sl.Buttons[0].Y + so.Y + pad, sl.Buttons[0].Width, sl.Buttons[0].Height),
                     new Rectangle(sl.Buttons[1].X + so.X + pad, sl.Buttons[1].Y + so.Y + pad, sl.Buttons[1].Width, sl.Buttons[1].Height),
                     new Rectangle(sl.Buttons[2].X + so.X + pad, sl.Buttons[2].Y + so.Y + pad, sl.Buttons[2].Width, sl.Buttons[2].Height),
                 ];
+                cardRegions = [new PanelBlur.Region(new RectangleF(pad + so.X + sl.Pad, pad + so.Y + sl.Pad, sl.Metrics.Size.Width, sl.Metrics.Size.Height), sl.Metrics.Size.Height * 0.3f)];
+            }
 
             panels.Add(new GroupPanel("monolith-strip", new Rectangle(origin, size), Rectangle.Empty,
-                g => PaintMusicSet(g, set, track, battery, input, s, pad), buttons));
+                g => PaintMusicSet(g, set, track, battery, input, s, pad), buttons, cardRegions));
         }
         return panels;
     }
@@ -190,7 +194,7 @@ public sealed class Monolith : IGroupTheme
             g.TranslateTransform(pad + origin.X, pad);
             var inner = MusicStrip.Measure(g, t, input.Source, s);
             float phase = (Environment.TickCount64 % 100_000) / 100_000f;
-            MusicStrip.Paint(g, inner, t, input.TrackArt, s, phase);
+            MusicStrip.Paint(g, inner, t, input.TrackArt, s, phase, input.Blur ? 150 : 216);
             g.Restore(stripSave);
         }
 

@@ -328,6 +328,10 @@ public sealed class Engine : IDisposable
         });
     }
 
+    /// <summary>Public wrapper for call sites that need a full re-attach (settings blur
+    /// toggle). Rebuilds the wallpaper layer and every widget.</summary>
+    public void ReapplyWallpaperAndWidgets() => ReapplyAll();
+
     private void ReapplyAll()
     {
         if (_reapplying) return;
@@ -426,7 +430,7 @@ public sealed class Engine : IDisposable
             Log.Info($"Widget group: {WidgetsConfig.ConfigName(theme)}, clock={_config.Clock.Enabled}, info={info}, sources=[{string.Join(", ", _config.Info.Sources)}]");
             _group = new GroupOverlay(window.EnsureHost(), GroupThemes.For(theme), _config, target,
                 _nowPlaying, _battery,
-                MonitorTracker.DpiScale(target, monitors), StyleFor(target.Device));
+                MonitorTracker.DpiScale(target, monitors), StyleFor(target.Device), MonitorStillPath);
             _recordDevice = target.Device;
             _nowPlaying?.Refresh();
         }
@@ -498,7 +502,8 @@ public sealed class Engine : IDisposable
             // own anchor, not an item in the list.
             if (_config.Info.Disc.Enabled && _nowPlaying is not null)
             {
-                _record = new NowPlayingOverlay(window.EnsureHost(), _config.Info, target, _nowPlaying, dpi, style);
+                _record = new NowPlayingOverlay(window.EnsureHost(), _config.Info, target, _nowPlaying, dpi, style,
+                    MonitorStillPath, _config.Widgets.Blur);
                 _recordDevice = target.Device;
                 Log.Info($"Record: created (rotate={_config.Info.Disc.Rotate}, size={_config.Info.Disc.Size})");
             }
@@ -894,6 +899,18 @@ public sealed class Engine : IDisposable
             ? MonitorTracker.Enumerate().FirstOrDefault(m => m.Primary)?.Device ?? monitorDevice
             : monitorDevice;
         var frame = StaticPath(device);
+        return File.Exists(frame) ? frame : null;
+    }
+
+    /// <summary>The blur source for a monitor's widgets: the wallpaper image file, or the
+    /// static frame captured once a video wallpaper has been played at least once. Null when
+    /// there is nothing to frost with.</summary>
+    public string? MonitorStillPath(MonitorInfo monitor)
+    {
+        var path = _config.WallpaperFor(monitor.Device);
+        if (path is null) return null;
+        if (ImageExtensions.Contains(Path.GetExtension(path))) return File.Exists(path) ? path : null;
+        var frame = StaticPath(monitor.Device);
         return File.Exists(frame) ? frame : null;
     }
 

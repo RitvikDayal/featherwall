@@ -17,15 +17,16 @@ public sealed record GroupInput(
     DateTime Now, ClockConfig Clock, DiscConfig Disc, HaloConfig Halo,
     NowPlayingReading? Track, BatteryReading? Battery,
     Color Accent, float Scale, float Dpi, ClockAnchor? Position, Rectangle WorkArea, int MaxCharacters,
-    string? Source = null, Bitmap? TrackArt = null);
+    string? Source = null, Bitmap? TrackArt = null, bool Blur = true);
 
 /// <summary>One surface of a group theme. <paramref name="FaceBox"/>, relative to the panel, is where
 /// the turning record goes on its own layer above the panel; empty when the panel has none.
 /// <paramref name="Paint"/> draws everything else, measured by the same call that built it.
 /// <paramref name="Buttons"/> are the strip's clickable rects, panel-relative, for the overlay
-/// to place its hit window over.</summary>
+/// to place its hit window over. <paramref name="CardRegions"/> are the frosted-glass surfaces
+/// under the card-bearing parts, panel-relative.</summary>
 public sealed record GroupPanel(string Key, Rectangle Bounds, Rectangle FaceBox, Action<Graphics> Paint,
-    Rectangle[]? Buttons = null);
+    Rectangle[]? Buttons = null, IReadOnlyList<PanelBlur.Region>? CardRegions = null);
 
 /// <summary>Orbit, Poster, Glass dock, Monolith and Tiles: the set placed as a group at one position.</summary>
 public interface IGroupTheme
