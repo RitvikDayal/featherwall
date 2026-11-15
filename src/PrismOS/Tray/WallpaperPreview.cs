@@ -92,7 +92,12 @@ public sealed class WallpaperPreview : Control
     private void StartVideo(string path)
     {
         StopVideo();
-        CreateHandle();
+        if (Width <= 0 || Height <= 0 || !IsHandleCreated)
+        {
+            // The control is not laid out yet; wait for a real size/handle.
+            _placeholder = "Loading preview…";
+            return;
+        }
         try
         {
             _host = new CompositionHost(Handle);
@@ -102,6 +107,7 @@ public sealed class WallpaperPreview : Control
             _videoActive = true;
             Log.Info($"Wallpaper preview: video pane hosting {path}");
             PaintCaption();
+            if (!Visible) _renderer.Pause();
         }
         catch (Exception ex)
         {
@@ -169,14 +175,21 @@ public sealed class WallpaperPreview : Control
         overlay.PresentBitmap(bmp);
     }
 
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        // If a video was requested before the handle or size existed, start it now.
+        if (!_videoActive && _path is not null && IsVideoPath(_path) && Width > 0 && Height > 0)
+            StartVideo(_path);
+    }
+
     protected override void OnResize(EventArgs e)
     {
         base.OnResize(e);
-        if (!_videoActive) return;
-        // A control-level resize invalidates the composition surface; recreate on size drift rather
-        // than leaving a video encoded at yesterday's bounds.
-        if (_renderer is not null && _host is not null && _path is not null)
-            StartVideo(_path);
+        if (_path is null || !IsVideoPath(_path)) return;
+        if (Width <= 0 || Height <= 0) return;
+        // Start if we were waiting for layout, or recreate on size drift.
+        StartVideo(_path);
     }
 
     protected override void OnVisibleChanged(EventArgs e)

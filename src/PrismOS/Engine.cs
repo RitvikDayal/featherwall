@@ -929,22 +929,13 @@ public sealed class Engine : IDisposable
     public Task<string> DownloadGalleryEntryAsync(GalleryEntry entry, IProgress<double>? progress = null) =>
         _gallery.EnsureDownloadedAsync(entry, progress);
 
-    /// <summary>The still that shows what is on a display: the image itself, or the frame the
-    /// engine captured from a video. Null when nothing is set there.
-    ///
-    /// The video frame is per monitor, so the "all displays" choice resolves to the primary's
-    /// frame — there is no frame for "*". The displays' video plays on the monitor its wallpaper
-    /// layer is on, and on a single-monitor desktop that is the primary.</summary>
+    /// <summary>The file to preview for a display: the image itself, or the video file. The
+    /// settings preview renders both — a video plays live in the panel — so it needs the source,
+    /// not a captured still. Null when nothing is set there or the file is gone.</summary>
     public string? WallpaperPreviewPath(string monitorDevice)
     {
         var path = _config.WallpaperFor(monitorDevice);
-        if (path is null || !File.Exists(path)) return null;
-        if (ImageExtensions.Contains(Path.GetExtension(path))) return path;
-        var frameDevice = monitorDevice == "*"
-            ? MonitorTracker.Enumerate().FirstOrDefault(m => m.Primary)?.Device ?? monitorDevice
-            : monitorDevice;
-        var frame = StaticPath(frameDevice);
-        return File.Exists(frame) ? frame : null;
+        return path is not null && File.Exists(path) ? path : null;
     }
 
     /// <summary>Raised when the wallpaper changes, so an open settings panel redraws its preview

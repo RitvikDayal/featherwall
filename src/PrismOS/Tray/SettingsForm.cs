@@ -1163,7 +1163,7 @@ public sealed class SettingsForm : Form
         _wallpaperPreview.Caption = path is not null && exists ? Path.GetFileName(path) : "";
         _wallpaperPreview.Placeholder = path is null ? "No wallpaper on this display"
             : !exists ? $"Not found: {Path.GetFileName(path)}"
-            : "Saving the first frame of the wallpaper…";
+            : "Loading preview…";
 
         var credit = _engine.CurrentWallpaperCreditFor(device);
         if (_wallpaperCreditHost is not null)
