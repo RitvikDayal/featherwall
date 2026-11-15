@@ -37,6 +37,8 @@ public sealed class Engine : IDisposable
         return Accent.Sample(frame);
     });
 
+    private readonly LoopbackMeter _meter = new();
+
     /// <summary>The style each monitor's widgets were last built with. Main thread only.</summary>
     private readonly Dictionary<string, WidgetStyle> _stylesInUse = new(StringComparer.OrdinalIgnoreCase);
     private readonly uint _taskbarCreatedMessage = User32.RegisterWindowMessageW("TaskbarCreated");
@@ -92,6 +94,7 @@ public sealed class Engine : IDisposable
         _host.EnsureLayer();
 
         _tray = new TrayIcon(_messageWindow.Hwnd);
+        _meter.Start();
 
         _playback = new PlaybackMonitor(() => _config.Pause);
         _playback.PauseStateChanged += OnPauseStateChanged;
@@ -430,7 +433,7 @@ public sealed class Engine : IDisposable
             Log.Info($"Widget group: {WidgetsConfig.ConfigName(theme)}, clock={_config.Clock.Enabled}, info={info}, sources=[{string.Join(", ", _config.Info.Sources)}]");
             _group = new GroupOverlay(window.EnsureHost(), GroupThemes.For(theme), _config, target,
                 _nowPlaying, _battery,
-                MonitorTracker.DpiScale(target, monitors), StyleFor(target.Device), MonitorStillPath);
+                MonitorTracker.DpiScale(target, monitors), StyleFor(target.Device), MonitorStillPath, ReadBands);
             _recordDevice = target.Device;
             _nowPlaying?.Refresh();
         }
@@ -503,7 +506,7 @@ public sealed class Engine : IDisposable
             if (_config.Info.Disc.Enabled && _nowPlaying is not null)
             {
                 _record = new NowPlayingOverlay(window.EnsureHost(), _config.Info, target, _nowPlaying, dpi, style,
-                    MonitorStillPath, _config.Widgets.Blur);
+                    MonitorStillPath, _config.Widgets.Blur, ReadBands);
                 _recordDevice = target.Device;
                 Log.Info($"Record: created (rotate={_config.Info.Disc.Rotate}, size={_config.Info.Disc.Size})");
             }
@@ -890,6 +893,20 @@ public sealed class Engine : IDisposable
         return File.Exists(path) ? path : null;
     }
 
+    private readonly float[] _bandsScratch = new float[Spectrum.BandCount];
+
+    /// <summary>Latest loopback-meter reading: 12 float values, attack-fast and release-slow.
+    /// The music pill paints its spectrum bars from the same numbers every frame.
+    /// Zero until the meter has seen audio (or the device is unavailable).</summary>
+    public float[] ReadBands()
+    {
+        _meter.Read(_bandsScratch);
+        return (float[])_bandsScratch.Clone();
+    }
+
+    /// <summary>True when recent audio crossed the meter's floor — enough to animate before playback starts.</summary>
+    public bool AudioAudible => _meter.IsAudible;
+
     /// <summary>The still that stands in for a video wallpaper: the frame the engine captured
     /// when the wallpaper loaded. Per monitor, so "*" is the primary's. Null if none was written
     /// yet.</summary>
@@ -1133,6 +1150,7 @@ public sealed class Engine : IDisposable
         _group = null;
         _recordDevice = null;
         DisposeSources();
+        _meter.Dispose();
         foreach (var window in _windows.Values) window.Dispose();
         _windows.Clear();
         _tray?.Dispose();

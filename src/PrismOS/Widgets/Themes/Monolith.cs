@@ -194,7 +194,7 @@ public sealed class Monolith : IGroupTheme
             g.TranslateTransform(pad + origin.X, pad);
             var inner = MusicStrip.Measure(g, t, input.Source, s);
             float phase = Environment.TickCount64 / 1000f;
-            MusicStrip.Paint(g, inner, t, input.TrackArt, s, phase, input.Blur ? 150 : 216);
+            MusicStrip.Paint(g, inner, t, input.TrackArt, s, phase, input.Blur ? 150 : 216, input.TrackLevels);
             g.Restore(stripSave);
         }
 

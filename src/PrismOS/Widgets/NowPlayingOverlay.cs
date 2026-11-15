@@ -39,6 +39,7 @@ public sealed class NowPlayingOverlay : IDisposable
     private SIZE _size;
     private float _phase;
     private readonly Func<MonitorInfo, string?>? _backdrop;
+    private readonly Func<float[]?>? _readBands;
     private readonly bool _blur;
     private bool _disposed;
     private bool _suspended;   // display off
@@ -47,7 +48,8 @@ public sealed class NowPlayingOverlay : IDisposable
 
     public NowPlayingOverlay(CompositionHost host, InfoConfig config, MonitorInfo monitor,
                              NowPlayingSource source, double dpiScale = 1.0, WidgetStyle? style = null,
-                             Func<MonitorInfo, string?>? backdrop = null, bool blur = true)
+                             Func<MonitorInfo, string?>? backdrop = null, bool blur = true,
+                             Func<float[]?>? readBands = null)
     {
         _host = host;
         _config = config;
@@ -55,6 +57,7 @@ public sealed class NowPlayingOverlay : IDisposable
         _dpiScale = dpiScale > 0 ? dpiScale : 1.0;
         _source = source;
         _backdrop = backdrop;
+        _readBands = readBands;
         _blur = blur;
         _style = style ?? WidgetStyle.Classic;
         _timer = new Timer(_ => Tick(), null, Timeout.Infinite, Timeout.Infinite);
@@ -204,7 +207,7 @@ public sealed class NowPlayingOverlay : IDisposable
                         new Rectangle(screenPos.X - _monitor.Bounds.Left, screenPos.Y - _monitor.Bounds.Top, size.Cx, size.Cy),
                         [new PanelBlur.Region(new RectangleF(pad, pad, metrics.Size.Width, metrics.Size.Height), metrics.Size.Height * 0.32f)]);
                 g.TranslateTransform(pad, pad);
-                MusicStrip.Paint(g, metrics, reading, _source.Art, scale, _phase, _blur ? 150 : 216);
+                MusicStrip.Paint(g, metrics, reading, _source.Art, scale, _phase, _blur ? 150 : 216, _readBands?.Invoke());
                 g.ResetTransform();
                 BakedShadow.DrawBehind(bmp, ShadowRecipe.Default, scale);
             }

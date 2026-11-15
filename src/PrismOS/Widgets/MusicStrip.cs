@@ -105,9 +105,9 @@ public static class MusicStrip
             new Rectangle((int)nextX, (int)btnY, (int)btn, (int)btn));
     }
 
-    /// <summary><paramref name="cardAlpha"/> is the pill's fill opacity. The frosted
-    /// (blur-on) look uses a lower alpha so the blurred wallpaper shows through.</summary>
-    public static void Paint(Graphics g, in Metrics m, NowPlayingReading r, Bitmap? art, float scale, float eqPhase, int cardAlpha = 216)
+    /// <summary><paramref name="levels"/> carries the live 12-band meter (see LoopbackMeter).
+    /// Null keeps the pre-audio behaviour (deterministic sine) so previews and tests still render.</summary>
+    public static void Paint(Graphics g, in Metrics m, NowPlayingReading r, Bitmap? art, float scale, float eqPhase, int cardAlpha = 216, float[]? levels = null)
     {
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
@@ -151,10 +151,10 @@ public static class MusicStrip
         if (m.ArtistText is not null)
             ThemeFonts.DrawTracked(g, m.ArtistText, artistFont, dim, x, m.ArtistTop, Math.Max(ArtistPx * scale, 7f) * 0.15f);
 
-        // Equalizer column: five pseudo-random bars that move like live audio. Without
-        // a device to read, bars are animated with incommensurate sines (never looks like
-        // a canned loop) and settle low when paused.
-        PaintEqualizer(g, m.EqBox, eqPhase, scale, r.IsPlaying);
+        // Equalizer column: real WASAPI-loopback spectrum when the engine supplies it,
+        // a playful sine otherwise (previews and tests / no audio device).
+        if (levels is not null) PaintEqualizer(g, m.EqBox, levels, r.IsPlaying);
+        else PaintEqualizerSine(g, m.EqBox, eqPhase, scale, r.IsPlaying);
 
         // Transport buttons
         DrawPrevButton(g, m.PrevBox);
@@ -174,7 +174,28 @@ public static class MusicStrip
         return "…";
     }
 
-    private static void PaintEqualizer(Graphics g, Rectangle box, float phase, float scale, bool playing)
+    /// <summary>The real spectrum: one bar per band (12). Bars are filled solid white-ish with
+    /// the current band's magnitude, so the shape dances with the music itself.</summary>
+    private static void PaintEqualizer(Graphics g, Rectangle box, float[] bands, bool playing)
+    {
+        float gap = Math.Max(2f, box.Width / 56f);
+        int n = bands.Length;
+        float barW = (box.Width - gap * (n - 1)) / n;
+        float maxH = box.Height;
+        using var brush = new SolidBrush(Color.FromArgb(255, 255, 255, 255));
+        for (int i = 0; i < n; i++)
+        {
+            float mag = Math.Clamp(playing ? bands[i] : 0f, 0f, 1f);
+            float h = maxH * (0.10f + 0.90f * mag);
+            float x = box.X + i * (barW + gap);
+            brush.Color = Color.FromArgb((int)(140 + 115 * mag), 255, 255, 255);
+            g.FillRectangle(brush, x, box.Bottom - h, barW, h);
+        }
+    }
+
+    private static readonly float[] _flat = new float[12];
+
+    private static void PaintEqualizerSine(Graphics g, Rectangle box, float phase, float scale, bool playing)
     {
         // Base-level (not audio-reactive) bars: each band is a sum of incommensurate
         // sines with slowly drifting phases, so they read as live audio without any

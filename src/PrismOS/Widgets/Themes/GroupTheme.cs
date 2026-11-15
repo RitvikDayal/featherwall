@@ -17,7 +17,7 @@ public sealed record GroupInput(
     DateTime Now, ClockConfig Clock, DiscConfig Disc, HaloConfig Halo,
     NowPlayingReading? Track, BatteryReading? Battery,
     Color Accent, float Scale, float Dpi, ClockAnchor? Position, Rectangle WorkArea, int MaxCharacters,
-    string? Source = null, Bitmap? TrackArt = null, bool Blur = true);
+    string? Source = null, Bitmap? TrackArt = null, bool Blur = true, float[]? TrackLevels = null);
 
 /// <summary>One surface of a group theme. <paramref name="FaceBox"/>, relative to the panel, is where
 /// the turning record goes on its own layer above the panel; empty when the panel has none.
@@ -103,7 +103,7 @@ public static class GroupThemes
                 var inner = MusicStrip.Measure(g, track, source, scale);
                 float phase = Environment.TickCount64 / 1000f;
                 g.TranslateTransform(layout.Pad, layout.Pad);
-                MusicStrip.Paint(g, inner, track, art, scale, phase);
+                MusicStrip.Paint(g, inner, track, art, scale, phase, 216, null);
             },
             layout.Buttons);
     }

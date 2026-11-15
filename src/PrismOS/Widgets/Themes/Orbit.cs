@@ -80,7 +80,7 @@ public sealed class Orbit : IGroupTheme
                 float phase = Environment.TickCount64 / 1000f;
                 var save = g.Save();
                 g.TranslateTransform(stripX, stripY);
-                MusicStrip.Paint(g, inner, t, input.TrackArt, s, phase, input.Blur ? 150 : 216);
+                MusicStrip.Paint(g, inner, t, input.TrackArt, s, phase, input.Blur ? 150 : 216, input.TrackLevels);
                 g.Restore(save);
             }
             if (battery is not null) PaintBatteryRing(g, ring, input, s, caption, captionFont, tracking);

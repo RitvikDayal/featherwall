@@ -35,6 +35,7 @@ public sealed class GroupOverlay : IDisposable
 
     private readonly CompositionHost _host;
     private readonly Func<MonitorInfo, string?>? _backdrop;
+    private readonly Func<float[]?>? _readBands;
     private readonly IGroupTheme _theme;
     private readonly AppConfig _config;
     private readonly MonitorInfo _monitor;
@@ -64,10 +65,11 @@ public sealed class GroupOverlay : IDisposable
 
     public GroupOverlay(CompositionHost host, IGroupTheme theme, AppConfig config, MonitorInfo monitor,
                         NowPlayingSource? nowPlaying, BatterySource? battery, double dpiScale, WidgetStyle style,
-                        Func<MonitorInfo, string?>? backdrop = null)
+                        Func<MonitorInfo, string?>? backdrop = null, Func<float[]?>? readBands = null)
     {
         _host = host;
         _backdrop = backdrop;
+        _readBands = readBands;
         _theme = theme;
         _config = config;
         _monitor = monitor;
@@ -174,7 +176,7 @@ public sealed class GroupOverlay : IDisposable
             var input = new GroupInput(DateTime.Now, _config.Clock, disc, halo, track, battery, _style.Accent,
                                        scale, _dpi, _config.Widgets.Position, work, _config.Info.MaxCharacters,
                                        NowPlayingSource.FriendlySourceName(_nowPlaying?.SourceApp), _nowPlaying?.Art,
-                                       _config.Widgets.Blur);
+                                       _config.Widgets.Blur, _readBands?.Invoke());
 
             var panels = _theme.Layout(input);
             foreach (var gone in _panels.Keys.Except(panels.Select(p => p.Key)).ToList())
