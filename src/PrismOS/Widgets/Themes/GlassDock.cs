@@ -66,13 +66,13 @@ public sealed class GlassDock : IGroupTheme
 
         // Segments, grouped so a separator only ever sits between two present groups.
         var groups = new List<List<(Kind Kind, float W, float H)>>();
-        if (strip is { } sm) groups.Add([(Kind.Strip, sm.Size.Width, sm.Size.Height)]);
         if (clock)
         {
             var g = new List<(Kind, float, float)> { (Kind.Time, timeSize.Width, timeSize.Height) };
             if (dateW > 0) g.Add((Kind.Date, dateW, dateH));
             groups.Add(g);
         }
+        if (strip is { } sm) groups.Add([(Kind.Strip, sm.Size.Width, sm.Size.Height)]);
         if (battery is not null) groups.Add([(Kind.Battery, batterySide, batterySide)]);
 
         var items = new List<(Kind Kind, float W, float H)>();
@@ -136,7 +136,7 @@ public sealed class GlassDock : IGroupTheme
                         var stripSave = g.Save();
                         g.TranslateTransform(box.X, box.Y);
                         var inner = MusicStrip.Measure(g, track!.Value, input.Source, s);
-                        float phase = (Environment.TickCount64 % 100_000) / 100_000f;
+                        float phase = (Environment.TickCount64 % 1500) / 1500f;
                         MusicStrip.Paint(g, inner, track.Value, input.TrackArt, s, phase, input.Blur ? 150 : 216);
                         g.Restore(stripSave);
                         break;

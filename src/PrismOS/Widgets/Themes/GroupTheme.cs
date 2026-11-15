@@ -101,7 +101,7 @@ public static class GroupThemes
             g =>
             {
                 var inner = MusicStrip.Measure(g, track, source, scale);
-                float phase = (Environment.TickCount64 % 100_000) / 100_000f;
+                float phase = (Environment.TickCount64 % 1500) / 1500f;
                 g.TranslateTransform(layout.Pad, layout.Pad);
                 MusicStrip.Paint(g, inner, track, art, scale, phase);
             },

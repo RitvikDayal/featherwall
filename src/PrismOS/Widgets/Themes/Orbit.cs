@@ -77,7 +77,7 @@ public sealed class Orbit : IGroupTheme
             if (strip is { } sl && track is { } t)
             {
                 var inner = MusicStrip.Measure(g, t, input.Source, s);
-                float phase = (Environment.TickCount64 % 100_000) / 100_000f;
+                float phase = (Environment.TickCount64 % 1500) / 1500f;
                 var save = g.Save();
                 g.TranslateTransform(stripX, stripY);
                 MusicStrip.Paint(g, inner, t, input.TrackArt, s, phase, input.Blur ? 150 : 216);

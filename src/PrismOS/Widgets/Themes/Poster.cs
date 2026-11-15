@@ -165,7 +165,7 @@ public sealed class Poster : IGroupTheme
         {
             g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
             var inner = MusicStrip.Measure(g, track, input.Source, s);
-            float phase = (Environment.TickCount64 % 100_000) / 100_000f;
+            float phase = (Environment.TickCount64 % 1500) / 1500f;
             g.TranslateTransform(strip.Pad, strip.Pad);
             MusicStrip.Paint(g, inner, track, input.TrackArt, s, phase, input.Blur ? 150 : 216);
         }

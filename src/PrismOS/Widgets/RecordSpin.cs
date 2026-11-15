@@ -11,7 +11,7 @@ public static class RecordSpin
 
     /// <summary>The timer path's frame rate. A record at 33⅓ rpm turns 13° per frame at this rate,
     /// which reads as motion; going higher spends frames nobody can see on a wallpaper.</summary>
-    public const int TimerFramesPerSecond = 15;
+    public const int TimerFramesPerSecond = 30;
 
     /// <summary>Where a record that started at <paramref name="startDegrees"/> has got to after
     /// <paramref name="elapsed"/>, in [0, 360).</summary>

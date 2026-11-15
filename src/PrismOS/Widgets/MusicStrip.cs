@@ -129,18 +129,10 @@ public static class MusicStrip
         {
             using (var brush = new SolidBrush(Color.FromArgb(255, 44, 50, 63)))
                 g.FillPath(brush, artPath);
-            using var glyph = new SolidBrush(Color.FromArgb(150, 255, 255, 255));
-            float cx = m.ArtBox.X + m.ArtBox.Width / 2f, cy = m.ArtBox.Y + m.ArtBox.Height / 2f;
-            float rad = m.ArtBox.Width * 0.22f;
-            var tri = new PointF[]
-            {
-                new(cx - rad * 0.7f, cy - rad), new(cx - rad * 0.7f, cy + rad), new(cx + rad, cy),
-            };
-            g.FillPolygon(glyph, tri);
         }
 
-        // Equalizer bars over the art while something is playing
-        if (r.IsPlaying) PaintEqualizer(g, m.ArtBox, eqPhase, scale);
+        // Equalizer bars over the art — animated while playing, static low bars otherwise.
+        PaintEqualizer(g, m.ArtBox, eqPhase, scale, r.IsPlaying);
 
         // Text column
         float x = m.Pad + m.ArtSide + m.ArtGap;
@@ -173,20 +165,21 @@ public static class MusicStrip
         return "…";
     }
 
-    private static void PaintEqualizer(Graphics g, Rectangle artBox, float phase, float scale)
+    private static void PaintEqualizer(Graphics g, Rectangle artBox, float phase, float scale, bool playing)
     {
-        float barW = Math.Max(2.4f * scale, 1.6f), gap = Math.Max(1.8f * scale, 1.2f);
-        const int bars = 4;
+        float barW = Math.Max(3.2f * scale, 2f), gap = Math.Max(2.4f * scale, 1.6f);
+        const int bars = 5;
         float totalW = bars * barW + (bars - 1) * gap;
         float x = artBox.X + (artBox.Width - totalW) / 2f;
-        float baseY = artBox.Bottom - 5f * scale;
-        float maxH = artBox.Height * 0.52f;
+        float baseY = artBox.Bottom - 4f * scale;
+        float maxH = artBox.Height * 0.62f;
         using var brush = new SolidBrush(Color.FromArgb(245, 255, 255, 255));
+        float amplitude = playing ? 1f : 0.18f;
         for (int i = 0; i < bars; i++)
         {
-            float t = phase * MathF.PI * 2f + i * 1.7f;
+            float t = phase * MathF.PI * 2f + i * 1.3f;
             float norm = 0.28f + 0.72f * (0.5f + 0.5f * MathF.Sin(t * 2.3f + i) * MathF.Sin(t * 1.1f + 0.6f));
-            float h = maxH * norm;
+            float h = maxH * norm * amplitude;
             g.FillRectangle(brush, x + i * (barW + gap), baseY - h, barW, h);
         }
     }
