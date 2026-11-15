@@ -147,10 +147,12 @@ desktop, so it can't drift from the real thing.
 
 **The wallpaper page shows what is actually on your screen.** It previews the wallpaper on the
 display you pick — an image shows itself, a video **plays live and looped inside the panel**, through
-the same hardware-decoded pipeline the desktop uses, always muted — and lets you change it from
+a software (CPU-only) Media Foundation decode that deliberately never touches the GPU, so the
+NVIDIA App overlay stays quiet — and lets you change it from
 there: browse for a file, or open the gallery as a list with each wallpaper's resolution,
 size and licence. A wallpaper can be applied to one display or to all of them, so a second screen
-does not have to show the same thing as the first.
+does not have to show the same thing as the first. A Behaviour toggle turns the live preview off
+and shows the captured still instead.
 
 **One colour picker for the whole app.** A saturation/value square, a hue ramp and an opacity ramp
 over a chequerboard, a hex field, the four channels as numbers, and a preview of the colour next to
