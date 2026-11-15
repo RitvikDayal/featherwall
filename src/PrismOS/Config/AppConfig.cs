@@ -297,6 +297,33 @@ public sealed class AppConfig
         if (existing is not null) existing.Path = path;
         else Wallpapers.Add(new WallpaperAssignment { Monitor = monitorDevice, Path = path });
     }
+
+    /// <summary>Puts every setting back to how the app ships, keeping the things that are not
+    /// settings.
+    ///
+    /// The wallpapers stay: a person who has spent an evening finding a video they like does not
+    /// expect "reset" to throw it away, and the point of the button is to fix the settings, not
+    /// the desktop. The Start-menu flag stays too, or the app would recreate an entry the user
+    /// had deleted, and the one-time styles notice stays shown, or it would appear again for
+    /// someone who has already dismissed it.
+    ///
+    /// What this deliberately does not touch is the wallpaper PrismOS will put back when it
+    /// exits: that lives beside the log, not in the config, and losing it would leave a user
+    /// with someone else's frame on their desktop.</summary>
+    public void ResetToDefaults()
+    {
+        var defaults = new AppConfig();
+        bool noticeShown = Widgets.ThemesNoticeShown;
+        // Wallpapers is not touched: it is the one list here that is not a setting.
+        Fit = defaults.Fit;
+        MuteVideo = defaults.MuteVideo;
+        Volume = defaults.Volume;
+        Clock = defaults.Clock;
+        Info = defaults.Info;
+        Pause = defaults.Pause;
+        Widgets = defaults.Widgets;
+        Widgets.ThemesNoticeShown = noticeShown;
+    }
 }
 
 [JsonSourceGenerationOptions(

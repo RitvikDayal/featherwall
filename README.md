@@ -148,6 +148,19 @@ from there: browse for a file, or open the gallery as a list with each wallpaper
 size and licence. A wallpaper can be applied to one display or to all of them, so a second screen
 does not have to show the same thing as the first.
 
+**One colour picker for the whole app.** A saturation/value square, a hue ramp and an opacity ramp
+over a chequerboard, a hex field, the four channels as numbers, and a preview of the colour next to
+the one you started with. The Windows colour dialog it replaces could not express alpha at all,
+which is why every colour had an opacity spinner beside it.
+
+**An About page** with the version, where the project came from, and a check for a newer release.
+The check asks GitHub — it needs no account and downloads nothing. If it cannot be reached, it
+says so; it never reports "up to date" for a check that did not run.
+
+**Reset to defaults** on the Behaviour page puts every setting back to how PrismOS ships, with a
+confirmation that says what goes and what survives: your wallpapers are kept, and so is the
+wallpaper PrismOS will put back when it exits.
+
 Also: MP4, MOV, AVI, WMV and WebM video with seamless, hardware-decoded loops; PNG, JPEG, BMP, TIFF
 and animated GIF images; per-monitor wallpapers; Fill, Fit and Stretch; DPI-aware sizing on mixed
 displays. It re-attaches if explorer.exe restarts and puts your old wallpaper back when it exits.

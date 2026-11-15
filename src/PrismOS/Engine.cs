@@ -935,6 +935,23 @@ public sealed class Engine : IDisposable
 
     public void SaveConfig() => ConfigStore.Save(_config);
 
+    /// <summary>Puts every setting back to its default and applies the result at once.
+    ///
+    /// The widgets are rebuilt rather than merely refreshed, because the reset changes which
+    /// theme is in use and which widgets exist at all: the group themes draw one overlay where
+    /// the others draw four, and nothing short of a rebuild swaps between them.</summary>
+    public void ResetSettingsToDefaults()
+    {
+        _config.ResetToDefaults();
+        ConfigStore.Save(_config);
+        RecreateWidgets();
+        RefreshWallpapers();
+        ApplyAudioSettings();
+        AccentChanged?.Invoke();
+        WidgetsChanged?.Invoke();
+        Log.Info("Settings reset to defaults");
+    }
+
     /// <summary>Clock appearance changed: persist and rebuild the overlay (cheap).</summary>
     public void RefreshWidgets() => SaveAndRefreshWidgets();
 

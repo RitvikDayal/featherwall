@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <RootNamespace>PrismOS.IconGen</RootNamespace>
+    <AssemblyName>prismos-icon-gen</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- A build-time tool: it is not part of the shipped app, and its output is the .ico. -->
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The mark is drawn by PrismOS.Tray.PrismIcon, so the asset and the tray icon cannot
+         drift apart: regenerating the .ico is the only way to change the shape. -->
+    <ProjectReference Include="..\..\..\src\PrismOS\PrismOS.csproj" />
+  </ItemGroup>
+
+</Project>

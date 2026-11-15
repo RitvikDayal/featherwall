@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Drawing.Text;
 using System.Windows.Forms;
 using PrismOS.Config;
+using PrismOS.Interop;
 using PrismOS.Widgets;
 using PrismOS.Widgets.Themes;
 
@@ -79,6 +80,7 @@ public sealed class SettingsForm : Form
         _preview = new ClockPreview(_config.Clock, CurrentStyle);
 
         Text = "PrismOS";
+        Icon = PrismIcon.CreateIcon();
         FormBorderStyle = FormBorderStyle.Sizable;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -99,16 +101,10 @@ public sealed class SettingsForm : Form
 
         var pages = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Colors.Window, AutoScroll = true };
         var rail = new Panel { Dock = DockStyle.Left, Width = RailWidth, BackColor = Theme.Colors.Window };
+        _pagesHost = pages;
+        _rail = rail;
 
-        AddPage(pages, rail, "Style", BuildStyleSection());
-        AddPage(pages, rail, "Clock", BuildClockSection());
-        AddPage(pages, rail, "Date", BuildDateSection());
-        AddPage(pages, rail, "Info", BuildInfoSection());
-        AddPage(pages, rail, "Battery", BuildHaloSection());
-        AddPage(pages, rail, "Music", BuildDiscSection());
-        AddPage(pages, rail, "Wallpaper", BuildWallpaperSection());
-        AddPage(pages, rail, "Behaviour", BuildBehaviorSection());
-        SelectPage(0);
+        BuildPages(pages, rail);
         RefreshStyle();
 
         var body = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Colors.Window, Padding = new Padding(20, 16, 20, 8) };
@@ -145,6 +141,60 @@ public sealed class SettingsForm : Form
     }
 
     private readonly List<(Button Tab, Control Page)> _pages = [];
+    private Panel? _pagesHost;
+    private Panel? _rail;
+
+    /// <summary>Builds every page and its tab.
+    ///
+    /// A method rather than a block in the constructor because the panel has to be rebuilt after
+    /// a reset: the controls hold the values they were built with, so a panel that survived a
+    /// reset would show the old settings over the new ones.</summary>
+    private void BuildPages(Panel host, Panel rail)
+    {
+        foreach (var (tab, page) in _pages)
+        {
+            tab.Dispose();
+            page.Dispose();
+        }
+        _pages.Clear();
+        _tiles.Clear();
+        _classicOnly.Clear();
+        _placement.Clear();
+        _groupRows.Clear();
+        // Disposing a control removes it from its parent's collection, so the rail is walked over
+        // a copy: enumerating it directly would throw on the second removal.
+        foreach (Control control in rail.Controls.Cast<Control>().ToArray()) control.Dispose();
+        rail.Controls.Clear();
+
+        AddPage(host, rail, "Style", BuildStyleSection());
+        AddPage(host, rail, "Clock", BuildClockSection());
+        AddPage(host, rail, "Date", BuildDateSection());
+        AddPage(host, rail, "Info", BuildInfoSection());
+        AddPage(host, rail, "Battery", BuildHaloSection());
+        AddPage(host, rail, "Music", BuildDiscSection());
+        AddPage(host, rail, "Wallpaper", BuildWallpaperSection());
+        AddPage(host, rail, "Behaviour", BuildBehaviorSection());
+        AddPage(host, rail, "About", BuildAboutSection());
+        SelectPage(0);
+    }
+
+    /// <summary>Rebuilds the panel from the config, for after a reset.</summary>
+    private void RebuildPages()
+    {
+        if (_pagesHost is null || _rail is null) return;
+        bool wasLoading = _loading;
+        _loading = true;
+        try
+        {
+            BuildPages(_pagesHost, _rail);
+            RefreshStyle();
+        }
+        finally
+        {
+            _loading = wasLoading;
+        }
+        ResizeToActivePage();
+    }
 
     private void AddPage(Panel host, Panel rail, string title, Control page)
     {
@@ -385,10 +435,11 @@ public sealed class SettingsForm : Form
 
         _accentSwatch.Click += (_, _) =>
         {
-            using var dialog = new ColorDialog { Color = _accent, FullOpen = true };
-            if (dialog.ShowDialog(this) != DialogResult.OK) return;
-            var c = dialog.Color;
-            _engine.SetWidgetAccent($"#{c.R:X2}{c.G:X2}{c.B:X2}");
+            // The accent is #RRGGBB and nothing else: Accent.Resolve matches it against a
+            // six-digit pattern and quietly falls back to the wallpaper's colour for anything
+            // longer, so the picker is opened without an alpha to choose.
+            if (PickColor(_accent, allowAlpha: false) is not { } c) return;
+            _engine.SetWidgetAccent(ColorHex.ToRgbHex(c));
         };
         auto.Click += (_, _) =>
         {
@@ -600,15 +651,13 @@ public sealed class SettingsForm : Form
 
         swatch.Click += (_, _) =>
         {
-            using var dialog = new ColorDialog { Color = swatch.BackColor, FullOpen = true };
-            if (dialog.ShowDialog(this) != DialogResult.OK) return;
-            var c = dialog.Color;
-            // The date's own alpha, not the time's. An inherited date is timeColor.A * DateOpacity
-            // and an explicit one carries its own; CurrentAlpha() returns neither, so picking a new
-            // RGB used to silently reset the date's opacity to the time's.
-            byte alpha = Widgets.ClockRenderer.DateColorFor(
-                _config.Clock, Widgets.ClockRenderer.ParseColor(_config.Clock.Color)).A;
-            _config.Clock.DateColor = $"#{alpha:X2}{c.R:X2}{c.G:X2}{c.B:X2}";
+            // Started from the colour as it is drawn, alpha included, so the opacity a person
+            // sees is the opacity they keep. The date's own alpha, not the time's: an inherited
+            // date is timeColor.A * DateOpacity and an explicit one carries its own.
+            var current = Widgets.ClockRenderer.DateColorFor(
+                _config.Clock, Widgets.ClockRenderer.ParseColor(_config.Clock.Color));
+            if (PickColor(current, allowAlpha: true) is not { } picked) return;
+            _config.Clock.DateColor = ColorHex.ToHex(picked);
             Sync();
             ApplyClock();
         };
@@ -816,17 +865,11 @@ public sealed class SettingsForm : Form
         button.Click += (_, _) =>
         {
             var existing = ClockRenderer.ParseColor(get());
-            using var dialog = new ColorDialog
-            {
-                Color = Color.FromArgb(existing.R, existing.G, existing.B),
-                FullOpen = true,
-            };
-            if (dialog.ShowDialog(this) != DialogResult.OK) return;
-
-            // Alpha carries over from the value being replaced. The track colour is deliberately
-            // translucent and a colour dialog has no way to express that, so picking a new hue
-            // must not quietly make it opaque.
-            set($"#{existing.A:X2}{dialog.Color.R:X2}{dialog.Color.G:X2}{dialog.Color.B:X2}");
+            // Started from the value being replaced, alpha included. The track colour is
+            // deliberately translucent, and the picker opens on the colour as it is — so picking
+            // a new hue cannot quietly make it opaque, which is what the old dialog did.
+            if (PickColor(existing, allowAlpha: true) is not { } picked) return;
+            set(ColorHex.ToHex(picked));
             Refresh();
             SyncPaletteCombo();
             ApplyInfo();
@@ -957,10 +1000,9 @@ public sealed class SettingsForm : Form
 
         button.Click += (_, _) =>
         {
-            using var dialog = new ColorDialog { Color = InfoRgb(), FullOpen = true };
-            if (dialog.ShowDialog(this) != DialogResult.OK) return;
-            SetInfoColor(dialog.Color, InfoAlpha());
-            button.BackColor = dialog.Color;
+            if (PickColor(InfoColor(), allowAlpha: true) is not { } picked) return;
+            SetInfoColor(picked, picked.A);
+            button.BackColor = Color.FromArgb(picked.R, picked.G, picked.B);
             hex.Text = _config.Info.Color.ToUpperInvariant();
             ApplyInfo();
         };
@@ -1195,7 +1237,167 @@ public sealed class SettingsForm : Form
         rows.AddRow("Pause in remote desktop", Check(pause.OnRemoteSession, v => { pause.OnRemoteSession = v; _engine.SaveConfig(); }));
         rows.AddRow("Run at startup", Check(Autostart.IsEnabled(), Autostart.SetEnabled));
 
+        var reset = new Button
+        {
+            Text = "Reset to defaults",
+            Width = 140,
+            Height = 28,
+            FlatStyle = FlatStyle.Flat,
+            BackColor = Theme.Colors.Control,
+            ForeColor = Theme.Colors.Text,
+        };
+        reset.FlatAppearance.BorderColor = Theme.Colors.Border;
+        reset.Click += (_, _) => ConfirmAndReset();
+        rows.AddRow("Reset", reset);
+
         return card;
+    }
+
+    /// <summary>Asks before resetting, because the answer cannot be undone.
+    ///
+    /// The wording says what survives, not just what goes: a person who has set a wallpaper they
+    /// like should not have to wonder whether the button takes it with them.</summary>
+    private void ConfirmAndReset()
+    {
+        const string message =
+            "Reset every setting to how PrismOS ships?\n\n" +
+            "The clock, the date, the widgets, the colours and the behaviour all go back to their " +
+            "defaults, and the widget styles return to Classic. Your wallpapers are kept, and so is " +
+            "the wallpaper PrismOS will put back when it quits.\n\n" +
+            "This cannot be undone.";
+
+        if (User32.MessageBoxW(Handle, message, "Reset PrismOS", 0x24 /* MB_ICONQUESTION | MB_YESNO */) != 6 /* IDYES */)
+            return;
+
+        _engine.ResetSettingsToDefaults();
+        RebuildPages();
+    }
+
+    /// <summary>The About page: what this is, where it came from, and whether there is a newer
+    /// release.
+    ///
+    /// The attribution is on the page rather than only in a readme. A fork that hides where it
+    /// came from is a fork that has taken someone's work, and the person who wrote the original
+    /// should be named on the app itself, not just in a file nobody opens.</summary>
+    private Control BuildAboutSection()
+    {
+        var (card, rows) = NewSection("About PrismOS");
+
+        var version = UpdateCheck.CurrentVersion();
+        rows.AddRow("Version", TextValue($"{version} · .NET {Environment.Version.Major}.{Environment.Version.Minor}"));
+
+        rows.AddRow("Project", Link("YUouriii/PrismOS", UpdateCheck.RepositoryUrl));
+
+        rows.AddRow("Based on", Link("FeatherWall by Ritvik Dayal", UpdateCheck.UpstreamUrl));
+
+        rows.AddRow("Licence", TextValue("MIT"));
+
+        var status = new Label
+        {
+            Text = "",
+            AutoSize = true,
+            ForeColor = Theme.Colors.Subtle,
+            Margin = new Padding(8, 6, 0, 0),
+        };
+        var check = new Button
+        {
+            Text = "Check for updates",
+            Width = 140,
+            Height = 28,
+            FlatStyle = FlatStyle.Flat,
+            BackColor = Theme.Colors.Control,
+            ForeColor = Theme.Colors.Text,
+        };
+        check.FlatAppearance.BorderColor = Theme.Colors.Border;
+        check.Click += async (_, _) => await CheckForUpdatesAsync(check, status);
+
+        var row = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.LeftToRight,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Theme.Colors.Card,
+            Margin = new Padding(0, 2, 0, 2),
+        };
+        row.Controls.Add(check);
+        row.Controls.Add(status);
+        rows.AddRow("Updates", row);
+
+        return card;
+    }
+
+    /// <summary>Asks GitHub for the latest release. A check that could not be made says so:
+    /// "up to date" would be a claim the app has no way to support.</summary>
+    private async Task CheckForUpdatesAsync(Button check, Label status)
+    {
+        check.Enabled = false;
+        status.ForeColor = Theme.Colors.Subtle;
+        status.Text = "Checking…";
+        try
+        {
+            var result = await UpdateCheck.CheckAsync();
+            switch (result.Outcome)
+            {
+                case UpdateCheckOutcome.UpToDate:
+                    status.Text = "You are up to date";
+                    return;
+                case UpdateCheckOutcome.NoReleases:
+                    status.Text = "No release published yet";
+                    return;
+                case UpdateCheckOutcome.Newer:
+                    status.Text = $"{result.Tag} is available";
+                    status.ForeColor = Theme.Colors.Accent;
+                    status.Cursor = Cursors.Hand;
+                    status.Click += (_, _) => OpenUrl(result.Url);
+                    return;
+                default:
+                    status.Text = "Could not check";
+                    return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Common.Log.Warn($"Update check failed: {ex.Message}");
+            status.Text = "Could not check";
+        }
+        finally
+        {
+            check.Enabled = true;
+        }
+    }
+
+    /// <summary>A read-only value in the value column.</summary>
+    private Control TextValue(string value) => new Label
+    {
+        Text = value,
+        AutoSize = true,
+        ForeColor = Theme.Colors.Text,
+        Margin = new Padding(0, 5, 0, 5),
+    };
+
+    /// <summary>A link that opens in the browser.</summary>
+    private LinkLabel Link(string text, string url)
+    {
+        var link = new LinkLabel
+        {
+            Text = text,
+            AutoSize = true,
+            LinkColor = Theme.Colors.Accent,
+            ActiveLinkColor = Theme.Colors.Accent,
+            Margin = new Padding(0, 5, 0, 5),
+        };
+        link.LinkClicked += (_, _) => OpenUrl(url);
+        return link;
+    }
+
+    private void OpenUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return;
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch (Exception ex) { Common.Log.Warn($"Could not open {url}: {ex.Message}"); }
     }
 
     // ---- pickers -----------------------------------------------------------------------
@@ -1343,10 +1545,9 @@ public sealed class SettingsForm : Form
         _colorButton.FlatAppearance.BorderColor = Theme.Colors.Border;
         _colorButton.Click += (_, _) =>
         {
-            using var dialog = new ColorDialog { Color = CurrentRgb(), FullOpen = true };
-            if (dialog.ShowDialog(this) != DialogResult.OK) return;
-            SetColor(dialog.Color, CurrentAlpha());
-            _colorButton.BackColor = dialog.Color;
+            if (PickColor(CurrentColor(), allowAlpha: true) is not { } picked) return;
+            SetColor(picked, picked.A);
+            _colorButton.BackColor = Color.FromArgb(picked.R, picked.G, picked.B);
             UpdateColorLabel();
             ApplyClock();
         };
@@ -1526,6 +1727,21 @@ public sealed class SettingsForm : Form
     };
 
     // ---- colour helpers ----------------------------------------------------------------
+
+    /// <summary>The colour picker, or null when it was cancelled.
+    ///
+    /// One dialog for every colour in the app, so the accent, the clock, the date, the info
+    /// widget and the halo all pick the same way. The Windows colour dialog it replaces could
+    /// not express alpha at all, which is why each of those colours had an opacity spinner
+    /// beside it: the two halves of one colour lived in two places.</summary>
+    private Color? PickColor(Color current, bool allowAlpha)
+    {
+        using var picker = new ColorPickerForm(current, allowAlpha);
+        return picker.ShowDialog(this) == DialogResult.OK ? picker.SelectedColor : null;
+    }
+
+    /// <summary>The clock's colour as it is drawn, alpha included.</summary>
+    private Color CurrentColor() => Widgets.ClockRenderer.ParseColor(_config.Clock.Color);
 
     private Color CurrentRgb()
     {

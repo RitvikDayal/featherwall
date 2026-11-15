@@ -5,4 +5,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/PrismOS.Tests/PrismOS.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="scripts/icon/IconGen/IconGen.csproj" />
+  </Folder>
 </Solution>

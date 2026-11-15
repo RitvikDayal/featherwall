@@ -26,6 +26,7 @@ public sealed class GalleryForm : Form
         _device = device;
 
         Text = "Gallery";
+        Icon = PrismIcon.CreateIcon();
         FormBorderStyle = FormBorderStyle.Sizable;
         MaximizeBox = false;
         MinimizeBox = false;

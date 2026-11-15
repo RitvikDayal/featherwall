@@ -1,16 +1,18 @@
 using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 using PrismOS.Interop;
 using static PrismOS.Interop.Win32Constants;
 
 namespace PrismOS.Tray;
 
-/// <summary>Shell notification-area icon with a runtime-drawn feather glyph (no assets).</summary>
+/// <summary>Shell notification-area icon with the PrismOS mark, drawn at run time (no assets).</summary>
 public sealed class TrayIcon : IDisposable
 {
     public const uint CallbackMessage = WM_APP + 1;
     private const uint IconId = 1;
+
+    /// <summary>SM_CXSMICON: the size the notification area draws at.</summary>
+    private const int SM_CXSMICON = 12;
 
     private readonly IntPtr _ownerHwnd;
     private IntPtr _hIcon;
@@ -22,27 +24,21 @@ public sealed class TrayIcon : IDisposable
     public TrayIcon(IntPtr ownerHwnd)
     {
         _ownerHwnd = ownerHwnd;
-        _hIcon = DrawFeatherIcon();
+        _hIcon = DrawPrismIcon();
         Add();
     }
 
-    private static IntPtr DrawFeatherIcon()
+    /// <summary>The mark, drawn at the shell's small icon size.
+    ///
+    /// The notification area draws the icon at SM_CXSMICON and scales anything else, so an icon
+    /// drawn larger loses its edges on the way down. Drawing it here rather than loading the .ico
+    /// keeps the tray and the application icon the same shape: both come from PrismIcon.</summary>
+    private static IntPtr DrawPrismIcon()
     {
-        using var bmp = new Bitmap(32, 32);
-        using (var g = Graphics.FromImage(bmp))
-        {
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            using var back = new LinearGradientBrush(new Rectangle(0, 0, 32, 32),
-                Color.FromArgb(255, 56, 120, 220), Color.FromArgb(255, 110, 190, 255), 45f);
-            g.FillEllipse(back, 1, 1, 30, 30);
-            using var quill = new Pen(Color.White, 2.6f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
-            g.DrawLine(quill, 9, 23, 23, 9);           // quill shaft
-            g.DrawCurve(quill, new PointF[] { new(23, 9), new(20, 16), new(13, 21) }); // vane
-            using var barb = new Pen(Color.White, 1.6f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
-            g.DrawLine(barb, 13, 19, 17, 19);
-            g.DrawLine(barb, 15, 15, 19, 15);
-        }
-        return bmp.GetHicon();
+        int size = User32.GetSystemMetrics(SM_CXSMICON);
+        if (size <= 0) size = 16;
+        using var bitmap = PrismIcon.ToBitmap(size);
+        return bitmap.GetHicon();
     }
 
     private NOTIFYICONDATA BaseData() => new()
