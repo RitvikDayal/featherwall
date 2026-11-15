@@ -1,7 +1,7 @@
 # Benchmark scripts
 
 Two PowerShell scripts. `Measure-App.ps1` measures one running application; `Run-Bench.ps1`
-drives FeatherWall through its states and calls the first one for each.
+drives PrismOS through its states and calls the first one for each.
 
 Published results live in [`../../docs/benchmark.md`](../../docs/benchmark.md).
 
@@ -12,7 +12,7 @@ Published results live in [`../../docs/benchmark.md`](../../docs/benchmark.md).
 ```
 
 It backs up `config.json`, minimises every window, measures four states, then restores your
-config and restarts FeatherWall. **Do not use the machine while it runs**, and close anything that
+config and restarts PrismOS. **Do not use the machine while it runs**, and close anything that
 covers the desktop — including games.
 
 To measure a competitor, install it, point it at the same media file, and:
@@ -23,12 +23,12 @@ To measure a competitor, install it, point it at the same media file, and:
 
 ## Why a row can be refused
 
-`-ExpectState Playing|Paused` makes the script read FeatherWall's log and throw unless the pause
+`-ExpectState Playing|Paused` makes the script read PrismOS's log and throw unless the pause
 state was the expected one for the whole window — no transition inside it, and the right state
 going in.
 
 Without that check the harness is worse than useless, because its failure mode is flattering:
-FeatherWall stops decoding when a window covers the desktop, so a benchmark run on a machine
+PrismOS stops decoding when a window covers the desktop, so a benchmark run on a machine
 someone is using records a paused wallpaper as a cheap playing one and nothing in the output shows
 it. The first run of this harness did exactly that — *"video playing, 3.3% video decode"* while
 the log showed three pause/resume transitions inside the sampling window.
@@ -39,19 +39,19 @@ was paused for the entire window, which is the more common failure.
 `-RequireRecordTurning` does the same for the now-playing record: the row is refused unless the
 record was turning for the whole window. Only lines from the measured process count — a run whose
 record never turns logs nothing, and the first version of this check accepted a row with nothing
-playing on the strength of a "turning" line from a FeatherWall that had exited two weeks earlier.
+playing on the strength of a "turning" line from a PrismOS that had exited two weeks earlier.
 
 ## Measuring the compositor too
 
 `-WithDwm` (`-AlsoMeasure dwm` on `Measure-App.ps1`) adds `dwm.exe` and reports a combined CPU
 figure and a combined busiest GPU engine. A DirectComposition animation moves work out of
-FeatherWall and into DWM, so a harness that measures only FeatherWall would report that change as
+PrismOS and into DWM, so a harness that measures only PrismOS would report that change as
 free. DWM's CPU time comes from the `% Processor Time` counter, because an unelevated shell cannot
 open `dwm.exe` for its process times and PowerShell returns `$null` rather than failing.
 
 Other selectors for focused runs: `-States` picks rows by label, `-Runs N` reports each row as
 the median of its accepted runs, `-InfoMonitor \\.\DISPLAYn` places the info widget, `-Theme`
-picks the widget theme (`classic`, `editorial`, `glassDock`, `orbit`, `poster`, `monolith` or `tiles`), and `-ExtraArgs` is passed to `featherwall.exe`.
+picks the widget theme (`classic`, `editorial`, `glassDock`, `orbit`, `poster`, `monolith` or `tiles`), and `-ExtraArgs` is passed to `prismos.exe`.
 
 ## What is measured, and why that way
 
@@ -69,14 +69,14 @@ reported with its name. Summing them yields a meaningless number.
 
 **Dedicated and shared GPU memory separately.** Both are real and neither is inside the working
 set. A modern integrated GPU does have dedicated memory: measured here, Intel Arc reports 2048 MB
-of adapter RAM and 231.6 MB of dedicated usage attributed to FeatherWall.
+of adapter RAM and 231.6 MB of dedicated usage attributed to PrismOS.
 
 ## Known limits
 
 - **Non-English Windows.** Performance counter paths are localised, so `\GPU Engine(*)` and
   `\GPU Process Memory(*)` will not resolve. The script degrades to zero GPU figures rather than
   failing, which means a GPU column of 0 on a localised machine is *missing*, not measured.
-- **The pause-state check is FeatherWall-only.** It reads FeatherWall's log, so a competitor row
+- **The pause-state check is PrismOS-only.** It reads PrismOS's log, so a competitor row
   has no equivalent protection. Measure competitors on the same idle machine in the same sitting.
 - **Cold-start-to-first-frame is not implemented.** It needs a timestamp from process start to the
   first DirectComposition commit that presents content, which means instrumenting the app rather

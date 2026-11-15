@@ -1,9 +1,9 @@
-﻿<#
+<#
 .SYNOPSIS
     Measures what a running wallpaper application costs: processes, memory, CPU, GPU.
 
 .DESCRIPTION
-    Written so FeatherWall's own numbers can be reproduced by anyone, and so a competitor can
+    Written so PrismOS's own numbers can be reproduced by anyone, and so a competitor can
     be measured by the same code on the same machine. Quoting one vendor's marketing against
     another's is not a comparison.
 
@@ -34,7 +34,7 @@
 
     * Dedicated and shared GPU memory are reported separately, and BOTH are real. A modern
       integrated GPU does carve out dedicated memory — measured 2026-08-20, Intel Arc reports
-      2048 MB of adapter RAM and Windows attributed 231 MB of *dedicated* usage to FeatherWall
+      2048 MB of adapter RAM and Windows attributed 231 MB of *dedicated* usage to PrismOS
       on it. The README used to claim dedicated always reads 0 on integrated graphics; that was
       wrong, and finding it is why this script exists. Neither number is inside the working set,
       so the honest total for a wallpaper is working set plus both.
@@ -49,10 +49,10 @@
     Free text recorded with the result, e.g. "video 1080p60 playing".
 
 .PARAMETER ExpectState
-    Playing, Paused, or Any. For FeatherWall only: reads the log and REFUSES to report a row
+    Playing, Paused, or Any. For PrismOS only: reads the log and REFUSES to report a row
     whose pause state was not the expected one for the whole window.
 
-    This is the most important thing in this file. FeatherWall stops decoding when a window
+    This is the most important thing in this file. PrismOS stops decoding when a window
     covers the desktop, so a benchmark run on a machine someone is using will silently record a
     paused wallpaper as a cheap playing one — which is the single most flattering lie this
     project could tell about itself. The first run of this harness did exactly that: it reported
@@ -60,10 +60,10 @@
     three times inside the sampling window.
 
 .PARAMETER LogPath
-    FeatherWall's log. Defaults to the standard location.
+    PrismOS's log. Defaults to the standard location.
 
 .EXAMPLE
-    .\Measure-App.ps1 -ProcessName featherwall -Seconds 30 -Label "video 4K60 playing"
+    .\Measure-App.ps1 -ProcessName prismos -Seconds 30 -Label "video 4K60 playing"
 
 .EXAMPLE
     .\Measure-App.ps1 -ProcessName Lively -Seconds 30 -Label "video 1080p60 playing"
@@ -74,7 +74,7 @@ param(
     [ValidateRange(1, 86400)][int] $Seconds = 30,
     [string] $Label = "",
     [ValidateSet('Playing', 'Paused', 'Any')][string] $ExpectState = 'Any',
-    [string] $LogPath = "$env:LOCALAPPDATA\FeatherWall\featherwall.log",
+    [string] $LogPath = "$env:LOCALAPPDATA\PrismOS\prismos.log",
     [string[]] $AlsoMeasure = @(),
     [switch] $RequireRecordTurning
 )
@@ -93,9 +93,9 @@ function Get-ProcessTree {
     # Both ids are cast to [int]. Win32_Process reports UInt32 and Diagnostics.Process.Id is
     # Int32, and a Hashtable does not consider a boxed UInt32 equal to a boxed Int32 — so a
     # lookup keyed on a root's .Id missed every entry and the walk found no children at all.
-    # FeatherWall is one process, so its rows were unaffected and nothing looked wrong; a
+    # PrismOS is one process, so its rows were unaffected and nothing looked wrong; a
     # multi-process competitor would have been measured as its root alone, which is the whole
-    # comparison this script exists for, wrong in the direction that flatters FeatherWall.
+    # comparison this script exists for, wrong in the direction that flatters PrismOS.
     $all = Get-CimInstance Win32_Process -Property ProcessId, ParentProcessId, Name
     $byParent = @{}
     foreach ($p in $all) {
@@ -124,7 +124,7 @@ function Get-ProcessTree {
     }
     # Leading comma stops PowerShell unrolling a one-element collection into a bare object,
     # which then has no .Count and fails under StrictMode. A single-process app is the normal
-    # case for FeatherWall, so this path is the one that matters most.
+    # case for PrismOS, so this path is the one that matters most.
     return ,@($result.ToArray())
 }
 
@@ -196,7 +196,7 @@ function Get-GpuSample {
 
 function Get-PauseEvents {
     <#
-      Every Paused/Resumed line FeatherWall logged, newest last. Reading the app's own log is
+      Every Paused/Resumed line PrismOS logged, newest last. Reading the app's own log is
       the only non-circular way to know what state was measured — inferring it from the GPU
       numbers would be using the answer to check the answer.
     #>
@@ -362,12 +362,12 @@ foreach ($id in $cpuLast.Keys) {
 # flattering direction and nothing in the output shows it.
 $stateNote = 'not checked'
 if ($ExpectState -ne 'Any') {
-    # The state comes from FeatherWall's log, so it can only describe FeatherWall. Measuring a
+    # The state comes from PrismOS's log, so it can only describe PrismOS. Measuring a
     # competitor with -ExpectState would have read THIS app's log and discarded or accepted the
-    # competitor's row on the strength of FeatherWall's monitors — a verdict about the wrong
+    # competitor's row on the strength of PrismOS's monitors — a verdict about the wrong
     # program, delivered with the same confidence as a real one.
-    if ($ProcessName -ine 'featherwall') {
-        throw "-ExpectState is only meaningful for ProcessName 'featherwall'; it is read from FeatherWall's own log. Measure '$ProcessName' with -ExpectState Any."
+    if ($ProcessName -ine 'prismos') {
+        throw "-ExpectState is only meaningful for ProcessName 'prismos'; it is read from PrismOS's own log. Measure '$ProcessName' with -ExpectState Any."
     }
 
     $events = Get-PauseEvents -Path $LogPath
@@ -413,7 +413,7 @@ DISCARDED: not every monitor was '$ExpectState' for the whole '$Label' window.
 
 $($wrong -join "`n")
 
-FeatherWall stops decoding when a window covers the desktop, so measuring a 'playing' row on a
+PrismOS stops decoding when a window covers the desktop, so measuring a 'playing' row on a
 machine that is in use records a paused wallpaper as a cheap playing one. That is the most
 flattering lie this project could tell about itself, so it is refused rather than reported.
 
@@ -429,16 +429,16 @@ it again on an otherwise idle machine.
 # A row measured with the music paused is a still record wearing a "turning" label.
 $recordNote = 'not checked'
 if ($RequireRecordTurning) {
-    if ($ProcessName -ine 'featherwall') { throw "-RequireRecordTurning reads FeatherWall's own log; it means nothing for '$ProcessName'." }
+    if ($ProcessName -ine 'prismos') { throw "-RequireRecordTurning reads PrismOS's own log; it means nothing for '$ProcessName'." }
     # Only this process's lines count. A run whose record never turns logs neither state, so the
-    # newest "turning" line in the file can belong to a FeatherWall that exited weeks ago — which
+    # newest "turning" line in the file can belong to a PrismOS that exited weeks ago — which
     # is exactly how the first version of this check accepted a row with nothing playing.
     $measuredPids = @($tree | ForEach-Object { [int]$_.Id })
     $recordEvents = [System.Collections.ArrayList]::new()
     $sawStart = $false
     if (Test-Path $LogPath) {
         foreach ($line in Get-Content $LogPath) {
-            $start = [regex]::Match($line, '\[INF\] FeatherWall starting \(pid (\d+)\)')
+            $start = [regex]::Match($line, '\[INF\] PrismOS starting \(pid (\d+)\)')
             if ($start.Success) {
                 if ($measuredPids -contains [int]$start.Groups[1].Value) { $recordEvents.Clear(); $sawStart = $true }
                 continue
@@ -451,7 +451,7 @@ if ($RequireRecordTurning) {
             })
         }
     }
-    if (-not $sawStart) { throw "DISCARDED: record was not turning for the whole window (no 'FeatherWall starting' line for pid $($measuredPids -join ', ') in $LogPath, so its record state is unknown)." }
+    if (-not $sawStart) { throw "DISCARDED: record was not turning for the whole window (no 'PrismOS starting' line for pid $($measuredPids -join ', ') in $LogPath, so its record state is unknown)." }
     $before = @($recordEvents | Where-Object { $_.At -lt $wallStart })
     $entering = if ($before.Count -gt 0) { $before[-1].State } else { 'still since start' }
     $stopped = @($recordEvents | Where-Object { $_.At -ge $wallStart -and $_.At -le $wallEnd -and $_.State -eq 'still' })
@@ -515,7 +515,7 @@ function Get-Busiest($averages) {
     return [pscustomobject]@{ Percent = [math]::Round($top[0].Avg, 1); Engine = $top[0].Name }
 }
 
-# Combined sums each physical engine across FeatherWall and the extras before taking the busiest,
+# Combined sums each physical engine across PrismOS and the extras before taking the busiest,
 # because that is the share of one piece of hardware both are spending.
 $extra = $null
 $combined = $null

@@ -8,8 +8,8 @@ You need the .NET 10 SDK on Windows 10 1809 or newer. There is no other setup, n
 no code generation step.
 
 ```powershell
-git clone https://github.com/RitvikDayal/featherwall
-cd featherwall
+git clone https://github.com/YUouriii/PrismOS
+cd prismos
 dotnet build
 dotnet test
 ```
@@ -19,19 +19,19 @@ running it. To try your changes on the actual desktop:
 
 ```powershell
 dotnet build -c Release
-.\src\FeatherWall\bin\Release\net10.0-windows10.0.19041.0\featherwall.exe
+.\src\PrismOS\bin\Release\net10.0-windows10.0.19041.0\prismos.exe
 ```
 
-`featherwall --exit` stops a running instance, which you will want before rebuilding because the
+`prismos --exit` stops a running instance, which you will want before rebuilding because the
 running process holds a lock on the executable.
 
 ## Where to start
 
-The [good first issue](https://github.com/RitvikDayal/featherwall/labels/good%20first%20issue)
+The [good first issue](https://github.com/YUouriii/PrismOS/labels/good%20first%20issue)
 label is where to look first. Those are scoped small and do not require understanding the
 rendering pipeline.
 
-The [help wanted](https://github.com/RitvikDayal/featherwall/labels/help%20wanted) label is mostly
+The [help wanted](https://github.com/YUouriii/PrismOS/labels/help%20wanted) label is mostly
 hardware the project does not have. Multi-monitor setups and Windows 10 machines running the
 classic desktop topology are genuinely the most useful thing anyone can bring right now, because
 those code paths are written and unit-tested but have never run on real hardware.
@@ -48,10 +48,10 @@ and the lightweight claim is the whole product. If a change adds weight, the pul
 say what it buys.
 
 Pure logic goes in a test. Layout maths, pause policy, config handling and manifest parsing all
-have unit tests in `tests/FeatherWall.Tests`, and new logic of that kind should arrive with them.
+have unit tests in `tests/PrismOS.Tests`, and new logic of that kind should arrive with them.
 
 Interop and rendering changes need to say where you ran them. Paste the output of
-`featherwall --diag` and your display scaling into the pull request. The classic `WorkerW` layout
+`prismos --diag` and your display scaling into the pull request. The classic `WorkerW` layout
 and the 24H2+ raised desktop behave very differently, and DPI scaling has already caused one
 confidently wrong fix in this repository's history. Tests cannot catch either category, so the
 only real check is somebody running it and looking at the screen.
@@ -61,7 +61,7 @@ it can.
 
 ## Contributing gallery wallpapers
 
-Pull requests that edit `src/FeatherWall/Gallery/gallery.json` need all of the following:
+Pull requests that edit `src/PrismOS/Gallery/gallery.json` need all of the following:
 
 1. A licence of CC0 or public domain, verifiable on the linked `sourcePage`. Wikimedia Commons
    and NASA are the usual sources. Pexels, Unsplash and Pixabay all prohibit wallpaper apps in

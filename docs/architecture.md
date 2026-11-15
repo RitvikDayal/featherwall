@@ -1,10 +1,10 @@
-# FeatherWall architecture
+# PrismOS architecture
 
 One process, five moving parts:
 
 ```mermaid
 graph TD
-    subgraph "featherwall.exe (net10.0-windows)"
+    subgraph "prismos.exe (net10.0-windows)"
         TRAY[Tray icon + menu] --> ENGINE[Engine]
         CFG[ConfigStore<br/>JSON, source-generated] --> ENGINE
         ENGINE --> DLH[DesktopLayerHost<br/>topology detect · attach · re-attach · restore]
@@ -25,18 +25,18 @@ graph TD
 
 Every wallpaper engine relies on the same classic trick: send the undocumented message `0x052C` to `Progman`, which spawns a `WorkerW` window behind the desktop icons, and re-parent your window into it. That world ended with the Windows 11 24H2 "raised desktop with layered ShellView" servicing change (rolled out through 25H2, build 26200): `Progman` is created with `WS_EX_NOREDIRECTIONBITMAP`, `SHELLDLL_DefView` (the icons) becomes a layered *child* of Progman, and the wallpaper is drawn by a `WorkerW` *child* below it. Most wallpaper tools black-screen or paint into surfaces that are never shown.
 
-FeatherWall's attach layer (`DesktopLayerHost`) detects the topology at runtime — `GetWindowLongPtr(progman, GWL_EXSTYLE) & WS_EX_NOREDIRECTIONBITMAP` — and handles both:
+PrismOS's attach layer (`DesktopLayerHost`) detects the topology at runtime — `GetWindowLongPtr(progman, GWL_EXSTYLE) & WS_EX_NOREDIRECTIONBITMAP` — and handles both:
 
 - **Classic** (Win10, Win11 ≤ 23H2): find the top-level window hosting `SHELLDLL_DefView`, take the next top-level `WorkerW` sibling, `SetParent` into it.
 - **Raised** (24H2+): swap `WS_POPUP → WS_CHILD` (never combine them), `SetParent` into **Progman itself**, slot the window directly below `SHELLDLL_DefView` with `SetWindowPos`, and push the shell's own `WorkerW` to `HWND_BOTTOM`.
 
 That gets a window into the right z-slot. It does **not** get pixels on screen. Three empirical findings on build 26200, each load-bearing:
 
-1. **Redirection surfaces are dead there.** GDI painting, blt-model swapchain presents, even `UpdateLayeredWindow` content — none of it is composed for children of the no-redirection-bitmap Progman. The shell composes that subtree through the **visual layer**, so FeatherWall binds a **DirectComposition target** to its window and presents flip-model composition swapchains through a DComp visual tree. That is the same mechanism the shell's own WorkerW uses, and it works on both topologies.
+1. **Redirection surfaces are dead there.** GDI painting, blt-model swapchain presents, even `UpdateLayeredWindow` content — none of it is composed for children of the no-redirection-bitmap Progman. The shell composes that subtree through the **visual layer**, so PrismOS binds a **DirectComposition target** to its window and presents flip-model composition swapchains through a DComp visual tree. That is the same mechanism the shell's own WorkerW uses, and it works on both topologies.
 2. **Flip-model backbuffers only accept render operations.** `UpdateSubresource`/`CopyResource` into the backbuffer silently do nothing. Video frames arrive via `MediaPlayer.CopyFrameToVideoSurface` (a GPU video-processor blit — fine); CPU-rendered content (images, the clock) is drawn with **Direct2D `DrawBitmap`** on a render target wrapping the backbuffer.
 3. **The visual tree is composed in physical pixels, and the root transform stays identity.** This is the one that cost the most time, because the intuition is backwards. A `96 / GetDpiForWindow(hwnd)` counter-transform on the root visual looks obviously right and is wrong: measured by covering the OS wallpaper with a solid colour on build 26200, identity covers 100 % of a 2560x1600 display at 150 % scaling, while the counter-scale leaves **55.7 % of the screen bare**. DirectComposition composes this target 1:1 with the window, so window bounds, swapchain sizes and visual offsets are already physical and need no correction.
 
-   DPI does still matter, just one layer up. Sizes a *human* authored — the clock's font size and its margins — are in config as plain pixels, so on a second monitor at a different DPI the widget would be the same pixel count and therefore the wrong physical size. `MonitorTracker.DpiScale` resolves that per monitor from `GetDpiForMonitor(MDT_EFFECTIVE_DPI)`, **relative to the primary monitor rather than to 96**, so a single-DPI machine scales by exactly 1.0 and renders identically to v0.1.0. `featherwall --diag` prints each monitor's DPI and its computed widget scale.
+   DPI does still matter, just one layer up. Sizes a *human* authored — the clock's font size and its margins — are in config as plain pixels, so on a second monitor at a different DPI the widget would be the same pixel count and therefore the wrong physical size. `MonitorTracker.DpiScale` resolves that per monitor from `GetDpiForMonitor(MDT_EFFECTIVE_DPI)`, **relative to the primary monitor rather than to 96**, so a single-DPI machine scales by exactly 1.0 and renders identically to v0.1.0. `prismos --diag` prints each monitor's DPI and its computed widget scale.
 
 One more practical discovery: DWM did not reliably compose a *second* per-widget window target inside the wallpaper layer, so the widgets are not windows at all — each is an **overlay visual** in the same composition tree as the wallpaper content, held by key (`clock`, `info`, `halo`, `nowplaying`) so several can coexist above one content surface. Fewer HWNDs, trivial z-order, click-through by construction.
 
@@ -48,7 +48,7 @@ Everything in the render path is raw Win32 + DirectX with no UI framework. The o
 
 ### Self-healing
 
-The wallpaper layer is volatile: explorer restarts, the shell destroys/recreates its WorkerW (notably, `SPI_SETDESKWALLPAPER` destroys it on the raised topology — so FeatherWall only issues the desktop refresh on final exit, to restore the user's original wallpaper). `DesktopLayerHost` watches for `EVENT_OBJECT_DESTROY` on the layer via a WinEvent hook and for the `TaskbarCreated` broadcast, then re-probes and re-attaches everything. Session unlock re-validates cached handles.
+The wallpaper layer is volatile: explorer restarts, the shell destroys/recreates its WorkerW (notably, `SPI_SETDESKWALLPAPER` destroys it on the raised topology — so PrismOS only issues the desktop refresh on final exit, to restore the user's original wallpaper). `DesktopLayerHost` watches for `EVENT_OBJECT_DESTROY` on the layer via a WinEvent hook and for the `TaskbarCreated` broadcast, then re-probes and re-attaches everything. Session unlock re-validates cached handles.
 
 ## Video pipeline
 
@@ -69,7 +69,7 @@ Pausing is just `MediaPlayer.Pause()` — because rendering is event-driven, a p
 - foreground window maximized on the wallpaper's monitor, or covering ≥ 95 % of its work area → pause that monitor
 - `SHQueryUserNotificationState` = D3D exclusive fullscreen → pause
 - session locked (WTS notifications) / remote session / battery saver → pause (configurable)
-- shell windows and FeatherWall's own windows are exempt
+- shell windows and PrismOS's own windows are exempt
 
 ## Testing strategy
 

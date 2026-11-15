@@ -1,6 +1,6 @@
 # Benchmark
 
-What FeatherWall costs, measured by a script in this repository rather than by hand, so anyone
+What PrismOS costs, measured by a script in this repository rather than by hand, so anyone
 can reproduce it and so a regression is caught by a command instead of by a comment on Reddit.
 
 ```powershell
@@ -12,11 +12,11 @@ unknown-but-probably-fine. Rows are filled in only from a run that the harness a
 
 ## The rule that makes these numbers worth anything
 
-FeatherWall stops decoding when a window covers the desktop. That is the product working, and it
+PrismOS stops decoding when a window covers the desktop. That is the product working, and it
 is also the easiest way to publish a flattering lie: measure while a window is in the way, record
 a paused wallpaper, and call it the playing figure.
 
-`Measure-App.ps1` therefore reads FeatherWall's own log and **refuses to report a row** unless the
+`Measure-App.ps1` therefore reads PrismOS's own log and **refuses to report a row** unless the
 pause state was the expected one for the entire sampling window — both that no transition happened
 inside it, and that the state going in was the right one. A refused row throws instead of printing.
 
@@ -33,10 +33,10 @@ The check exists because it caught that.
 | RAM | 63 GB |
 | Display | 2560x1600 @ 240 Hz, 150% scaling, single monitor |
 | GPU driving the display | Intel Arc integrated (2048 MB adapter RAM) |
-| Other GPU | NVIDIA RTX 5090 Laptop, idle — FeatherWall never appears on it |
+| Other GPU | NVIDIA RTX 5090 Laptop, idle — PrismOS never appears on it |
 | Build | .NET 10, Release |
 
-## FeatherWall
+## PrismOS
 
 | State | Processes | Private MB | Working set MB | GPU dedicated MB | GPU shared MB | CPU (machine) | CPU (one core) | Busiest GPU engine | Verified |
 |---|---|---|---|---|---|---|---|---|---|
@@ -50,8 +50,8 @@ The check exists because it caught that.
 | **Video 4K60 paused + widgets** | **1** | **210.0** | **212.6** | **220.6** | **63.5** | **0.052 %** | **1.2 %** | **0 % (3d)** | paused, full window |
 
 *Playing rows measured 2026-08-22 on build 26200, 24 cores, Intel Arc, single 2560×1600 display at
-150 %. Source `scripts/bench/results/featherwall-playing-verified.json`. Paused row measured
-2026-08-20, 32.4 s window, source `scripts/bench/results/featherwall-paused-verified.json`.*
+150 %. Source `scripts/bench/results/prismos-playing-verified.json`. Paused row measured
+2026-08-20, 32.4 s window, source `scripts/bench/results/prismos-paused-verified.json`.*
 
 **† The still-image GPU figures are partial.** That run read the GPU engine counters on 6 of 8
 samples and the GPU memory counters on 5 of 8, so those two cells are an average of what could be
@@ -63,8 +63,8 @@ sitting on the video-decode engine at 5.8 % where it belongs. A still image cost
 tenth of a percent — the "zero ongoing cost after first paint" claim, measured.
 
 **CPU moves between runs, so treat the table cell as one sample.** The row above is
-`featherwall-playing-verified.json` at 0.318 % of the machine. A second full run
-(`featherwall-playing-verified-run2.json`) measured **0.466 %**, and a reading taken straight from
+`prismos-playing-verified.json` at 0.318 % of the machine. A second full run
+(`prismos-playing-verified-run2.json`) measured **0.466 %**, and a reading taken straight from
 `TotalProcessorTime` outside the harness gave **0.236 %** — a spread of roughly 2× on the same
 machine with the same clip. Decode cost tracks scene content and background load. The GPU engine
 figure barely moved across those runs (5.8 % and 5.9 %); the CPU figure is the volatile one, and
@@ -107,7 +107,7 @@ sessions would be meaningless: this machine's CPU figure moves two- to threefold
 threefold spread this machine shows between runs, so it is a real signal rather than noise.
 
 That is the record's frame clock, and it is the trade the design accepted knowingly. The still
-image is the state where FeatherWall previously did *nothing at all* after first paint, so any
+image is the state where PrismOS previously did *nothing at all* after first paint, so any
 number above zero is an infinite proportional increase and a small absolute one: **0.135 % of a
 24-core machine is about a thirtieth of one core.** Set `disc.rotate` to false and no timer is
 created — the record, its artwork and the progress ring stay as a still image.
@@ -115,15 +115,15 @@ created — the record, its artwork and the progress ring stay as a still image.
 On a video wallpaper the same widgets cost proportionally far less, because the decoder already
 dominates, and the GPU figure does not move at all.
 
-**Sources:** `scripts/bench/results/featherwall-baseline-verified.json` and
-`featherwall-widgets-verified.json`. The record was confirmed turning during the sampling window
-from FeatherWall's own log, so this measures the timer running rather than a static widget.
+**Sources:** `scripts/bench/results/prismos-baseline-verified.json` and
+`prismos-widgets-verified.json`. The record was confirmed turning during the sampling window
+from PrismOS's own log, so this measures the timer running rather than a static widget.
 
 **"No timer anywhere" was never quite true, and this file used to say it was.** The clock widget
 has re-armed a 1 Hz timer since v0.1.0. What that claim actually meant, and still means, is that the
 *battery and now-playing sources* repaint only on pushed events. The record is the new exception and
 the only continuous one: 15 fps while music plays and the desktop is visible, nothing otherwise. Two attempts were lost to a full-screen browser that ignores `MinimizeAll` and
-takes the foreground back between samples, so FeatherWall correctly paused and the harness
+takes the foreground back between samples, so PrismOS correctly paused and the harness
 correctly refused every playing row. The harness now names that window and stops before running
 rather than discovering it four rows later.
 
@@ -154,7 +154,7 @@ the same source and running the harness once — not a limitation, just work nob
 ## Record spin: timer vs compositor — measured 2026-11-10
 
 v0.3.0 tried turning the now-playing record with a DirectComposition rotation animation instead of
-the 15 fps GDI+ redraw. A compositor animation moves work out of FeatherWall and into `dwm.exe`, so
+the 15 fps GDI+ redraw. A compositor animation moves work out of PrismOS and into `dwm.exe`, so
 DWM has to be measured too. DWM also composes everything else on screen, so its numbers mean
 something only next to a baseline taken under the same conditions.
 
@@ -171,7 +171,7 @@ something only next to a baseline taken under the same conditions.
 
 Medians of the three rounds:
 
-| Arm | FeatherWall CPU | FeatherWall GPU | DWM CPU | DWM GPU (3D) |
+| Arm | PrismOS CPU | PrismOS GPU | DWM CPU | DWM GPU (3D) |
 |---|---|---|---|---|
 | off (baseline) | 0.015 % | 0 % | 0.242 % | 0 % |
 | compositor | 0.017 % | 0 % | 0.840 % | **10.8 %** |
@@ -179,13 +179,13 @@ Medians of the three rounds:
 
 Cost of turning the record, over the baseline:
 
-| Arm | CPU (FeatherWall + DWM) | GPU (FeatherWall + DWM) |
+| Arm | CPU (PrismOS + DWM) | GPU (PrismOS + DWM) |
 |---|---|---|
 | compositor | +0.60 % | +10.8 % |
 | timer | +0.21 % | +1.3 % |
 
 **Verdict: the timer is cheaper on both measures, so the record keeps it.**
-- **Why the compositor costs more:** it leaves FeatherWall idle, but DWM then recomposes the turning
+- **Why the compositor costs more:** it leaves PrismOS idle, but DWM then recomposes the turning
   record at the display's 240 Hz rather than 15 times a second.
 - **Repeatability:** DWM's GPU cost under the compositor was 10.7–10.8 % in every round. Its CPU
   varied, at 1.08 %, 0.84 % and 0.12 %.
@@ -194,8 +194,8 @@ Cost of turning the record, over the baseline:
   nothing measured here suggests it would beat the timer.
 
 **An earlier attempt the same day is superseded.** It reported "combined busiest GPU" across
-FeatherWall and DWM, and it ran the two arms half an hour apart with different media playing. That
-made the compositor look cheaper on CPU, and its video rows took FeatherWall's video-decode engine
+PrismOS and DWM, and it ran the two arms half an hour apart with different media playing. That
+made the compositor look cheaper on CPU, and its video rows took PrismOS's video-decode engine
 as the "busiest" while hiding DWM's 3D engine. Its files are kept as a record:
 `scripts/bench/results/spin-gate-DISPLAY1-*.json`.
 
@@ -212,12 +212,12 @@ itself from a launcher plus a browser subprocess plus a player.
 
 | App | Processes | Private MB | Working set MB | GPU dedicated MB | CPU (machine) | Verified |
 |---|---|---|---|---|---|---|
-| FeatherWall | | | | | | |
+| PrismOS | | | | | | |
 | Lively Wallpaper | | | | | | |
 | Wallpaper Engine | | | | | | |
 | DesktopHut | | | | | | |
 
-To fill a row, install the app, set **the same media file** FeatherWall was measured with, and run:
+To fill a row, install the app, set **the same media file** PrismOS was measured with, and run:
 
 ```powershell
 .\scripts\bench\Measure-App.ps1 -ProcessName <their process> -Seconds 30 -Label "video 4K60 playing"
@@ -228,7 +228,7 @@ browser subprocess is measured including them. That is the entire point of the c
 is why quoting a vendor's own published figure would not do.
 
 **Same file, same machine, same script, or it is not a comparison.** Wallpaper Engine's worst
-numbers come from 4K and from codecs FeatherWall would inherit the cost of too; picking media that
+numbers come from 4K and from codecs PrismOS would inherit the cost of too; picking media that
 suits one side is how these tables usually get written.
 
 ## Reading the numbers
@@ -247,7 +247,7 @@ total for a wallpaper is working set plus both.
 > **Correction, 2026-08-20.** The README previously said dedicated VRAM "reads 0 MB on every row
 > because integrated graphics have no memory of their own". That is wrong. This machine's Intel
 > Arc integrated GPU reports 2048 MB of adapter RAM, and Windows attributes **231.6 MB of
-> dedicated usage** to FeatherWall on it. The old explanation made the footprint look smaller
+> dedicated usage** to PrismOS on it. The old explanation made the footprint look smaller
 > than it is. The harness found this on its first real run.
 
 **Paused does not give the memory back.** Buffers stay allocated so resuming is instant, which is
@@ -283,7 +283,7 @@ and has been fully re-measured; what follows replaces it.
 | Video, 4K60 playing | 0.32–0.47 % | 7.6–11.2 % | 189–216 MB | 279–308 MB | 5.8–5.9 % (video decode) |
 
 Every **filled** row is produced by [`scripts/bench/Run-Bench.ps1`](../scripts/bench/), which reads
-FeatherWall's own log and **refuses to report a row** whose pause state was not the expected one for
+PrismOS's own log and **refuses to report a row** whose pause state was not the expected one for
 the whole sampling window. The 1080p60 row is an intentionally empty placeholder, not a measurement.
 The raw records are in [`scripts/bench/results/`](../scripts/bench/results/); `docs/benchmark.md`
 carries the same numbers with their provenance.
@@ -311,12 +311,12 @@ The rows with one measurement show a point value. The auto-paused row is a singl
 2026-08-20, so treat its CPU the same way until it has been repeated.
 
 **Working set grows with uptime.** These rows are measured about twelve seconds after launch, which
-is what a script can reproduce. A copy of FeatherWall left running for several hours on this machine
+is what a script can reproduce. A copy of PrismOS left running for several hours on this machine
 measured **233 MB**. Neither is wrong; they are different questions, and the reproducible one is
 published.
 
 **This runs on the integrated GPU, not the discrete one.** Every GPU number above belongs to the
-**Intel Arc integrated graphics**. `nvidia-smi` lists no FeatherWall process on the RTX 5090, which
+**Intel Arc integrated graphics**. `nvidia-smi` lists no PrismOS process on the RTX 5090, which
 sat at 0 % utilisation and 287 MiB of its 24463 MiB throughout. That is not an accident: the
 compositor lives on whichever adapter drives the display, so the wallpaper stays there and never
 competes with a game on the discrete card. On a desktop whose only GPU is discrete, these numbers
@@ -342,7 +342,7 @@ half.
 > **Correction, 2026-08-20.** This paragraph used to say dedicated VRAM "reads 0 MB on every row
 > because integrated graphics have no memory of their own". That is wrong. The Intel Arc
 > integrated GPU on this machine reports 2048 MB of adapter RAM, and Windows attributes **231.6 MB
-> of dedicated usage** to FeatherWall on it. The scripted harness in
+> of dedicated usage** to PrismOS on it. The scripted harness in
 > [`scripts/bench/`](../scripts/bench/) found this on its first real run, which is roughly why it
 > exists.
 >
@@ -357,9 +357,9 @@ half.
 > | Video, 4K60 playing | 0.84 % | 20 % | 248 MB | 234 MB | 41.8 % (video processing) |
 >
 > The 4K60 CPU figure was **2.6× too high** and the GPU figure named an engine that is not busy at
-> all. Checked against the raw `\GPU Engine(*)` counters, filtered to FeatherWall's pid, with the
+> all. Checked against the raw `\GPU Engine(*)` counters, filtered to PrismOS's pid, with the
 > same clip on the same machine: the busiest engines are two video-decode engines at 5.31 % and
-> 5.49 %, with 3D at 1.24 %. **No video-processing engine appears in FeatherWall's counters.** CPU
+> 5.49 %, with 3D at 1.24 %. **No video-processing engine appears in PrismOS's counters.** CPU
 > was checked the same way, straight from `TotalProcessorTime` over a 30 s window with no harness
 > involved: **0.236 %** of the machine, against 0.84 % published. The old numbers were read by hand
 > off Task Manager, and a hand-read peak is not an average.
@@ -388,4 +388,4 @@ which is the path a laptop hits every time it docks or changes monitors: 250 MB 
 threads to 63. That used to go very differently, and the [honest notes](../README.md#honest-notes) in the README
 explain what changed.
 
-<sub>On battery specifically: system draw sat at 31 to 33 W across all three states on this laptop, which is within noise for isolating a single process. FeatherWall's share is not separable from that, so there is no watts figure here. The pause behaviour above is the honest version of that claim.</sub>
+<sub>On battery specifically: system draw sat at 31 to 33 W across all three states on this laptop, which is within noise for isolating a single process. PrismOS's share is not separable from that, so there is no watts figure here. The pause behaviour above is the honest version of that claim.</sub>

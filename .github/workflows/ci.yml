@@ -26,9 +26,9 @@ jobs:
         run: dotnet test -c Release --no-build --logger "trx;LogFileName=results.trx"
 
       - name: Publish artifact
-        run: dotnet publish src/FeatherWall -c Release -o publish /p:PublishSingleFile=true /p:SelfContained=false
+        run: dotnet publish src/PrismOS -c Release -o publish /p:PublishSingleFile=true /p:SelfContained=false
 
       - uses: actions/upload-artifact@v7
         with:
-          name: featherwall
+          name: prismos
           path: publish/

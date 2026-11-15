@@ -1,8 +1,8 @@
 # Recovery and desktop-integrity matrix
 
-FeatherWall lives inside a window tree it does not own. Explorer restarts, the shell destroys
+PrismOS lives inside a window tree it does not own. Explorer restarts, the shell destroys
 and recreates its `WorkerW`, the GPU driver updates, monitors come and go. The README claims
-FeatherWall re-attaches itself when that happens. This file is where that claim is either
+PrismOS re-attaches itself when that happens. This file is where that claim is either
 earned or shown to be untrue.
 
 **An unrun row is not a passing row.** Every result column below starts empty and stays empty
@@ -11,17 +11,17 @@ reasoning about the code.
 
 ## How to record a result
 
-Put your Windows build, your display setup and the date in the notes. `featherwall --diag`
+Put your Windows build, your display setup and the date in the notes. `prismos --diag`
 prints the topology, the monitor list and each monitor's DPI, which is most of what a result
-needs. Logs are at `%LOCALAPPDATA%\FeatherWall\featherwall.log`.
+needs. Logs are at `%LOCALAPPDATA%\PrismOS\prismos.log`.
 
 ### Do not verify with a GDI screen capture
 
 Measured on build 26200, 2026-08-20. A GDI capture — `BitBlt`, `Graphics.CopyFromScreen`, most
-scripted PowerShell screenshots — **cannot see the wallpaper FeatherWall is drawing.** It reads
+scripted PowerShell screenshots — **cannot see the wallpaper PrismOS is drawing.** It reads
 the redirection surface, and bypassing redirection is the entire point of the DirectComposition
 path described in [`architecture.md`](architecture.md). What such a capture returns instead is
-the OS static wallpaper, which FeatherWall itself sets to a captured frame for the
+the OS static wallpaper, which PrismOS itself sets to a captured frame for the
 virtual-desktop-switch fallback. That fallback can be a stale frame from a previously-configured
 wallpaper, so the capture looks plausible and is wrong, which is the dangerous kind of wrong.
 
@@ -54,13 +54,13 @@ The wallpaper must not cost the user their desktop. Check these while a video wa
 | D4 | Icon refresh | A file created on the Desktop appears without a manual F5 | | |
 | D5 | Hidden icons | Right-click → View → uncheck "Show desktop icons"; the wallpaper keeps rendering | | |
 | D6 | Right-click menu | The desktop context menu opens over the wallpaper | | |
-| D7 | Restore on exit | `featherwall --exit` puts the user's original wallpaper back | | |
+| D7 | Restore on exit | `prismos --exit` puts the user's original wallpaper back | | |
 
 ## Power
 
 | # | Check | How | Expected | Result | Who / when |
 |---|---|---|---|---|---|
-| P1 | Does not block sleep | Leave FeatherWall running and idle, then `powercfg /requests` | No `DISPLAY` or `SYSTEM` request held by `featherwall.exe`. Lively #1109 is the cautionary case: an audio wallpaper there blocks sleep | | |
+| P1 | Does not block sleep | Leave PrismOS running and idle, then `powercfg /requests` | No `DISPLAY` or `SYSTEM` request held by `prismos.exe`. Lively #1109 is the cautionary case: an audio wallpaper there blocks sleep | | |
 | P2 | Reaches sleep on its timer | Idle the machine past its sleep timeout with a video wallpaper set | The machine sleeps normally | | |
 
 ## Known state as of 2026-08-20
@@ -69,7 +69,7 @@ Nothing in this file has been run. The development machine is a single 2560x1600
 150% on Windows 11 build 26200, raised-desktop topology, so R5, R6 and R8 cannot be produced
 here at all, and R2, R3, R4 and R7 have not yet been done.
 
-**R5 and R8 are the two open `help wanted` issues** — [#3](https://github.com/RitvikDayal/featherwall/issues/3)
-and [#4](https://github.com/RitvikDayal/featherwall/issues/4). R1 is
-[#5](https://github.com/RitvikDayal/featherwall/issues/5). If you have the hardware, filling in
+**R5 and R8 are the two open `help wanted` issues** — [#3](https://github.com/YUouriii/PrismOS/issues/3)
+and [#4](https://github.com/YUouriii/PrismOS/issues/4). R1 is
+[#5](https://github.com/YUouriii/PrismOS/issues/5). If you have the hardware, filling in
 one row of this table is the single most useful contribution available to this project.

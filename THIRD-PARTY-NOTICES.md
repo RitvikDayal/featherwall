@@ -5,23 +5,23 @@
 | Package | License | Purpose |
 |---|---|---|
 | [Vortice.Windows](https://github.com/amerkoleci/Vortice.Windows) (Direct3D11, DXGI, DirectComposition, Direct2D1) | MIT | DirectX bindings |
-| [Velopack](https://github.com/velopack/velopack) | MIT | Install and uninstall hooks for `FeatherWall-Setup.exe`, whose setup and `Update.exe` programs also come from Velopack |
+| [Velopack](https://github.com/velopack/velopack) | MIT | Install and uninstall hooks for `PrismOS-Setup.exe`, whose setup and `Update.exe` programs also come from Velopack |
 
 That is the entire third-party dependency surface. GDI+ image decoding and text rendering come
 from the Windows Desktop framework itself, not a package.
 
 ## Built-in gallery media
 
-Every gallery entry is public domain or CC0; the manifest ([src/FeatherWall/Gallery/gallery.json](src/FeatherWall/Gallery/gallery.json)) records per entry: the source page, author, license, and (for Wikimedia Commons files) the SHA-1 checksum the download is verified against.
+Every gallery entry is public domain or CC0; the manifest ([src/PrismOS/Gallery/gallery.json](src/PrismOS/Gallery/gallery.json)) records per entry: the source page, author, license, and (for Wikimedia Commons files) the SHA-1 checksum the download is verified against.
 
 - **NASA imagery/video** — public domain in the United States. Used per [NASA's media usage guidelines](https://www.nasa.gov/nasa-brand-center/images-and-media/): "Courtesy NASA" attribution, no endorsement implied, NASA insignia excluded.
 - **Wikimedia Commons files** — individually verified CC0 / public-domain dedications; see each entry's `sourcePage`.
 
-FeatherWall downloads gallery media directly from the original host at the user's request; the application does not redistribute or rehost any of it.
+PrismOS downloads gallery media directly from the original host at the user's request; the application does not redistribute or rehost any of it.
 
 ## Documentation screenshots
 
-The screenshots in [docs/media/](docs/media) are real captures of FeatherWall running, so they
+The screenshots in [docs/media/](docs/media) are real captures of PrismOS running, so they
 contain gallery media. Those images **are** redistributed as part of this repository. Every one
 in this table is CC0, public domain or CC BY and permits it. The widget style samples are not, and
 are listed separately [below](#widget-style-samples).
@@ -50,8 +50,8 @@ files exist solely as documentation screenshots.
 
 ## Widget style samples
 
-The `style-*.jpg` stills and the `live-*` clips and their posters on the website show FeatherWall's widget styles
-over anime wallpapers. The widgets are drawn by FeatherWall's own renderers; the wallpapers are
+The `style-*.jpg` stills and the `live-*` clips and their posters on the website show PrismOS's widget styles
+over anime wallpapers. The widgets are drawn by PrismOS's own renderers; the wallpapers are
 other artists' work. **They are not used under a licence.** They are shown with credit, and any of
 them will be taken down at the artist's request: open an issue.
 
@@ -68,4 +68,4 @@ them will be taken down at the artist's request: open an issue.
 | `live-orbit.*`, `live-monolith.*` | Girl and Cat Midnight Lofi | not named by the host | [MoeWalls](https://moewalls.com/lifestyle/girl-and-cat-midnight-lofi-live-wallpaper/) |
 | `live-poster.*`, `live-tiles.*`, `widgets-hero.jpg` | Samurai Boss Fight Fantasy Dragon | not named by the host | [MoeWalls](https://moewalls.com/fantasy/samurai-boss-fight-fantasy-dragon-live-wallpaper/) |
 
-None of these are in the built-in gallery, and FeatherWall never downloads them.
+None of these are in the built-in gallery, and PrismOS never downloads them.

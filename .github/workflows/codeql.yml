@@ -3,7 +3,7 @@ name: CodeQL
 # Static analysis for the language this project is actually written in.
 #
 # Added after issue #7 asked whether a pull-request security scan would be useful. The scanner
-# offered there had no C# rules, so it would have matched nothing in src/FeatherWall — but the
+# offered there had no C# rules, so it would have matched nothing in src/PrismOS — but the
 # question was fair and the gap was real. CodeQL is GitHub-native, free on public repositories,
 # and adds no third-party supply chain.
 

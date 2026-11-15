@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PrismOS/PrismOS.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PrismOS.Tests/PrismOS.Tests.csproj" />
+  </Folder>
+</Solution>

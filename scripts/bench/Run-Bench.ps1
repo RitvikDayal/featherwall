@@ -1,12 +1,12 @@
-﻿<#
+<#
 .SYNOPSIS
-    Drives FeatherWall through each wallpaper state and measures every one with Measure-App.ps1.
+    Drives PrismOS through each wallpaper state and measures every one with Measure-App.ps1.
 
 .DESCRIPTION
     Produces the table in docs/benchmark.md. Run it before a release and paste the output;
     a regression should be caught by a command, not by someone on Reddit.
 
-    THE DESKTOP MUST BE VISIBLE for the playing rows. FeatherWall stops decoding when a window
+    THE DESKTOP MUST BE VISIBLE for the playing rows. PrismOS stops decoding when a window
     covers the desktop — that is the product working correctly, and it is also how a benchmark
     accidentally records a paused wallpaper as a cheap one. This script minimises all windows
     for the duration and restores them at the end. Do not use the machine while it runs.
@@ -33,7 +33,7 @@
     the look every upgrade keeps.
 
 .PARAMETER Exe
-    featherwall.exe to measure. Defaults to the Release build.
+    prismos.exe to measure. Defaults to the Release build.
 
 .EXAMPLE
     .\Run-Bench.ps1 -Video D:\clips\1080p60.mp4 -Image .\docs\media\wall-hubble.jpg
@@ -44,7 +44,7 @@ param(
     [Parameter(Mandatory)][string] $Image,
     [int] $Seconds = 30,
     [switch] $Widgets,
-    [string] $Exe = "$PSScriptRoot\..\..\src\FeatherWall\bin\Release\net10.0-windows10.0.19041.0\featherwall.exe",
+    [string] $Exe = "$PSScriptRoot\..\..\src\PrismOS\bin\Release\net10.0-windows10.0.19041.0\prismos.exe",
     [ValidateSet('Still image', 'Video playing', 'Video auto-paused', 'Settings panel open')]
     [string[]] $States = @('Still image', 'Video playing', 'Video auto-paused', 'Settings panel open'),
     [ValidateRange(1, 20)][int] $Runs = 1,
@@ -59,7 +59,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $measure = Join-Path $PSScriptRoot 'Measure-App.ps1'
-$configPath = Join-Path $env:APPDATA 'FeatherWall\config.json'
+$configPath = Join-Path $env:APPDATA 'PrismOS\config.json'
 $backup = "$configPath.bench-backup"
 $shell = New-Object -ComObject Shell.Application
 Add-Type -AssemblyName System.Windows.Forms
@@ -76,11 +76,11 @@ if ($InfoMonitor -and -not $Widgets) { throw "-InfoMonitor places the info widge
 if ($RequireRecordTurning -and -not $Widgets) { throw "-RequireRecordTurning checks the info widget's record, so it needs -Widgets." }
 if ($Theme -ne 'classic' -and -not $Widgets) { throw "-Theme styles the widgets, so it needs -Widgets." }
 
-function Stop-FeatherWall {
+function Stop-PrismOS {
     & $Exe --exit 2>$null | Out-Null
     $deadline = (Get-Date).AddSeconds(15)
-    while ((Get-Date) -lt $deadline -and (Get-Process featherwall -EA SilentlyContinue)) { Start-Sleep -Milliseconds 500 }
-    Get-Process featherwall -EA SilentlyContinue | Stop-Process -Force -EA SilentlyContinue
+    while ((Get-Date) -lt $deadline -and (Get-Process prismos -EA SilentlyContinue)) { Start-Sleep -Milliseconds 500 }
+    Get-Process prismos -EA SilentlyContinue | Stop-Process -Force -EA SilentlyContinue
     Start-Sleep -Seconds 2
 }
 
@@ -136,18 +136,18 @@ function Find-CoveringWindow {
       in a browser is the case that prompted this: it survives MinimizeAll, re-asserts itself a
       second later, and a single snapshot between two of its grabs reports a clear desktop.
 
-      Without this the run proceeds, FeatherWall correctly pauses because something is in the
+      Without this the run proceeds, PrismOS correctly pauses because something is in the
       way, and five minutes later every playing row is refused with no hint as to what did it.
     #>
     param([int] $Samples = 6, [int] $IntervalMs = 700)
 
-    # The shell's own windows and FeatherWall's are not "covering" anything. Progman in particular
+    # The shell's own windows and PrismOS's are not "covering" anything. Progman in particular
     # IS the desktop: with everything minimised it becomes the foreground window and it is
     # full-screen by definition, so without this the check fires on a perfectly clear desktop and
     # refuses every run. Same list PauseDecision.cs uses, for the same reason.
     $shellClasses = @(
         'Progman', 'WorkerW', 'Shell_TrayWnd', 'SHELLDLL_DefView', 'SysListView32',
-        'FeatherWallSurface', 'FeatherWallClock', 'FeatherWallMessage'
+        'PrismOSSurface', 'PrismOSClock', 'PrismOSMessage'
     )
 
     $screen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
@@ -209,7 +209,7 @@ function Open-Blocker {
     $formScript = @'
 Add-Type -AssemblyName System.Windows.Forms
 $f = New-Object System.Windows.Forms.Form
-$f.Text = "FeatherWall benchmark blocker"
+$f.Text = "PrismOS benchmark blocker"
 $f.WindowState = "Maximized"
 $f.TopMost = $true
 [void]$f.ShowDialog()
@@ -270,7 +270,7 @@ function Get-LastPauseEvent {
       The most recent Paused/Resumed line, or $null. Taken BEFORE a setup action so
       Wait-ForPauseState can insist on a NEWER one.
     #>
-    $log = "$env:LOCALAPPDATA\FeatherWall\featherwall.log"
+    $log = "$env:LOCALAPPDATA\PrismOS\prismos.log"
     (Get-Content $log -Tail 40 -EA SilentlyContinue |
         Select-String -Pattern '\[INF\] (Paused|Resumed) \\\\' |
         Select-Object -Last 1).Line
@@ -278,7 +278,7 @@ function Get-LastPauseEvent {
 
 function Wait-ForPauseState {
     <#
-      Blocks until FeatherWall's log reports the expected state IN AN EVENT THE SETUP ACTION
+      Blocks until PrismOS's log reports the expected state IN AN EVENT THE SETUP ACTION
       CAUSED, and throws naming the real cause if it never does. The old code slept 8 seconds and
       hoped; when the blocker silently failed, what surfaced was Measure-App refusing the row with
       a message about closing windows — true, but pointing at the user's desktop rather than at the
@@ -300,7 +300,7 @@ function Wait-ForPauseState {
         }
         Start-Sleep -Milliseconds 500
     }
-    throw "FeatherWall never reported a new '$Expected' event after $Because. The step did not do what it claims, so the row it would produce would be measuring something else."
+    throw "PrismOS never reported a new '$Expected' event after $Because. The step did not do what it claims, so the row it would produce would be measuring something else."
 }
 
 function Measure-State {
@@ -320,7 +320,7 @@ function Measure-State {
         $extra = @{}
         if ($WithDwm) { $extra.AlsoMeasure = @('dwm') }
         if ($RequireRecordTurning) { $extra.RequireRecordTurning = $true }
-        return (& $measure -ProcessName featherwall -Seconds $Seconds -Label $tagged -ExpectState $Expect @extra)
+        return (& $measure -ProcessName prismos -Seconds $Seconds -Label $tagged -ExpectState $Expect @extra)
     }
     catch {
         # Trim each line: a Windows exception carries \r that -split "`n" leaves behind, and those
@@ -365,7 +365,7 @@ try {
 
     # MinimizeAll on its own is not enough: it does not touch a full-screen window, and a
     # terminal left in full screen therefore stays over the desktop for the whole run. Every
-    # playing row is then refused for a reason that reads like a FeatherWall fault rather than a
+    # playing row is then refused for a reason that reads like a PrismOS fault rather than a
     # window nobody minimised. Measured on 26200 — a full-screen Windows Terminal survived
     # MinimizeAll and refused three of four rows. The foreground window is forced down first.
     $fg = [Bench.Fg]::GetForegroundWindow()
@@ -388,7 +388,7 @@ try {
     if ($States -contains 'Still image') {
     Write-Host "[1/4] still image$suffix" -ForegroundColor Cyan
     [void]$results.Add((Measure-State -Label 'Still image' -Expect Playing -Setup {
-        Stop-FeatherWall; Set-Wallpaper -Path $Image; Start-AndSettle
+        Stop-PrismOS; Set-Wallpaper -Path $Image; Start-AndSettle
     }))
     }
 
@@ -396,7 +396,7 @@ try {
     if ($States -contains 'Video playing') {
     Write-Host "[2/4] video playing (desktop visible)$suffix" -ForegroundColor Cyan
     [void]$results.Add((Measure-State -Label 'Video playing' -Expect Playing -Setup {
-        Stop-FeatherWall; Set-Wallpaper -Path $Video; Start-AndSettle
+        Stop-PrismOS; Set-Wallpaper -Path $Video; Start-AndSettle
     }))
     }
 
@@ -430,7 +430,7 @@ try {
 finally {
     Close-Blocker
     $shell.UndoMinimizeALL()
-    Stop-FeatherWall
+    Stop-PrismOS
 
     if ($hadConfig) {
         if (Test-Path $backup) {
@@ -453,7 +453,7 @@ finally {
 $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMdd-HHmmss')
 $outDir = Join-Path $PSScriptRoot 'results'
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
-$json = Join-Path $outDir "featherwall-$stamp.json"
+$json = Join-Path $outDir "prismos-$stamp.json"
 $results | ConvertTo-Json -Depth 6 | Set-Content -Path $json -Encoding UTF8
 
 function Get-Median([double[]] $Values) {

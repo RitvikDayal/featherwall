@@ -11,11 +11,11 @@ body:
   - type: textarea
     id: diag
     attributes:
-      label: Output of `featherwall --diag`
+      label: Output of `prismos --diag`
       description: Run it from a terminal and paste the whole thing. It prints the desktop topology and monitor layout.
       render: text
       placeholder: |
-        FeatherWall --diag (Microsoft Windows NT 10.0.26200.0)
+        PrismOS --diag (Microsoft Windows NT 10.0.26200.0)
         Topology : RaisedDesktop
         Progman  : 0x10242
         WorkerW  : 0x10294
@@ -63,13 +63,13 @@ body:
     id: log
     attributes:
       label: Relevant lines from the log
-      description: "`%LOCALAPPDATA%\\FeatherWall\\featherwall.log` — the last 30 lines are usually enough."
+      description: "`%LOCALAPPDATA%\\PrismOS\\prismos.log` — the last 30 lines are usually enough."
       render: text
 
   - type: input
     id: version
     attributes:
-      label: FeatherWall version or commit
+      label: PrismOS version or commit
       placeholder: "0.1.0 / a1b2c3d"
     validations:
       required: true

@@ -31,7 +31,7 @@ jobs:
 
       - name: Publish
         run: >
-          dotnet publish src/FeatherWall -c Release -o publish
+          dotnet publish src/PrismOS -c Release -o publish
           /p:PublishSingleFile=true /p:SelfContained=false /p:DebugType=embedded
 
       - name: Package
@@ -39,14 +39,14 @@ jobs:
         run: |
           $tag = "${{ github.event.inputs.tag }}"
           if (-not $tag) { $tag = "${{ github.ref_name }}" }
-          Compress-Archive -Path publish/* -DestinationPath "featherwall-$tag-win-x64.zip"
-          Get-FileHash "featherwall-$tag-win-x64.zip" -Algorithm SHA256 |
-            ForEach-Object { "$($_.Hash.ToLower())  featherwall-$tag-win-x64.zip" } |
-            Out-File "featherwall-$tag-win-x64.zip.sha256" -Encoding ascii
+          Compress-Archive -Path publish/* -DestinationPath "prismos-$tag-win-x64.zip"
+          Get-FileHash "prismos-$tag-win-x64.zip" -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLower())  prismos-$tag-win-x64.zip" } |
+            Out-File "prismos-$tag-win-x64.zip.sha256" -Encoding ascii
 
       # Per-user Setup.exe (Velopack); it installs .NET 10 first when missing, which asks for admin.
-      # The fixed name lets the site link releases/latest/download/FeatherWall-Setup.exe. The id is
-      # not "FeatherWall": %LOCALAPPDATA%\FeatherWall holds the log, and Velopack offers to wipe a
+      # The fixed name lets the site link releases/latest/download/PrismOS-Setup.exe. The id is
+      # not "PrismOS": %LOCALAPPDATA%\PrismOS holds the log, and Velopack offers to wipe a
       # folder that isn't empty. No Velopack shortcuts: the app keeps its own Start menu entry.
       - name: Installer
         shell: pwsh
@@ -54,15 +54,15 @@ jobs:
           $tag = "${{ github.event.inputs.tag }}"
           if (-not $tag) { $tag = "${{ github.ref_name }}" }
           dotnet tool install vpk --version 1.2.161 --tool-path .tools
-          .tools/vpk pack --packId FeatherWallApp --packTitle FeatherWall --packAuthors "Ritvik Dayal" `
-            --packVersion $tag.TrimStart('v') --packDir publish --mainExe featherwall.exe `
-            --icon src/FeatherWall/featherwall.ico --framework net10.0-x64-desktop --runtime win-x64 `
+          .tools/vpk pack --packId PrismOSApp --packTitle PrismOS --packAuthors "PrismOS" `
+            --packVersion $tag.TrimStart('v') --packDir publish --mainExe prismos.exe `
+            --icon src/PrismOS/prismos.ico --framework net10.0-x64-desktop --runtime win-x64 `
             --shortcuts "" -o velopack
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Copy-Item velopack/FeatherWallApp-win-Setup.exe FeatherWall-Setup.exe
-          Get-FileHash FeatherWall-Setup.exe -Algorithm SHA256 |
-            ForEach-Object { "$($_.Hash.ToLower())  FeatherWall-Setup.exe" } |
-            Out-File FeatherWall-Setup.exe.sha256 -Encoding ascii
+          Copy-Item velopack/PrismOSApp-win-Setup.exe PrismOS-Setup.exe
+          Get-FileHash PrismOS-Setup.exe -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLower())  PrismOS-Setup.exe" } |
+            Out-File PrismOS-Setup.exe.sha256 -Encoding ascii
 
       - name: Draft release
         uses: softprops/action-gh-release@v3
@@ -70,12 +70,12 @@ jobs:
           draft: true
           generate_release_notes: true
           files: |
-            featherwall-*-win-x64.zip
-            featherwall-*-win-x64.zip.sha256
-            FeatherWall-Setup.exe
-            FeatherWall-Setup.exe.sha256
+            prismos-*-win-x64.zip
+            prismos-*-win-x64.zip.sha256
+            PrismOS-Setup.exe
+            PrismOS-Setup.exe.sha256
           body: |
-            `FeatherWall-Setup.exe` installs FeatherWall for your user, and the .NET 10 desktop runtime too if it is missing. The zip needs the [.NET 10 desktop runtime](https://dotnet.microsoft.com/download/dotnet/10.0) installed already.
+            `PrismOS-Setup.exe` installs PrismOS for your user, and the .NET 10 desktop runtime too if it is missing. The zip needs the [.NET 10 desktop runtime](https://dotnet.microsoft.com/download/dotnet/10.0) installed already.
 
             Releases are **unsigned**, so SmartScreen will warn. Verify the SHA-256 against the
             `.sha256` file, or build from source.

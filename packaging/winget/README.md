@@ -1,8 +1,8 @@
 # winget packaging
 
-Manifests for submitting FeatherWall to the
+Manifests for submitting PrismOS to the
 [Windows Package Manager community repository](https://github.com/microsoft/winget-pkgs), so that
-installing is `winget install RitvikDayal.FeatherWall` instead of a manual download.
+installing is `winget install YUouriii.PrismOS` instead of a manual download.
 
 ## Files
 
@@ -12,14 +12,14 @@ a confusing YAML scanner error.
 
 | File | Purpose |
 |---|---|
-| `manifests/RitvikDayal.FeatherWall.yaml` | Version manifest, points at the default locale |
-| `manifests/RitvikDayal.FeatherWall.installer.yaml` | Installer type, URL, SHA-256, runtime dependency |
-| `manifests/RitvikDayal.FeatherWall.locale.en-US.yaml` | Name, publisher, licence, description, tags |
+| `manifests/YUouriii.PrismOS.yaml` | Version manifest, points at the default locale |
+| `manifests/YUouriii.PrismOS.installer.yaml` | Installer type, URL, SHA-256, runtime dependency |
+| `manifests/YUouriii.PrismOS.locale.en-US.yaml` | Name, publisher, licence, description, tags |
 
-The release is a zip containing a single `featherwall.exe`, so it is packaged as
-`InstallerType: zip` with `NestedInstallerType: portable`. winget puts `featherwall` on the PATH
+The release is a zip containing a single `prismos.exe`, so it is packaged as
+`InstallerType: zip` with `NestedInstallerType: portable`. winget puts `prismos` on the PATH
 through its portable link directory, and uninstall removes the exe and that link. It does not
-remove the Start menu entry FeatherWall adds on its first run, because winget did not create it;
+remove the Start menu entry PrismOS adds on its first run, because winget did not create it;
 that one has to be deleted by hand.
 
 `Microsoft.DotNet.DesktopRuntime.10` is declared as a package dependency because the build is
@@ -60,9 +60,9 @@ submission from a new publisher usually attracts a moderation check, which is no
 `wingetcreate update` recomputes the hash from the new URL rather than doing it by hand:
 
 ```powershell
-wingetcreate update RitvikDayal.FeatherWall `
+wingetcreate update YUouriii.PrismOS `
   --version <new-version> `
-  --urls https://github.com/RitvikDayal/featherwall/releases/download/v<new-version>/featherwall-v<new-version>-win-x64.zip `
+  --urls https://github.com/YUouriii/PrismOS/releases/download/v<new-version>/prismos-v<new-version>-win-x64.zip `
   --submit --token <github-pat>
 ```
 
