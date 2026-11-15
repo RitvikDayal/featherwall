@@ -36,7 +36,7 @@ public static class ThemePreview
     private static readonly NowPlayingReading SampleTrack = new("Bairan", "Banjaare", true, "preview", 0.42);
     private static readonly BatteryReading SampleBattery = new(76, BatteryState.OnBattery);
 
-    public static Bitmap Render(WidgetTheme theme, Size tile, Color accent, Image? backdrop, AppConfig? config = null)
+    public static Bitmap Render(WidgetTheme theme, Size tile, Color accent, Image? backdrop, AppConfig? config = null, bool battery = true)
     {
         config ??= new AppConfig();
         using var canvas = new Bitmap(Canvas.Width, Canvas.Height, PixelFormat.Format32bppPArgb);
@@ -48,9 +48,9 @@ public static class ThemePreview
 
             switch (theme)
             {
-                case WidgetTheme.Classic: DrawClassic(g, config); break;
-                case WidgetTheme.Editorial: DrawEditorial(g, accent, config); break;
-                case var group when WidgetsConfig.IsGroup(group): DrawGroup(g, GroupThemes.For(group), accent, config); break;
+                case WidgetTheme.Classic: DrawClassic(g, config, battery); break;
+                case WidgetTheme.Editorial: DrawEditorial(g, accent, config, battery); break;
+                case var group when WidgetsConfig.IsGroup(group): DrawGroup(g, GroupThemes.For(group), accent, config, battery); break;
                 // A theme with no preview fails EveryTheme_Renders rather than shipping a tile
                 // that quietly shows Classic under the new theme's name.
                 default: throw new NotSupportedException($"No Style page preview for {theme}");
@@ -67,14 +67,14 @@ public static class ThemePreview
         return result;
     }
 
-    private static void DrawClassic(Graphics g, AppConfig config)
+    private static void DrawClassic(Graphics g, AppConfig config, bool battery)
     {
         var clock = config.Clock;
         var disc = config.Info.Disc;
         var halo = config.Info.Halo;
         float scale = Fit(ClockRenderer.Measure(clock, SampleTime).Total,
                           NowPlayingRenderer.Measure(disc, SampleTrack).Total,
-                          BatteryHaloRenderer.Measure(halo, SampleBattery));
+                          battery ? BatteryHaloRenderer.Measure(halo, SampleBattery) : Size.Empty);
 
         var cm = ClockRenderer.Measure(clock, SampleTime, scale);
         Place(g, cm.Total, (Canvas.Width - cm.Total.Width) / 2, Margin,
@@ -85,19 +85,20 @@ public static class ThemePreview
         Place(g, rm.Total, Margin, Canvas.Height - Margin - rm.Total.Height,
               bg => NowPlayingRenderer.Paint(bg, rm, disc, SampleTrack, face, 0.1f, (float)SampleTrack.Progress, scale), shadow: 0f);
 
+        if (!battery) return; // a laptop preview shows the halo; a desktop preview does not
         var hs = BatteryHaloRenderer.Measure(halo, SampleBattery, scale);
         Place(g, hs, Canvas.Width - Margin - hs.Width, Margin,
               bg => BatteryHaloRenderer.Paint(bg, new Rectangle(Point.Empty, hs), halo, SampleBattery), shadow: 0f);
     }
 
-    private static void DrawEditorial(Graphics g, Color accent, AppConfig config)
+    private static void DrawEditorial(Graphics g, Color accent, AppConfig config, bool battery)
     {
         var disc = config.Info.Disc;
         var halo = config.Info.Halo;
         float unit = config.Widgets.ScaleFor(config.Clock);
         float scale = unit * Fit(Editorial.MeasureClock(config.Clock, SampleTime, unit).Total,
                                  Editorial.MeasureRecord(disc, SampleTrack, unit).Total,
-                                 Editorial.MeasureHalo(halo, SampleBattery, unit));
+                                 battery ? Editorial.MeasureHalo(halo, SampleBattery, unit) : Size.Empty);
         var cm = Editorial.MeasureClock(config.Clock, SampleTime, scale);
         Place(g, cm.Total, (Canvas.Width - cm.Total.Width) / 2, Margin / 2,
               bg => Editorial.PaintClock(bg, cm, accent, ClockRenderer.ParseColor(config.Clock.Color)), scale);
@@ -110,15 +111,18 @@ public static class ThemePreview
             Editorial.PaintRecordStatic(bg, rm, disc, SampleTrack, (float)SampleTrack.Progress, accent, scale);
         }, scale);
 
-        var hm = Editorial.MeasureInfo(config.Info, [], scale, Editorial.MeasureHalo(halo, SampleBattery, scale));
-        Place(g, hm.Total, Canvas.Width - Margin / 2 - hm.Total.Width, Margin / 2,
-              bg => Editorial.PaintHalo(bg, hm.HaloBox, halo, SampleBattery, accent), scale);
+        if (battery)
+        {
+            var hm = Editorial.MeasureInfo(config.Info, [], scale, Editorial.MeasureHalo(halo, SampleBattery, scale));
+            Place(g, hm.Total, Canvas.Width - Margin / 2 - hm.Total.Width, Margin / 2,
+                  bg => Editorial.PaintHalo(bg, hm.HaloBox, halo, SampleBattery, accent), scale);
+        }
     }
 
     /// <summary>A group theme laid out on the miniature desktop, shrunk until every panel fits and
     /// none overlaps. Each panel is painted and shadowed as GroupOverlay does, with the record's face
     /// drawn above it where the compositor would turn it.</summary>
-    private static void DrawGroup(Graphics g, IGroupTheme theme, Color accent, AppConfig config)
+    private static void DrawGroup(Graphics g, IGroupTheme theme, Color accent, AppConfig config, bool battery)
     {
         float unit = config.Widgets.ScaleFor(config.Clock);
         IReadOnlyList<GroupPanel> panels = [];
@@ -126,7 +130,7 @@ public static class ThemePreview
         for (int attempt = 0; attempt < 12; attempt++, f *= 0.85f)
         {
             var input = new GroupInput(SampleTime, config.Clock, config.Info.Disc, config.Info.Halo,
-                SampleTrack, SampleBattery, accent, unit * f, f, config.Widgets.Position,
+                SampleTrack, battery ? SampleBattery : null, accent, unit * f, f, config.Widgets.Position,
                 new Rectangle(Point.Empty, Canvas), config.Info.MaxCharacters);
             panels = theme.Layout(input);
             if (FitsWithoutOverlap(panels)) break;

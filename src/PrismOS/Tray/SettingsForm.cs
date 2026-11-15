@@ -304,7 +304,7 @@ public sealed class SettingsForm : Form
         _backdrop.Replace(LoadBackdrop());
         foreach (var theme in Enum.GetValues<WidgetTheme>())
         {
-            var tile = new ThemeTile(theme, (t, size) => ThemePreview.Render(t, size, _accent, _backdrop.Current, _config))
+            var tile = new ThemeTile(theme, (t, size) => ThemePreview.Render(t, size, _accent, _backdrop.Current, _config, _batteryAvailable))
             {
                 Size = new Size(192, 132),
                 Margin = new Padding(0, 0, 10, 10),
