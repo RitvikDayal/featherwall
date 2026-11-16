@@ -65,12 +65,6 @@ public sealed class Engine : IDisposable
     private bool _lockScreenHintShown;
     private string _originalWallpaper = "";
 
-    private static string StaticDir => Path.Combine(Log.Directory, "static");
-    private static string OriginalWallpaperFile => Path.Combine(Log.Directory, "original-wallpaper.txt");
-    private static string OriginalDesktopWallpapersFile => Path.Combine(Log.Directory, "original-vd-wallpapers.tsv");
-    private static string StaticPath(string device) =>
-        Path.Combine(StaticDir, new string(device.Select(c => char.IsLetterOrDigit(c) ? c : '_').ToArray()) + ".png");
-
     /// <summary>True when config.json existed but could not be read: the defaults in use are not
     /// the user's settings, and nothing may save over the file on start-up's account.</summary>
     private readonly bool _configUnreadable;
@@ -159,7 +153,7 @@ public sealed class Engine : IDisposable
         // When the first frame is captured, set it as the OS static wallpaper so a
         // virtual-desktop switch (or Task View) paints a matching frame instead of the
         // previous wallpaper — no flash before our live layer returns.
-        var staticPath = StaticPath(monitor.Device);
+        var staticPath = WallpaperFiles.StaticPath(monitor.Device);
         var captured = monitor;
         Action onStatic = () => RunOnMainThread(() =>
         {
@@ -720,23 +714,23 @@ public sealed class Engine : IDisposable
         try
         {
             Directory.CreateDirectory(Log.Directory);
-            if (File.Exists(OriginalWallpaperFile))
+            if (File.Exists(WallpaperFiles.SavedWallpaper))
             {
                 // A prior run left this behind (crash / kill) — it holds the TRUE original.
-                _originalWallpaper = File.ReadAllText(OriginalWallpaperFile).Trim();
+                _originalWallpaper = File.ReadAllText(WallpaperFiles.SavedWallpaper).Trim();
             }
             else
             {
                 _originalWallpaper = DesktopWallpaper.GetCurrent();
-                File.WriteAllText(OriginalWallpaperFile, _originalWallpaper);
+                File.WriteAllText(WallpaperFiles.SavedWallpaper, _originalWallpaper);
                 Log.Info($"Saved original wallpaper: {(_originalWallpaper.Length == 0 ? "(none)" : _originalWallpaper)}");
             }
 
             // Per-desktop wallpapers (Windows 11) — save once so we can restore them.
-            if (!File.Exists(OriginalDesktopWallpapersFile))
+            if (!File.Exists(WallpaperFiles.SavedDesktopWallpapers))
             {
                 var perDesktop = VirtualDesktopWallpaper.ReadAll();
-                File.WriteAllLines(OriginalDesktopWallpapersFile,
+                File.WriteAllLines(WallpaperFiles.SavedDesktopWallpapers,
                     perDesktop.Select(kv => $"{kv.Key}\t{kv.Value}"));
                 Log.Info($"Saved {perDesktop.Count} per-desktop wallpaper(s)");
             }
@@ -747,38 +741,7 @@ public sealed class Engine : IDisposable
         }
     }
 
-    private void RestoreOriginalWallpaper() => RestoreSavedWallpaper(_originalWallpaper);
-
-    /// <summary>Puts back the wallpaper saved at startup and deletes the saved copy. Static, and
-    /// reads the saved path itself when not given one, for the uninstaller: Velopack force-stops the
-    /// app before the uninstall hook runs, so the app's own exit never got here.</summary>
-    public static void RestoreSavedWallpaper(string? original = null)
-    {
-        try
-        {
-            if (File.Exists(OriginalDesktopWallpapersFile))
-            {
-                var saved = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                foreach (var line in File.ReadAllLines(OriginalDesktopWallpapersFile))
-                {
-                    int tab = line.IndexOf('\t');
-                    if (tab > 0) saved[line[..tab]] = line[(tab + 1)..];
-                }
-                VirtualDesktopWallpaper.Restore(saved);
-                File.Delete(OriginalDesktopWallpapersFile);
-            }
-
-            original ??= File.Exists(OriginalWallpaperFile) ? File.ReadAllText(OriginalWallpaperFile).Trim() : null;
-            if (!string.IsNullOrEmpty(original))
-                DesktopWallpaper.RestoreCurrent(original);
-            if (File.Exists(OriginalWallpaperFile))
-                File.Delete(OriginalWallpaperFile);
-        }
-        catch (Exception ex)
-        {
-            Log.Warn($"Could not restore original wallpaper: {ex.Message}");
-        }
-    }
+    private void RestoreOriginalWallpaper() => WallpaperRestore.Restore(_originalWallpaper);
 
     private void SaveAndRefreshWidgets()
     {
@@ -895,7 +858,7 @@ public sealed class Engine : IDisposable
     /// any frame has been written.</summary>
     public string? PreviewBackdropPath()
     {
-        var path = StaticPath(PreviewDevice());
+        var path = WallpaperFiles.StaticPath(PreviewDevice());
         return File.Exists(path) ? path : null;
     }
 
@@ -921,7 +884,7 @@ public sealed class Engine : IDisposable
         string device = monitorDevice == "*"
             ? MonitorTracker.Enumerate().FirstOrDefault(m => m.Primary)?.Device ?? monitorDevice
             : monitorDevice;
-        var frame = StaticPath(device);
+        var frame = WallpaperFiles.StaticPath(device);
         return File.Exists(frame) ? frame : null;
     }
 
@@ -933,7 +896,7 @@ public sealed class Engine : IDisposable
         var path = _config.WallpaperFor(monitor.Device);
         if (path is null) return null;
         if (ImageExtensions.Contains(Path.GetExtension(path))) return File.Exists(path) ? path : null;
-        var frame = StaticPath(monitor.Device);
+        var frame = WallpaperFiles.StaticPath(monitor.Device);
         return File.Exists(frame) ? frame : null;
     }
 
@@ -1236,38 +1199,3 @@ public sealed class Engine : IDisposable
     }
 }
 
-public static class Autostart
-{
-    public const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    public const string ValueName = "PrismOS";
-
-    public static bool IsEnabled()
-    {
-        using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RunKey);
-        return key?.GetValue(ValueName) is not null;
-    }
-
-    public static void SetEnabled(bool enabled)
-    {
-        using var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(RunKey);
-        if (enabled && Environment.ProcessPath is { } exe)
-            // --silent: a login start attaches the wallpaper in the background and does not
-            // open the window. Opening PrismOS yourself is how it opens the window.
-            key.SetValue(ValueName, $"\"{exe}\" --silent");
-        else
-            key.DeleteValue(ValueName, throwOnMissingValue: false);
-    }
-
-    /// <summary>An earlier version registered the bare exe for login start, which would pop the
-    /// settings window at every sign-in. Rewrite the value with --silent once at startup.</summary>
-    public static void EnsureSilentFlag()
-    {
-        try
-        {
-            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RunKey, writable: true);
-            if (key?.GetValue(ValueName) is not string value || value.Contains("--silent", StringComparison.OrdinalIgnoreCase)) return;
-            key.SetValue(ValueName, $"{value} --silent");
-        }
-        catch { /* best effort; worst case the window opens once at login */ }
-    }
-}

@@ -20,7 +20,7 @@ public sealed class VideoRenderer : IWallpaperRenderer
 
     private CompositionSurface _surfaceHost;
     private IDirect3DSurface? _surface;
-    private PrismOS.Widgets.WakeEase? _wake;
+    private WakeEase? _wake;
 
     private MediaPlayer? _player;
     private MediaSource? _source;
@@ -55,7 +55,7 @@ public sealed class VideoRenderer : IWallpaperRenderer
 
         _surfaceHost = host.CreateContent(width, height);
         WrapBackBuffer();
-        _wake = new PrismOS.Widgets.WakeEase(_surfaceHost, _hostComposition, width, height);
+        _wake = new WakeEase(_surfaceHost, _hostComposition, width, height);
 
         _player = new MediaPlayer
         {
@@ -130,7 +130,7 @@ public sealed class VideoRenderer : IWallpaperRenderer
                     _surface?.Dispose();
                     _surface = null;
                     _surfaceHost = _hostComposition.CreateContent(fit.Width, fit.Height, fit.X, fit.Y);
-                    _wake = new PrismOS.Widgets.WakeEase(_surfaceHost, _hostComposition, fit.Width, fit.Height);
+                    _wake = new WakeEase(_surfaceHost, _hostComposition, fit.Width, fit.Height);
                     WrapBackBuffer();
                     _targetRect = null;
                     _staticCropX = -fit.X; // visible monitor region within the oversized surface

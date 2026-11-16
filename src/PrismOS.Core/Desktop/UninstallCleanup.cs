@@ -32,7 +32,7 @@ public static class UninstallCleanup
         }
         else
         {
-            Try("restore the wallpaper", () => Engine.RestoreSavedWallpaper());
+            Try("restore the wallpaper", () => WallpaperRestore.Restore());
             Try("restore the desktop", DesktopLayerHost.RestoreDesktop);
             Try("remove the Start menu entry", () => { if (RemoveShortcut(installDir)) ForgetShortcut(); });
         }

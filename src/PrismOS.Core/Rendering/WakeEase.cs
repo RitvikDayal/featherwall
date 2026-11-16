@@ -1,6 +1,4 @@
-using PrismOS.Rendering;
-
-namespace PrismOS.Widgets;
+namespace PrismOS.Rendering;
 
 /// <summary>The lock-to-unlock wake ease: a scale-back from 1.04 to 1.0 and a brightness ease
 /// from 0.88 to 1.0, both along the CSS cubic-bezier(0.22, 1, 0.36, 1) timing in a 33 ms tick

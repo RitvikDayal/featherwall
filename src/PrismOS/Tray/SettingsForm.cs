@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Drawing.Text;
 using System.Windows.Forms;
 using PrismOS.Config;
+using PrismOS.Desktop;
 using PrismOS.Interop;
 using PrismOS.Widgets;
 using PrismOS.Widgets.Themes;
